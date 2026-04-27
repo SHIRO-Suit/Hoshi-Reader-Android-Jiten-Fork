@@ -66,6 +66,8 @@ git -C third_party/hoshidicts-gplv3 submodule update --init --recursive
 - 所有用户可见的交互逻辑和 UI 设计都以 iOS 版作为唯一真源。Android 代码、第三方库示例、POC、平台默认行为都不能覆盖 iOS 版行为。
 - 每个功能切片开始时，先查看 `reference/Hoshi-Reader-iOS` 下相关 iOS 文件，再总结行为，然后实现 Android 版本。
 - 如果用户指出 Android 行为或 UI 与 iOS 不一致，不要先写局部兼容代码或猜测性修复；应立即回到 iOS 实现，复刻对应逻辑，或明确找出 Android 当前实现与 iOS 的差异后再改。
+- 后续开发路线和任务状态记录在 `docs/TODO.md`。每完成一个需求，必须先更新该文件里的状态，再把代码和状态更新放在同一个 commit 中。
+- 每个完成的功能切片都需要通过 Android 模拟器做实际验证后再 commit；如果功能无法验证或遇到暂时无法解决的问题，在 `docs/TODO.md` 标为 `blocked` 并继续下一个可行切片。
 - iOS singleton 和 `@Observable` 只作为行为参考；Android 中应映射为 repository、ViewModel 和不可变 UI state。
 - 按垂直切片推进：model/storage、bookshelf import、reader、dictionary popup、Anki、sync、settings。
 - 不要从完整设置页开始。主路径是 bookshelf -> import EPUB -> open reader -> select text -> lookup。
@@ -97,6 +99,13 @@ git -C third_party/hoshidicts-gplv3 submodule update --init --recursive
 - 使用模拟器验证 EPUB 导入时，优先通过系统文件选择器选择 `test.epub`。直接 `file:///sdcard/...` 或 shell 拼出的 `content://` grant 不能代表真实 SAF 导入路径，容易被 Android 权限模型拦住。
 - 手工验证阅读器时，至少覆盖：封面图片页、包含多张图的图版页、长文本章节页内翻页、章节末尾往后翻、章节开头往前翻、反向跨章节落点。
 - 调试 WebView 分页可用 Chrome DevTools Protocol 或 WebView inspection 读取当前 DOM 状态，记录章节 id、`scrollTop`、`scrollHeight`、`clientHeight`，不要只凭截图判断。
+- EPUB reader 的手工验证样本使用 `testdata/test.epub`；不要再假设测试 EPUB 位于仓库根目录。
+
+## 测试数据
+
+- EPUB 测试书籍：`testdata/test.epub`
+- Yomitan 测试辞典：`testdata/JMdict_english.zip`
+- 调试导入流程时，应通过 Android 系统文件选择器选择 `testdata` 中的文件；需要命令行辅助时，先把样本推送到模拟器 Downloads，再通过 DocumentsUI 选择。
 
 ## 集成注意事项
 
