@@ -18,38 +18,46 @@ internal object ReaderLayoutDefaults {
 }
 
 internal object ReaderContentStyles {
-    fun styleTag(): String = """
+    fun styleTag(settings: ReaderSettings = ReaderSettings()): String {
+        val textColor = settings.textColorCss ?: "var(--hoshi-system-text-color)"
+        val backgroundColor = when (settings.theme) {
+            ReaderTheme.Dark -> "#000"
+            ReaderTheme.Sepia -> "#F2E2C9"
+            else -> "#fff"
+        }
+        return """
         <style>
-        @media (prefers-color-scheme: light) { :root { --hoshi-text-color: #000; } }
-        @media (prefers-color-scheme: dark) { :root { --hoshi-text-color: #fff; } }
+        @media (prefers-color-scheme: light) { :root { --hoshi-system-text-color: #000; } }
+        @media (prefers-color-scheme: dark) { :root { --hoshi-system-text-color: #fff; } }
         html, body {
             overflow: hidden !important;
             height: var(--page-height, 100vh) !important;
             width: var(--page-width, 100vw) !important;
             margin: 0 !important;
             padding: 0 !important;
-            background: #f7f3ea !important;
-            color: var(--hoshi-text-color) !important;
-            writing-mode: vertical-rl !important;
+            background: $backgroundColor !important;
+            color: $textColor !important;
+            writing-mode: ${settings.writingModeCss} !important;
         }
         body {
             font-family: serif !important;
-            font-size: ${ReaderLayoutDefaults.fontSizePx}px !important;
+            font-size: ${settings.fontSize}px !important;
+            line-height: ${settings.lineHeight} !important;
             box-sizing: border-box !important;
             column-width: var(--page-width, 100vw) !important;
-            column-gap: ${ReaderLayoutDefaults.columnGapCss};
-            padding: ${ReaderLayoutDefaults.pagePaddingCss} !important;
-            padding-bottom: ${ReaderLayoutDefaults.bottomPaddingCss} !important;
+            column-gap: ${settings.columnGapCss};
+            padding: ${settings.pagePaddingCss} !important;
+            padding-bottom: ${settings.bottomPaddingCss} !important;
             text-align: start !important;
             hanging-punctuation: allow-end !important;
             line-break: strict !important;
             text-orientation: mixed;
         }
         img.block-img {
-            max-width: var(--hoshi-image-max-width, ${ReaderLayoutDefaults.imageMaxWidthFallbackCss}) !important;
-            max-height: var(--hoshi-image-max-height, ${ReaderLayoutDefaults.imageMaxHeightFallbackCss}) !important;
-            width: var(--hoshi-image-max-width, ${ReaderLayoutDefaults.imageMaxWidthFallbackCss}) !important;
-            height: var(--hoshi-image-max-height, ${ReaderLayoutDefaults.imageMaxHeightFallbackCss}) !important;
+            max-width: var(--hoshi-image-max-width, ${settings.imageMaxWidthFallbackCss}) !important;
+            max-height: var(--hoshi-image-max-height, ${settings.imageMaxHeightFallbackCss}) !important;
+            width: var(--hoshi-image-max-width, ${settings.imageMaxWidthFallbackCss}) !important;
+            height: var(--hoshi-image-max-height, ${settings.imageMaxHeightFallbackCss}) !important;
             display: block !important;
             margin: auto !important;
             break-inside: avoid !important;
@@ -57,8 +65,8 @@ internal object ReaderContentStyles {
             object-fit: contain !important;
         }
         svg {
-            max-width: var(--hoshi-image-max-width, ${ReaderLayoutDefaults.imageMaxWidthFallbackCss}) !important;
-            max-height: var(--hoshi-image-max-height, ${ReaderLayoutDefaults.imageMaxHeightFallbackCss}) !important;
+            max-width: var(--hoshi-image-max-width, ${settings.imageMaxWidthFallbackCss}) !important;
+            max-height: var(--hoshi-image-max-height, ${settings.imageMaxHeightFallbackCss}) !important;
             width: 100% !important;
             height: 100% !important;
             display: block !important;
@@ -73,5 +81,6 @@ internal object ReaderContentStyles {
             color: rgba(66, 108, 245, 1) !important;
         }
         </style>
-    """.trimIndent()
+        """.trimIndent()
+    }
 }

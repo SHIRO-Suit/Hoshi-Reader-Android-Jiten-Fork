@@ -32,9 +32,12 @@
    - Verified cover thumbnails on emulator with `testdata/test.epub`: imported through DocumentsUI, confirmed `metadata.cover` is `item/image/cover.jpg`, and visually checked the real cover image renders in the shelf row.
    - Verified sorting/deletion on emulator: opened sort menu, switched from `Recent` to `Title`, long-pressed a book row, used `Delete`, confirmed the dialog, and checked `files/Books` metadata count decreased.
 
-3. `todo` - Reader settings
-   - Implement iOS-aligned theme, font, font size, line spacing, and margin controls.
-   - Apply settings through WebView CSS/JS without changing reader interaction logic.
+3. `in_progress` - Reader settings
+   - `done` - Implement iOS-aligned reader Appearance sheet entry from the reader.
+   - `done` - Apply theme, text orientation, font size, horizontal padding, vertical padding, and line height through WebView CSS without changing reader page-turn logic.
+   - `done` - Persist reader Appearance settings across app restart.
+   - `todo` - Align font family selection/import with iOS `FontManager`.
+   - Verified on emulator with `testdata/test.epub`: opened reader, opened Appearance from the reader, changed font size from 22 to 23 and theme to Dark, confirmed WebView computed CSS changed to `fontSize=23px`, black background, white text, and confirmed those settings persisted after force-stopping and reopening the app.
 
 4. `done` - WebView selection bridge
    - `done` - Implement JS-side text selection, selected text extraction, range data, and popup anchor rectangles.

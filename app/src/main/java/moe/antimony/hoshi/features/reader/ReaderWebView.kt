@@ -7,14 +7,22 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -48,11 +57,15 @@ fun ReaderWebView(
     book: EpubBook,
     initialChapterIndex: Int = 0,
     initialProgress: Double = 0.0,
+    readerSettings: ReaderSettings = ReaderSettings(),
+    onReaderSettingsChange: (ReaderSettings) -> Unit = {},
     onSaveBookmark: (chapterIndex: Int, progress: Double) -> Unit = { _, _ -> },
     onTextSelected: (ReaderSelectionData) -> Int? = { null },
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var effectiveSettings by remember(readerSettings) { mutableStateOf(readerSettings) }
+    var showAppearance by remember { mutableStateOf(false) }
     val clampedInitialIndex = initialChapterIndex.coerceIn(0, book.chapters.lastIndex)
     var chapterPosition by remember(book) {
         mutableStateOf(
@@ -79,6 +92,11 @@ fun ReaderWebView(
                         Text("‹")
                     }
                 },
+                actions = {
+                    IconButton(onClick = { showAppearance = true }) {
+                        Text("Aa")
+                    }
+                },
             )
         },
     ) { innerPadding ->
@@ -86,7 +104,7 @@ fun ReaderWebView(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color(0xFFF7F3EA)),
+                .background(Color(effectiveSettings.backgroundColor)),
         ) {
             ChapterWebView(
                 book = book,
@@ -115,11 +133,22 @@ fun ReaderWebView(
                 onSaveBookmark = { progress ->
                     onSaveBookmark(chapterPosition.index, progress)
                 },
+                readerSettings = effectiveSettings,
                 onTextSelected = onTextSelected,
                 modifier = Modifier.fillMaxSize(),
             )
             webView?.let { _ -> Unit }
         }
+    }
+    if (showAppearance) {
+        ReaderAppearanceSheet(
+            settings = effectiveSettings,
+            onSettingsChange = {
+                effectiveSettings = it
+                onReaderSettingsChange(it)
+            },
+            onDismiss = { showAppearance = false },
+        )
     }
 }
 
@@ -132,12 +161,16 @@ private fun ChapterWebView(
     onNextChapter: () -> Boolean,
     onPreviousChapter: () -> Boolean,
     onSaveBookmark: (progress: Double) -> Unit,
+    readerSettings: ReaderSettings,
     onTextSelected: (ReaderSelectionData) -> Int?,
     modifier: Modifier = Modifier,
 ) {
     val chapter = book.chapters[chapterPosition.index]
-    val html = remember(chapter, chapterPosition.progress) {
-        chapter.html.injectReaderShell(initialProgress = chapterPosition.progress)
+    val html = remember(chapter, chapterPosition.progress, readerSettings) {
+        chapter.html.injectReaderShell(
+            initialProgress = chapterPosition.progress,
+            settings = readerSettings,
+        )
     }
     val baseUrl = remember(chapter) { "https://hoshi.local/epub/${chapter.href}" }
 
@@ -185,6 +218,143 @@ private fun ChapterWebView(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReaderAppearanceSheet(
+    settings: ReaderSettings,
+    onSettingsChange: (ReaderSettings) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Text("Appearance", style = MaterialTheme.typography.titleLarge)
+            SegmentedRow(
+                label = "Theme",
+                options = ReaderTheme.entries.map { it.label },
+                selected = settings.theme.label,
+                onSelected = { label ->
+                    ReaderTheme.entries.firstOrNull { it.label == label }?.let {
+                        onSettingsChange(settings.copy(theme = it))
+                    }
+                },
+            )
+            SegmentedRow(
+                label = "Text Orientation",
+                options = listOf("縦", "横"),
+                selected = if (settings.verticalWriting) "縦" else "横",
+                onSelected = { label ->
+                    onSettingsChange(settings.copy(verticalWriting = label == "縦"))
+                },
+            )
+            StepperRow(
+                label = "Font Size",
+                value = settings.fontSize.toString(),
+                onDecrease = {
+                    onSettingsChange(settings.copy(fontSize = (settings.fontSize - 1).coerceAtLeast(16)))
+                },
+                onIncrease = {
+                    onSettingsChange(settings.copy(fontSize = (settings.fontSize + 1).coerceAtMost(40)))
+                },
+            )
+            StepperRow(
+                label = "Horizontal Padding",
+                value = "${settings.horizontalPadding}%",
+                onDecrease = {
+                    onSettingsChange(settings.copy(horizontalPadding = (settings.horizontalPadding - 1).coerceAtLeast(0)))
+                },
+                onIncrease = {
+                    onSettingsChange(settings.copy(horizontalPadding = (settings.horizontalPadding + 1).coerceAtMost(50)))
+                },
+            )
+            StepperRow(
+                label = "Vertical Padding",
+                value = "${settings.verticalPadding}%",
+                onDecrease = {
+                    onSettingsChange(settings.copy(verticalPadding = (settings.verticalPadding - 1).coerceAtLeast(0)))
+                },
+                onIncrease = {
+                    onSettingsChange(settings.copy(verticalPadding = (settings.verticalPadding + 1).coerceAtMost(50)))
+                },
+            )
+            Column {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("Line Height")
+                    Text(String.format(java.util.Locale.US, "%.2f", settings.lineHeight))
+                }
+                Slider(
+                    value = settings.lineHeight.toFloat(),
+                    onValueChange = { value ->
+                        onSettingsChange(settings.copy(lineHeight = (kotlin.math.round(value * 20) / 20.0)))
+                    },
+                    valueRange = 1.0f..2.5f,
+                    steps = 29,
+                )
+            }
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Done")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SegmentedRow(
+    label: String,
+    options: List<String>,
+    selected: String,
+    onSelected: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            options.forEach { option ->
+                val active = option == selected
+                if (active) {
+                    Button(onClick = { onSelected(option) }) {
+                        Text(option)
+                    }
+                } else {
+                    TextButton(onClick = { onSelected(option) }) {
+                        Text(option)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepperRow(
+    label: String,
+    value: String,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            TextButton(onClick = onDecrease) {
+                Text("-")
+            }
+            Text(value)
+            TextButton(onClick = onIncrease) {
+                Text("+")
+            }
+        }
+    }
+}
+
 private class EpubWebViewClient(private val book: EpubBook) : WebViewClient() {
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val uri = request.url ?: return null
@@ -195,9 +365,9 @@ private class EpubWebViewClient(private val book: EpubBook) : WebViewClient() {
     }
 }
 
-private fun String.injectReaderShell(initialProgress: Double): String {
-    val css = ReaderContentStyles.styleTag()
-    val script = ReaderPaginationScripts.shellScript(initialProgress)
+private fun String.injectReaderShell(initialProgress: Double, settings: ReaderSettings): String {
+    val css = ReaderContentStyles.styleTag(settings)
+    val script = ReaderPaginationScripts.shellScript(initialProgress, settings)
     val selectionScript = ReaderSelectionScripts.script()
     return replace("</head>", "$css\n$script\n$selectionScript\n</head>", ignoreCase = true)
         .takeIf { it != this }

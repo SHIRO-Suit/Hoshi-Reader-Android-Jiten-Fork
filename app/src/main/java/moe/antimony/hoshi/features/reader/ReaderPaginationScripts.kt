@@ -18,7 +18,10 @@ internal object ReaderPaginationScripts {
     fun doubleResult(result: String?): Double? =
         result?.trim()?.trim('"')?.toDoubleOrNull()
 
-    fun shellScript(initialProgress: Double = 0.0): String = """
+    fun shellScript(
+        initialProgress: Double = 0.0,
+        settings: ReaderSettings = ReaderSettings(),
+    ): String = """
         <script>
         window.hoshiReader = {
           pageHeight: 0,
@@ -176,12 +179,12 @@ internal object ReaderPaginationScripts {
           newViewport.name = 'viewport';
           newViewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
           document.head.appendChild(newViewport);
-          var pageHeight = window.innerHeight + ${ReaderLayoutDefaults.bottomOverlapPx};
+          var pageHeight = window.innerHeight + ${settings.bottomOverlapPx};
           var pageWidth = window.innerWidth;
           document.documentElement.style.setProperty('--page-height', pageHeight + 'px');
           document.documentElement.style.setProperty('--page-width', pageWidth + 'px');
-          document.documentElement.style.setProperty('--hoshi-image-max-width', Math.max(1, Math.floor(pageWidth * ${ReaderLayoutDefaults.imageWidthViewportRatio})) + 'px');
-          document.documentElement.style.setProperty('--hoshi-image-max-height', Math.max(1, pageHeight - ${ReaderLayoutDefaults.bottomOverlapPx}) + 'px');
+          document.documentElement.style.setProperty('--hoshi-image-max-width', Math.max(1, Math.floor(pageWidth * ${settings.imageWidthViewportRatio})) + 'px');
+          document.documentElement.style.setProperty('--hoshi-image-max-height', Math.max(1, pageHeight - ${settings.bottomOverlapPx}) + 'px');
           window.hoshiReader.pageHeight = pageHeight;
           window.hoshiReader.pageWidth = pageWidth;
           var imagePromises = Array.from(document.querySelectorAll('img')).map(function(img) {
@@ -202,8 +205,8 @@ internal object ReaderPaginationScripts {
             });
           });
           var spacer = document.createElement('div');
-          spacer.style.height = '${ReaderLayoutDefaults.trailingSpacerHeightCss}';
-          spacer.style.width = '${ReaderLayoutDefaults.trailingSpacerWidthCss}';
+          spacer.style.height = '${settings.trailingSpacerHeightCss}';
+          spacer.style.width = '${settings.trailingSpacerWidthCss}';
           spacer.style.display = 'block';
           spacer.style.breakInside = 'avoid';
           document.body.appendChild(spacer);

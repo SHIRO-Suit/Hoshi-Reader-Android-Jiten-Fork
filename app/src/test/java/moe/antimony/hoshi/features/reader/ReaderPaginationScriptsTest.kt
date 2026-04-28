@@ -100,7 +100,7 @@ class ReaderPaginationScriptsTest {
     fun appendsTrailingSpacerUsingIosDefaultVerticalLayout() {
         val script = ReaderPaginationScripts.shellScript()
 
-        assertTrue(script.contains("spacer.style.height = 'calc(0vh + 22px)'"))
+        assertTrue(script.contains("spacer.style.height = 'calc(0.0vh + 22px)'"))
         assertTrue(script.contains("spacer.style.width = '0'"))
     }
 
@@ -110,11 +110,11 @@ class ReaderPaginationScriptsTest {
 
         assertTrue(css.contains("font-size: 22px !important"))
         assertTrue(css.contains("column-gap: calc(0vh + 22px);"))
-        assertTrue(css.contains("padding: 0vh 2.5vw !important;"))
-        assertTrue(css.contains("padding-bottom: calc(0vh + 22px) !important;"))
+        assertTrue(css.contains("padding: 0.0vh 2.5vw !important;"))
+        assertTrue(css.contains("padding-bottom: calc(0.0vh + 22px) !important;"))
+        assertTrue(css.contains("line-height: 1.65 !important;"))
         assertTrue(css.contains("max-width: var(--hoshi-image-max-width, 95vw) !important"))
         assertTrue(css.contains("width: var(--hoshi-image-max-width, 95vw) !important"))
         assertTrue(css.contains("height: var(--hoshi-image-max-height, calc(var(--page-height, 100vh) - 22px)) !important"))
-        assertFalse(css.contains("line-height:"))
     }
 }

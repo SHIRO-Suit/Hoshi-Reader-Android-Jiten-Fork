@@ -57,6 +57,8 @@ import moe.antimony.hoshi.epub.BookSortOption
 import moe.antimony.hoshi.epub.BookStorage
 import moe.antimony.hoshi.epub.EpubBook
 import moe.antimony.hoshi.epub.EpubBookParser
+import moe.antimony.hoshi.features.reader.ReaderSettings
+import moe.antimony.hoshi.features.reader.ReaderSettingsStore
 import moe.antimony.hoshi.features.reader.ReaderWebView
 import java.io.File
 
@@ -70,6 +72,8 @@ fun BookshelfView(
     val context = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val bookStorage = remember { BookStorage(context.filesDir) }
+    val readerSettingsStore = remember { ReaderSettingsStore(context) }
+    var readerSettings by remember { mutableStateOf(readerSettingsStore.load()) }
     var bookEntries by remember { mutableStateOf<List<BookEntry>>(emptyList()) }
     var sortOption by remember { mutableStateOf(BookSortOption.Recent) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
@@ -175,6 +179,11 @@ fun BookshelfView(
             book = requireNotNull(book),
             initialChapterIndex = bookmark?.chapterIndex ?: 0,
             initialProgress = bookmark?.progress ?: 0.0,
+            readerSettings = readerSettings,
+            onReaderSettingsChange = { settings: ReaderSettings ->
+                readerSettings = settings
+                readerSettingsStore.save(settings)
+            },
             onSaveBookmark = { chapterIndex, progress ->
                 val file = selectedBookRoot ?: return@ReaderWebView
                 val savedBookmark = Bookmark(
