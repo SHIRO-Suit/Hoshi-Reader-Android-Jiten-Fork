@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -506,7 +507,7 @@ private fun BooksTopChrome(
             FolderGearGlyph()
         }
         Spacer(Modifier.width(14.dp))
-        FrostedCircle(onClick = onImport, highlight = true) {
+        FrostedCircle(onClick = onImport) {
             PlusGlyph()
         }
     }
@@ -716,7 +717,7 @@ private fun HoshiBottomTabs(
         modifier = modifier
             .navigationBarsPadding()
             .padding(bottom = 20.dp)
-            .shadow(22.dp, RoundedCornerShape(38.dp), ambientColor = Color(0x663F80C6), spotColor = Color(0x663F80C6)),
+            .shadow(22.dp, RoundedCornerShape(38.dp), ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f)),
         shape = RoundedCornerShape(38.dp),
         color = Color.White.copy(alpha = 0.82f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.9f)),
@@ -727,11 +728,16 @@ private fun HoshiBottomTabs(
         ) {
             MainTab.entries.forEach { tab ->
                 val selected = tab == selectedTab
+                val interactionSource = remember(tab) { MutableInteractionSource() }
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(34.dp))
                         .background(if (selected) Color(0xFFDADDE3).copy(alpha = 0.75f) else Color.Transparent)
-                        .clickable { onSelectedTabChange(tab) }
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { onSelectedTabChange(tab) },
+                        )
                         .padding(horizontal = 22.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -771,15 +777,19 @@ private fun FrostedCapsule(content: @Composable RowScope.() -> Unit) {
 private fun FrostedCircle(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    highlight: Boolean = false,
     content: @Composable () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Surface(
         modifier = modifier
             .size(66.dp)
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            ),
         shape = CircleShape,
-        color = if (highlight) Color(0xFFFFE2F0).copy(alpha = 0.82f) else Color.White.copy(alpha = 0.78f),
+        color = Color.White.copy(alpha = 0.78f),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.9f)),
         shadowElevation = 12.dp,
     ) {
@@ -791,11 +801,16 @@ private fun FrostedCircle(
 
 @Composable
 private fun ChromeIconButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .size(54.dp)
             .clip(CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         content()
@@ -924,9 +939,8 @@ private fun ListCheckGlyph() {
             drawCircle(Color.Black, radius = 4.dp.toPx(), center = Offset(size.width * 0.24f, size.height * y), style = stroke)
             drawLine(Color.Black, Offset(size.width * 0.42f, size.height * y), Offset(size.width * 0.82f, size.height * y), stroke.width, StrokeCap.Round)
         }
-        drawCircle(Color.Black, radius = 5.dp.toPx(), center = Offset(size.width * 0.24f, size.height * 0.30f))
-        drawLine(Color.White, Offset(size.width * 0.20f, size.height * 0.30f), Offset(size.width * 0.23f, size.height * 0.35f), 1.5.dp.toPx(), StrokeCap.Round)
-        drawLine(Color.White, Offset(size.width * 0.23f, size.height * 0.35f), Offset(size.width * 0.30f, size.height * 0.24f), 1.5.dp.toPx(), StrokeCap.Round)
+        drawLine(Color.Black, Offset(size.width * 0.19f, size.height * 0.30f), Offset(size.width * 0.23f, size.height * 0.35f), 1.5.dp.toPx(), StrokeCap.Round)
+        drawLine(Color.Black, Offset(size.width * 0.23f, size.height * 0.35f), Offset(size.width * 0.31f, size.height * 0.23f), 1.5.dp.toPx(), StrokeCap.Round)
     }
 }
 
