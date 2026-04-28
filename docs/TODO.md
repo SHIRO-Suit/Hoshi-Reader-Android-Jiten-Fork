@@ -35,6 +35,7 @@
    - Verified sorting/deletion on emulator: opened sort menu, switched from `Recent` to `Title`, long-pressed a book row, used `Delete`, confirmed the dialog, and checked `files/Books` metadata count decreased.
    - Verified main shell UI on emulator with `testdata/test.epub`: imported through Android DocumentsUI from `testdata`, opened the reader, returned to Books, confirmed the `Unshelved` cover grid with two imported books, checked the Settings tab renders iOS-ordered grouped cards above the bottom capsule tab bar, confirmed the Books page no longer renders an artificial fixed blurred cover strip at the top, and confirmed custom toolbar/tab icons no longer carry fixed pink/blue/ripple color artifacts.
    - Verified import deduplication and full-book progress on emulator with `testdata/test.epub`: cleared app data, imported the same EPUB twice through Android DocumentsUI, confirmed `files/Books` contains only `屍人荘の殺人`, swiped to正文, confirmed `bookmark.json` saved `characterCount=90`, reader chrome showed `90 / 169326 0.05%`, and the bookshelf showed `0.1%`.
+   - Verified bookshelf card layout on emulator with `testdata/test.epub`: imported through Android DocumentsUI, confirmed the progress bar and percentage render below the cover image instead of overlaying it, and confirmed the Books shell toolbar/tab icons are scaled down closer to the iOS proportions.
 
 3. `in_progress` - Reader settings
    - `done` - Implement iOS-aligned reader Appearance sheet entry from the reader.

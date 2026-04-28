@@ -541,7 +541,7 @@ private fun BookshelfSectionHeader(title: String, count: Int) {
             color = Color(0xFF8C8C92),
         )
         Spacer(Modifier.width(8.dp))
-        ChevronRightGlyph(Color.Black, Modifier.size(24.dp))
+        ChevronRightGlyph(Color.Black, Modifier.size(20.dp))
     }
 }
 
@@ -559,7 +559,11 @@ private fun BookGridCell(
         ),
     ) {
         BookCoverCard(entry = entry, bookStorage = bookStorage)
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(6.dp))
+        ReadingProgressPill(
+            progress = remember(entry) { bookStorage.loadReadingProgress(entry.root) },
+        )
+        Spacer(Modifier.height(6.dp))
         Text(
             text = entry.metadata.title ?: entry.root.name,
             style = MaterialTheme.typography.titleLarge,
@@ -596,12 +600,6 @@ private fun BookCoverCard(entry: BookEntry, bookStorage: BookStorage) {
                 modifier = Modifier.fillMaxSize(),
             )
         }
-        ReadingProgressPill(
-            progress = remember(entry) { bookStorage.loadReadingProgress(entry.root) },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-        )
     }
 }
 
@@ -617,15 +615,17 @@ private fun ReadingProgressPill(progress: Double, modifier: Modifier = Modifier)
                 .height(5.dp)
                 .weight(1f)
                 .clip(RoundedCornerShape(100))
-                .background(Color.White.copy(alpha = 0.75f)),
+                .background(Color(0xFFD7D7DB)),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(clamped.coerceAtLeast(0.04f))
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(100))
-                    .background(Color(0xFFB7B7B7)),
-            )
+            if (clamped > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(clamped)
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(100))
+                        .background(Color(0xFFAFAFB4)),
+                )
+            }
         }
         Spacer(Modifier.width(8.dp))
         Text(
@@ -749,7 +749,7 @@ private fun HoshiBottomTabs(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        BottomTabGlyph(tab, selected, Modifier.size(34.dp))
+                        BottomTabGlyph(tab, selected, Modifier.size(28.dp))
                         Text(
                             text = tab.label,
                             style = MaterialTheme.typography.labelLarge,
@@ -772,7 +772,7 @@ private fun FrostedCapsule(content: @Composable RowScope.() -> Unit) {
         shadowElevation = 12.dp,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
@@ -789,7 +789,7 @@ private fun FrostedCircle(
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         modifier = modifier
-            .size(66.dp)
+            .size(58.dp)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -811,7 +811,7 @@ private fun ChromeIconButton(onClick: () -> Unit, content: @Composable () -> Uni
     val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
-            .size(54.dp)
+            .size(46.dp)
             .clip(CircleShape)
             .clickable(
                 interactionSource = interactionSource,
@@ -927,7 +927,7 @@ private fun GearGlyph(color: Color, modifier: Modifier = Modifier) {
 
 @Composable
 private fun SortGlyph() {
-    Canvas(Modifier.size(38.dp)) {
+    Canvas(Modifier.size(30.dp)) {
         val stroke = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
         drawLine(Color.Black, Offset(size.width * 0.30f, size.height * 0.18f), Offset(size.width * 0.30f, size.height * 0.82f), stroke.width, StrokeCap.Round)
         drawLine(Color.Black, Offset(size.width * 0.16f, size.height * 0.32f), Offset(size.width * 0.30f, size.height * 0.18f), stroke.width, StrokeCap.Round)
@@ -940,7 +940,7 @@ private fun SortGlyph() {
 
 @Composable
 private fun ListCheckGlyph() {
-    Canvas(Modifier.size(38.dp)) {
+    Canvas(Modifier.size(30.dp)) {
         val stroke = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
         listOf(0.30f, 0.62f).forEach { y ->
             drawCircle(Color.Black, radius = 4.dp.toPx(), center = Offset(size.width * 0.24f, size.height * y), style = stroke)
@@ -953,7 +953,7 @@ private fun ListCheckGlyph() {
 
 @Composable
 private fun FolderGearGlyph() {
-    Canvas(Modifier.size(38.dp)) {
+    Canvas(Modifier.size(30.dp)) {
         val stroke = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
         val path = Path().apply {
             moveTo(size.width * 0.12f, size.height * 0.34f)
@@ -971,7 +971,7 @@ private fun FolderGearGlyph() {
 
 @Composable
 private fun PlusGlyph() {
-    Canvas(Modifier.size(38.dp)) {
+    Canvas(Modifier.size(30.dp)) {
         val stroke = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
         drawLine(Color.Black, Offset(size.width * 0.5f, size.height * 0.18f), Offset(size.width * 0.5f, size.height * 0.82f), stroke.width, StrokeCap.Round)
         drawLine(Color.Black, Offset(size.width * 0.18f, size.height * 0.5f), Offset(size.width * 0.82f, size.height * 0.5f), stroke.width, StrokeCap.Round)
