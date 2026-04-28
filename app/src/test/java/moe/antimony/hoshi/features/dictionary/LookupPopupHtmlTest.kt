@@ -165,6 +165,8 @@ class LookupPopupHtmlTest {
         assertTrue(html.contains("""<html data-hoshi-color-scheme="dark">"""))
         assertTrue(html.contains("html[data-hoshi-color-scheme=\"dark\"],"))
         assertTrue(html.contains("--text-color: #fff;"))
+        assertTrue(html.contains("html[data-hoshi-color-scheme=\"dark\"] .glossary-group > div[data-dictionary]"))
+        assertTrue(html.contains("color: var(--text-color) !important;"))
     }
 
     private fun lookupResult(

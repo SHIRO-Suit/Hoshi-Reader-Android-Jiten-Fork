@@ -249,5 +249,9 @@ internal object LookupPopupHtml {
         html[data-hoshi-color-scheme="dark"] .overlay {
             background: #222;
         }
+
+        html[data-hoshi-color-scheme="dark"] .glossary-group > div[data-dictionary] {
+            color: var(--text-color) !important;
+        }
     """
 }
