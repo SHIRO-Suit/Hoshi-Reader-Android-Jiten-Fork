@@ -26,11 +26,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -40,10 +45,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.DataObject
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DragIndicator
+import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -60,6 +75,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.Dispatchers
@@ -68,6 +84,14 @@ import kotlinx.coroutines.withContext
 import moe.antimony.hoshi.dictionary.DictionaryInfo
 import moe.antimony.hoshi.dictionary.DictionaryRepository
 import moe.antimony.hoshi.dictionary.DictionaryType
+
+private val DictionaryScreenBackground = Color(0xFFF7F6FA)
+private val DictionaryGroupColor = Color.White
+private val DictionaryDividerColor = Color(0xFFE4E2E8)
+private val DictionarySecondaryTextColor = Color(0xFF7D7A85)
+private val DictionaryDestructiveColor = Color(0xFFBA1A1A)
+private val DictionaryControlTrackColor = Color(0xFFE2E1E7)
+private val DictionarySwitchColor = Color(0xFF34C759)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -247,24 +271,38 @@ fun DictionaryView(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = DictionaryScreenBackground,
         topBar = {
-            TopAppBar(
-                title = { Text("Dictionaries") },
+            LargeTopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = DictionaryScreenBackground,
+                    scrolledContainerColor = DictionaryScreenBackground,
+                ),
+                title = {
+                    Text(
+                        text = "Dictionaries",
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
                 navigationIcon = {
-                    TextButton(onClick = onClose) {
-                        Text("‹")
-                    }
+                    HoshiIconBackButton(onClose)
                 },
                 actions = {
-                    TextButton(onClick = { destination = DictionaryDestination.CustomCss }) {
-                        Text("{}")
+                    IconButton(onClick = { destination = DictionaryDestination.CustomCss }) {
+                        Icon(
+                            imageVector = Icons.Rounded.DataObject,
+                            contentDescription = "Custom CSS",
+                        )
                     }
                     Box {
-                        TextButton(
+                        IconButton(
                             onClick = { importMenuExpanded = true },
                             enabled = !isImporting,
                         ) {
-                            Text("+")
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = "Import Dictionary",
+                            )
                         }
                         DropdownMenu(
                             expanded = importMenuExpanded,
@@ -303,11 +341,13 @@ fun DictionaryView(
                     ) {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(28.dp),
-                            color = Color.White,
+                            shape = RoundedCornerShape(24.dp),
+                            color = DictionaryGroupColor,
+                            tonalElevation = 1.dp,
                         ) {
                             Column {
                                 ListItem(
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                     headlineContent = { Text("Default to Dictionary Tab") },
                                     trailingContent = {
                                         Switch(
@@ -315,13 +355,31 @@ fun DictionaryView(
                                             onCheckedChange = { checked ->
                                                 updateSettings { it.copy(dictionaryTabDefault = checked) }
                                             },
+                                            colors = hoshiSwitchColors(),
                                         )
                                     },
                                 )
-                                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 16.dp),
+                                    color = DictionaryDividerColor,
+                                )
                                 ListItem(
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    leadingContent = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Tune,
+                                            contentDescription = null,
+                                            tint = DictionarySecondaryTextColor,
+                                        )
+                                    },
                                     headlineContent = { Text("Settings") },
-                                    trailingContent = { Text("›", color = Color(0xFF8E8E93)) },
+                                    trailingContent = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.ChevronRight,
+                                            contentDescription = null,
+                                            tint = DictionarySecondaryTextColor,
+                                        )
+                                    },
                                     modifier = Modifier.clickable { destination = DictionaryDestination.Settings },
                                 )
                             }
@@ -338,6 +396,14 @@ fun DictionaryView(
                                         index = index,
                                         count = DictionaryType.entries.size,
                                     ),
+                                    colors = SegmentedButtonDefaults.colors(
+                                        activeContainerColor = Color.White,
+                                        activeContentColor = MaterialTheme.colorScheme.onSurface,
+                                        activeBorderColor = DictionarySecondaryTextColor,
+                                        inactiveContainerColor = Color.Transparent,
+                                        inactiveContentColor = MaterialTheme.colorScheme.onSurface,
+                                        inactiveBorderColor = DictionarySecondaryTextColor,
+                                    ),
                                 ) {
                                     Text(type.displayName)
                                 }
@@ -345,7 +411,9 @@ fun DictionaryView(
                         }
                         Text(
                             text = "Yomitan term, frequency and pitch dictionaries (.zip) are supported",
-                            modifier = Modifier.padding(top = 8.dp),
+                            color = DictionarySecondaryTextColor,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 10.dp),
                         )
                     }
                 }
@@ -448,21 +516,34 @@ private fun DictionaryRow(
     SwipeToDismissBox(
         state = dismissState,
         enableDismissFromStartToEnd = false,
-        modifier = modifier,
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 6.dp),
         backgroundContent = {
-            Box(
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .fillMaxHeight()
-                    .background(Color(0xFFB3261E))
-                    .padding(horizontal = 24.dp),
-                contentAlignment = Alignment.CenterEnd,
+                    .fillMaxHeight(),
+                shape = RoundedCornerShape(20.dp),
+                color = DictionaryDestructiveColor,
             ) {
-                Text("Delete", color = Color.White)
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Delete,
+                        contentDescription = null,
+                        tint = Color.White,
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text("Delete", color = Color.White)
+                }
             }
         },
     ) {
-        ListItem(
+        Surface(
             modifier = Modifier.pointerInput(dictionary.path.name) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = { _: Offset -> onDragStart() },
@@ -473,16 +554,80 @@ private fun DictionaryRow(
                     },
                 )
             },
-            headlineContent = { Text(dictionary.index.title) },
-            supportingContent = { Text(dictionary.index.revision) },
-            trailingContent = {
-                Switch(
-                    checked = dictionary.isEnabled,
-                    onCheckedChange = onEnabledChange,
-                )
-            },
+            shape = RoundedCornerShape(20.dp),
+            color = DictionaryGroupColor,
+            tonalElevation = 1.dp,
+        ) {
+            ListItem(
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                leadingContent = {
+                    Icon(
+                        imageVector = Icons.Rounded.DragIndicator,
+                        contentDescription = "Reorder",
+                        tint = DictionarySecondaryTextColor,
+                    )
+                },
+                headlineContent = {
+                    Text(
+                        text = dictionary.index.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
+                },
+                supportingContent = {
+                    Text(
+                        text = dictionary.index.revision.ifBlank { dictionary.path.name },
+                        color = DictionarySecondaryTextColor,
+                    )
+                },
+                trailingContent = {
+                    HoshiSwitch(
+                        checked = dictionary.isEnabled,
+                        onCheckedChange = onEnabledChange,
+                    )
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun HoshiSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Switch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
+        colors = hoshiSwitchColors(),
+    )
+}
+
+@Composable
+private fun hoshiSwitchColors() = SwitchDefaults.colors(
+    checkedThumbColor = Color.White,
+    checkedTrackColor = DictionarySwitchColor,
+    uncheckedThumbColor = DictionarySecondaryTextColor,
+    uncheckedTrackColor = Color(0xFFE9E8EE),
+    uncheckedBorderColor = DictionarySecondaryTextColor,
+)
+
+@Composable
+private fun HoshiIconBackButton(onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back",
         )
     }
+}
+
+@Composable
+private fun GroupDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        color = DictionaryDividerColor,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -496,21 +641,22 @@ private fun DictionarySettingsView(
     BackHandler(onBack = onClose)
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = DictionaryScreenBackground,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = DictionaryScreenBackground,
+                    scrolledContainerColor = DictionaryScreenBackground,
+                ),
                 title = { Text("Settings") },
-                navigationIcon = {
-                    TextButton(onClick = onClose) {
-                        Text("‹")
-                    }
-                },
+                navigationIcon = { HoshiIconBackButton(onClose) },
             )
         },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF5F5F8))
+                .background(DictionaryScreenBackground)
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
         ) {
@@ -529,7 +675,7 @@ private fun DictionarySettingsView(
                         canDecrease = settings.maxResults > DictionarySettings.MIN_MAX_RESULTS,
                         canIncrease = settings.maxResults < DictionarySettings.MAX_MAX_RESULTS,
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    GroupDivider()
                     StepperRow(
                         title = "Scan Length",
                         value = settings.scanLength,
@@ -548,19 +694,19 @@ private fun DictionarySettingsView(
                     ToggleRow("Auto-collapse Dictionaries", settings.collapseDictionaries) {
                         onSettingsChange { current -> current.copy(collapseDictionaries = it) }
                     }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    GroupDivider()
                     ToggleRow("Compact Glossaries", settings.compactGlossaries) {
                         onSettingsChange { current -> current.copy(compactGlossaries = it) }
                     }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    GroupDivider()
                     ToggleRow("Show Expression Tags", settings.showExpressionTags) {
                         onSettingsChange { current -> current.copy(showExpressionTags = it) }
                     }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    GroupDivider()
                     ToggleRow("Harmonic Frequency", settings.harmonicFrequency) {
                         onSettingsChange { current -> current.copy(harmonicFrequency = it) }
                     }
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    GroupDivider()
                     ToggleRow("Deduplicate Pitch Accents", settings.deduplicatePitchAccents) {
                         onSettingsChange { current -> current.copy(deduplicatePitchAccents = it) }
                     }
@@ -581,14 +727,15 @@ private fun DictionaryCustomCssView(
     BackHandler(onBack = onClose)
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        containerColor = DictionaryScreenBackground,
         topBar = {
-            TopAppBar(
+            CenterAlignedTopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = DictionaryScreenBackground,
+                    scrolledContainerColor = DictionaryScreenBackground,
+                ),
                 title = { Text("Custom CSS") },
-                navigationIcon = {
-                    TextButton(onClick = onClose) {
-                        Text("‹")
-                    }
-                },
+                navigationIcon = { HoshiIconBackButton(onClose) },
                 actions = {
                     TextButton(onClick = { onSettingsChange { it.copy(customCSS = "") } }) {
                         Text("Reset")
@@ -603,7 +750,8 @@ private fun DictionaryCustomCssView(
                 .padding(innerPadding)
                 .padding(16.dp),
             shape = RoundedCornerShape(18.dp),
-            color = Color.White,
+            color = DictionaryGroupColor,
+            tonalElevation = 1.dp,
         ) {
             BasicTextField(
                 value = settings.customCSS,
@@ -623,7 +771,7 @@ private fun DictionaryCustomCssView(
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        color = Color(0xFF8E8E93),
+        color = DictionarySecondaryTextColor,
         style = MaterialTheme.typography.titleLarge,
         modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 8.dp),
     )
@@ -634,7 +782,8 @@ private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
-        color = Color.White,
+        color = DictionaryGroupColor,
+        tonalElevation = 1.dp,
     ) {
         Column(content = content)
     }
@@ -650,6 +799,7 @@ private fun StepperRow(
     canIncrease: Boolean,
 ) {
     ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = { Text(title) },
         trailingContent = {
             Row(
@@ -659,14 +809,35 @@ private fun StepperRow(
                 Text(value.toString())
                 Surface(
                     shape = RoundedCornerShape(24.dp),
-                    color = Color(0xFFD1D1D6),
+                    color = DictionaryControlTrackColor,
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = onDecrease, enabled = canDecrease) {
-                            Text("−")
+                        IconButton(onClick = onDecrease, enabled = canDecrease) {
+                            Icon(
+                                imageVector = Icons.Rounded.Remove,
+                                contentDescription = "Decrease",
+                                tint = if (canDecrease) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    DictionarySecondaryTextColor.copy(alpha = 0.38f)
+                                },
+                            )
                         }
-                        TextButton(onClick = onIncrease, enabled = canIncrease) {
-                            Text("+")
+                        Box(
+                            modifier = Modifier
+                                .size(width = 1.dp, height = 28.dp)
+                                .background(DictionarySecondaryTextColor.copy(alpha = 0.35f)),
+                        )
+                        IconButton(onClick = onIncrease, enabled = canIncrease) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = "Increase",
+                                tint = if (canIncrease) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    DictionarySecondaryTextColor.copy(alpha = 0.38f)
+                                },
+                            )
                         }
                     }
                 }
@@ -682,9 +853,10 @@ private fun ToggleRow(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = { Text(title) },
         trailingContent = {
-            Switch(
+            HoshiSwitch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
             )
