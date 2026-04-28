@@ -5,6 +5,7 @@ import kotlinx.serialization.json.double
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 import java.nio.file.Files
 
@@ -49,5 +50,36 @@ class BookMetadataStorageTest {
 
         assertEquals(listOf("newer", "older"), entries.map { it.metadata.id })
         assertEquals(listOf(newerRoot, olderRoot).map { it.canonicalFile }, entries.map { it.root.canonicalFile })
+    }
+
+    @Test
+    fun loadBookEntriesCanSortByTitleLikeIos() {
+        val storage = BookStorage(Files.createTempDirectory("hoshi-metadata-title").toFile())
+        val zRoot = storage.createBookDirectory("z")
+        val aRoot = storage.createBookDirectory("a")
+        storage.saveMetadata(
+            zRoot,
+            BookMetadata(id = "z", title = "Zeta", cover = null, folder = "z", lastAccess = 20.0),
+        )
+        storage.saveMetadata(
+            aRoot,
+            BookMetadata(id = "a", title = "Alpha", cover = null, folder = "a", lastAccess = 10.0),
+        )
+
+        val entries = storage.loadBookEntries(BookSortOption.Title)
+
+        assertEquals(listOf("a", "z"), entries.map { it.metadata.id })
+    }
+
+    @Test
+    fun deleteBookRemovesBookDirectory() {
+        val storage = BookStorage(Files.createTempDirectory("hoshi-metadata-delete").toFile())
+        val root = storage.createBookDirectory("delete-me")
+        root.resolve("metadata.json").writeText("{}")
+
+        storage.deleteBook(root)
+
+        assertFalse(root.exists())
+        assertEquals(emptyList<BookEntry>(), storage.loadBookEntries())
     }
 }

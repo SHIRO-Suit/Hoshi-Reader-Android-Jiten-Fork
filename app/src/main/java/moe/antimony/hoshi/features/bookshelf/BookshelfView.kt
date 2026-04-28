@@ -5,9 +5,11 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
@@ -48,13 +53,14 @@ import kotlinx.coroutines.withContext
 import moe.antimony.hoshi.epub.Bookmark
 import moe.antimony.hoshi.epub.BookEntry
 import moe.antimony.hoshi.epub.BookMetadata
+import moe.antimony.hoshi.epub.BookSortOption
 import moe.antimony.hoshi.epub.BookStorage
 import moe.antimony.hoshi.epub.EpubBook
 import moe.antimony.hoshi.epub.EpubBookParser
 import moe.antimony.hoshi.features.reader.ReaderWebView
 import java.io.File
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun BookshelfView(
     pendingImportUri: Uri? = null,
@@ -65,6 +71,10 @@ fun BookshelfView(
     val scope = rememberCoroutineScope()
     val bookStorage = remember { BookStorage(context.filesDir) }
     var bookEntries by remember { mutableStateOf<List<BookEntry>>(emptyList()) }
+    var sortOption by remember { mutableStateOf(BookSortOption.Recent) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
+    var contextMenuEntry by remember { mutableStateOf<BookEntry?>(null) }
+    var deleteCandidate by remember { mutableStateOf<BookEntry?>(null) }
     var selectedBookRoot by remember { mutableStateOf<File?>(null) }
     var book by remember { mutableStateOf<EpubBook?>(null) }
     var bookmark by remember { mutableStateOf<Bookmark?>(null) }
@@ -73,7 +83,7 @@ fun BookshelfView(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     fun reloadBookEntries() {
-        bookEntries = bookStorage.loadBookEntries()
+        bookEntries = bookStorage.loadBookEntries(sortOption)
     }
 
     fun saveMetadata(root: File, parsedBook: EpubBook, previous: BookMetadata? = null) {
@@ -190,6 +200,32 @@ fun BookshelfView(
             TopAppBar(
                 title = { Text("Books") },
                 actions = {
+                    Box {
+                        TextButton(onClick = { sortMenuExpanded = true }) {
+                            Text(if (sortOption == BookSortOption.Recent) "Recent" else "Title")
+                        }
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Recent") },
+                                onClick = {
+                                    sortOption = BookSortOption.Recent
+                                    sortMenuExpanded = false
+                                    reloadBookEntries()
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Title") },
+                                onClick = {
+                                    sortOption = BookSortOption.Title
+                                    sortMenuExpanded = false
+                                    reloadBookEntries()
+                                },
+                            )
+                        }
+                    }
                     TextButton(onClick = { importer.launch(arrayOf("application/epub+zip", "application/octet-stream")) }) {
                         Text("+")
                     }
@@ -213,24 +249,43 @@ fun BookshelfView(
                 )
                 else -> Column(Modifier.fillMaxSize()) {
                     bookEntries.forEach { entry ->
-                        ListItem(
-                            leadingContent = {
-                                BookCoverThumbnail(
-                                    entry = entry,
-                                    bookStorage = bookStorage,
+                        Box {
+                            ListItem(
+                                leadingContent = {
+                                    BookCoverThumbnail(
+                                        entry = entry,
+                                        bookStorage = bookStorage,
+                                    )
+                                },
+                                headlineContent = {
+                                    Text(
+                                        text = entry.metadata.title ?: entry.root.name,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                },
+                                supportingContent = { Text(entry.metadata.folder ?: entry.root.name) },
+                                modifier = Modifier.combinedClickable(
+                                    onClick = {
+                                        parseBook(entry.root, openReader = true, refreshAccess = true)
+                                    },
+                                    onLongClick = {
+                                        contextMenuEntry = entry
+                                    },
+                                ),
+                            )
+                            DropdownMenu(
+                                expanded = contextMenuEntry?.metadata?.id == entry.metadata.id,
+                                onDismissRequest = { contextMenuEntry = null },
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Delete") },
+                                    onClick = {
+                                        deleteCandidate = contextMenuEntry
+                                        contextMenuEntry = null
+                                    },
                                 )
-                            },
-                            headlineContent = {
-                                Text(
-                                    text = entry.metadata.title ?: entry.root.name,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                            },
-                            supportingContent = { Text(entry.metadata.folder ?: entry.root.name) },
-                            modifier = Modifier.clickable {
-                                parseBook(entry.root, openReader = true, refreshAccess = true)
-                            },
-                        )
+                            }
+                        }
                     }
                     if (errorMessage != null) {
                         Text(
@@ -242,6 +297,39 @@ fun BookshelfView(
                 }
             }
         }
+    }
+
+    deleteCandidate?.let { candidate ->
+        AlertDialog(
+            onDismissRequest = { deleteCandidate = null },
+            title = { Text("Delete \"${candidate.metadata.title ?: ""}\"?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            bookStorage.deleteBook(candidate.root)
+                            withContext(Dispatchers.Main) {
+                                if (selectedBookRoot == candidate.root) {
+                                    selectedBookRoot = null
+                                    book = null
+                                    bookmark = null
+                                    isReading = false
+                                }
+                                reloadBookEntries()
+                                deleteCandidate = null
+                            }
+                        }
+                    },
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteCandidate = null }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 

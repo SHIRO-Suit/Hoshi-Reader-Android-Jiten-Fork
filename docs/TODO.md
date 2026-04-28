@@ -25,9 +25,12 @@
    - `done` - Persist title, cover path, folder, and last access in iOS-shaped `metadata.json`.
    - `done` - Open imported/listed books from their independent storage directories.
    - `done` - Render cover thumbnails in the bookshelf.
-   - `todo` - Align bookshelf sorting, deletion, and selection behavior with iOS.
+   - `done` - Align basic bookshelf sorting with iOS `Recent` / `Title`.
+   - `done` - Align single-book delete flow with iOS long-press context action plus confirmation.
+   - `todo` - Align multi-select, shelves, and batch actions with iOS.
    - Verified on emulator with `testdata/test.epub`: cleared app data, imported the EPUB twice through DocumentsUI, confirmed two shelf rows and two independent `files/Books/<uuid>/metadata.json` files, then opened a listed book into the reader.
    - Verified cover thumbnails on emulator with `testdata/test.epub`: imported through DocumentsUI, confirmed `metadata.cover` is `item/image/cover.jpg`, and visually checked the real cover image renders in the shelf row.
+   - Verified sorting/deletion on emulator: opened sort menu, switched from `Recent` to `Title`, long-pressed a book row, used `Delete`, confirmed the dialog, and checked `files/Books` metadata count decreased.
 
 3. `todo` - Reader settings
    - Implement iOS-aligned theme, font, font size, line spacing, and margin controls.

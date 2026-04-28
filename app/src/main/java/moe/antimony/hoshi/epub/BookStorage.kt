@@ -32,6 +32,11 @@ data class BookEntry(
     val metadata: BookMetadata,
 )
 
+enum class BookSortOption {
+    Recent,
+    Title,
+}
+
 class BookStorage(private val filesDir: File) {
     private val booksDirectory = File(filesDir, "Books")
     val currentBookFile: File = File(booksDirectory, "current.epub")
@@ -49,15 +54,19 @@ class BookStorage(private val filesDir: File) {
             ?.sortedByDescending { it.lastModified() }
             .orEmpty()
 
-    fun loadBookEntries(): List<BookEntry> =
-        loadAllBooks()
+    fun loadBookEntries(sortOption: BookSortOption = BookSortOption.Recent): List<BookEntry> {
+        val entries = loadAllBooks()
             .map { root ->
                 BookEntry(
                     root = root,
                     metadata = loadMetadata(root) ?: root.fallbackMetadata(),
                 )
             }
-            .sortedByDescending { it.metadata.lastAccess }
+        return when (sortOption) {
+            BookSortOption.Recent -> entries.sortedByDescending { it.metadata.lastAccess }
+            BookSortOption.Title -> entries.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.metadata.title.orEmpty() })
+        }
+    }
 
     fun createBookDirectory(folder: String = UUID.randomUUID().toString()): File {
         booksDirectory.mkdirs()
@@ -87,6 +96,17 @@ class BookStorage(private val filesDir: File) {
         val file = root.resolve(cover).canonicalFile
         if (file.path != root.path && !file.path.startsWith(root.path + File.separator)) return null
         return file.takeIf { it.isFile }
+    }
+
+    fun deleteBook(bookRoot: File) {
+        val root = bookRoot.canonicalFile
+        val booksRoot = booksDirectory.canonicalFile
+        require(root.path != booksRoot.path && root.path.startsWith(booksRoot.path + File.separator)) {
+            "Unsafe book directory: ${bookRoot.path}"
+        }
+        if (root.exists()) {
+            root.deleteRecursively()
+        }
     }
 
     fun loadBookmark(bookRoot: File): Bookmark? {
