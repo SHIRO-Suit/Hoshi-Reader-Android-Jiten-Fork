@@ -1,0 +1,176 @@
+---
+name: Release APK
+
+"on":
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Existing v* tag to release"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub Release as a prerelease"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release-apk:
+    name: Build signed release APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      CMAKE_VERSION: "3.22.1"
+      NDK_VERSION: "27.2.12479018"
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+    steps:
+      - name: Resolve release tag
+        id: release_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag_name }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ ! "${tag}" =~ ^v.+ ]]; then
+            echo "Release tag must start with v: ${tag}" >&2
+            exit 1
+          fi
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release_tag.outputs.tag }}
+          submodules: false
+          fetch-depth: 0
+
+      - name: Initialize required submodules
+        shell: bash
+        run: |
+          set -euo pipefail
+          git submodule update --init \
+            reference/Hoshi-Reader-iOS \
+            third_party/hoshidicts-kotlin-bridge \
+            third_party/hoshidicts-gplv3
+          git -C third_party/hoshidicts-gplv3 submodule update \
+            --init \
+            --recursive
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager \
+            "platforms;android-36.1" \
+            "build-tools;36.0.0" \
+            "cmake;${CMAKE_VERSION}" \
+            "ndk;${NDK_VERSION}"
+          ndk_home="${ANDROID_HOME}/ndk/${NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ndk_home}" >> "${GITHUB_ENV}"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,x86_64-linux-android
+
+      - name: Install cargo-ndk
+        shell: bash
+        run: cargo install cargo-ndk --locked
+
+      - name: Restore Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app/src/main/rust/hoshiepub
+
+      - name: Decode release keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]]; then
+            echo "ANDROID_KEYSTORE_BASE64 secret is required." >&2
+            exit 1
+          fi
+          keystore="${RUNNER_TEMP}/hoshi-release-keystore.jks"
+          printf '%s' "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" \
+            | base64 --decode > "${keystore}"
+          echo "ANDROID_KEYSTORE_FILE=${keystore}" >> "${GITHUB_ENV}"
+
+      - name: Build and check release APK
+        shell: bash
+        run: ./gradlew --no-daemon test lint assembleRelease
+
+      - name: Prepare release assets
+        id: assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release_tag.outputs.tag }}"
+          apk_source="app/build/outputs/apk/release/app-release.apk"
+          apk_asset="Hoshi-Reader-${tag}.apk"
+
+          if [[ ! -f "${apk_source}" ]]; then
+            echo "Expected signed APK was not found at ${apk_source}" >&2
+            find app/build/outputs/apk -type f -name '*.apk' -print >&2 || true
+            exit 1
+          fi
+
+          build_tools="${ANDROID_HOME}/build-tools/36.0.0"
+          "${build_tools}/apksigner" verify --print-certs "${apk_source}"
+          cp "${apk_source}" "${apk_asset}"
+
+          echo "apk_asset=${apk_asset}" >> "${GITHUB_OUTPUT}"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.release_tag.outputs.tag }}"
+          apk_asset="${{ steps.assets.outputs.apk_asset }}"
+          prerelease_flag=()
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" \
+            && "${{ inputs.prerelease }}" == "true" ]]; then
+            prerelease_flag=(--prerelease)
+          fi
+
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            if [[ ${#prerelease_flag[@]} -gt 0 ]]; then
+              gh release edit "${tag}" "${prerelease_flag[@]}"
+            fi
+          else
+            gh release create "${tag}" \
+              --title "${tag}" \
+              --notes "Automated Android APK release for ${tag}." \
+              "${prerelease_flag[@]}"
+          fi
+
+          gh release upload "${tag}" "${apk_asset}" LICENSE --clobber

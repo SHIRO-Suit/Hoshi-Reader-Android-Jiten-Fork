@@ -150,6 +150,7 @@
     - Do not reuse iOS token or keychain assumptions.
 
 11. `todo` - Regression coverage and release hardening
+    - `done` - Add GitHub Actions signed APK release workflow for `v*` tags and manual dispatch, using repository signing secrets and uploading the APK plus GPLv3 `LICENSE` to the GitHub Release.
     - Add EPUB fixtures for cover, images, vertical text, horizontal text, complex spine, and broken resources.
     - Expand WebView pagination regression checks.
     - Keep Gradle `test`, `assembleDebug`, and `lint` passing before release-facing changes.

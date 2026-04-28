@@ -9,6 +9,27 @@ val uniffiOutDir = layout.buildDirectory.dir("generated/source/uniffi/main/kotli
 val rustJniLibsDir = layout.buildDirectory.dir("jniLibs").get().asFile
 val cargo = System.getenv("HOME") + "/.cargo/bin/cargo"
 val androidNdkHome = System.getenv("ANDROID_NDK_HOME") ?: "/opt/homebrew/share/android-ndk"
+val releaseKeystorePath = providers.environmentVariable("ANDROID_KEYSTORE_FILE").orNull
+val releaseKeystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
+val releaseSigningValues = listOf(
+    releaseKeystorePath,
+    releaseKeystorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+)
+val isReleaseSigningRequested = releaseSigningValues.any { !it.isNullOrBlank() }
+val isReleaseSigningConfigured = releaseSigningValues.all { !it.isNullOrBlank() } &&
+    releaseKeystorePath?.let { file(it).isFile } == true
+
+if (isReleaseSigningRequested && !isReleaseSigningConfigured) {
+    throw GradleException(
+        "Release signing requires ANDROID_KEYSTORE_FILE, ANDROID_KEYSTORE_PASSWORD, " +
+            "ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD, and the keystore file must exist."
+    )
+}
+
 val hostLibExtension = when {
     System.getProperty("os.name").lowercase().contains("mac") -> "dylib"
     System.getProperty("os.name").lowercase().contains("win") -> "dll"
@@ -28,7 +49,7 @@ android {
         minSdk = 28
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk {
@@ -41,9 +62,23 @@ android {
         }
     }
 
+    if (isReleaseSigningConfigured) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (isReleaseSigningConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
