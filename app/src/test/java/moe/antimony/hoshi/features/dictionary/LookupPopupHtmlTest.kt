@@ -129,6 +129,44 @@ class LookupPopupHtmlTest {
         assertTrue(html.contains("""window.customCSS = ".entry-header { color: red; }";"""))
     }
 
+    @Test
+    fun disablesSwipeDismissJavascriptWhenSettingIsOff() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),
+            assets = LookupPopupAssets(popupJs = "", popupCss = ""),
+            swipeToDismiss = false,
+            swipeThreshold = 40,
+        )
+
+        assertTrue(html.contains("window.swipeThreshold = 0;"))
+        assertFalse(html.contains("window.swipeThreshold = 40;"))
+    }
+
+    @Test
+    fun injectsSwipeDismissThresholdWhenSettingIsOn() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),
+            assets = LookupPopupAssets(popupJs = "", popupCss = ""),
+            swipeToDismiss = true,
+            swipeThreshold = 55,
+        )
+
+        assertTrue(html.contains("window.swipeThreshold = 55;"))
+    }
+
+    @Test
+    fun canForceIosPopupDarkColorSchemeForAndroidWebView() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),
+            assets = LookupPopupAssets(popupJs = "", popupCss = ""),
+            darkMode = true,
+        )
+
+        assertTrue(html.contains("""<html data-hoshi-color-scheme="dark">"""))
+        assertTrue(html.contains("html[data-hoshi-color-scheme=\"dark\"],"))
+        assertTrue(html.contains("--text-color: #fff;"))
+    }
+
     private fun lookupResult(
         expression: String,
         reading: String,

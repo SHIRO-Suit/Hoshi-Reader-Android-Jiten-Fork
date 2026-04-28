@@ -37,10 +37,15 @@ internal object LookupPopupHtml {
         dictionaryStyles: Map<String, String> = emptyMap(),
         topSpacerPx: Int = 0,
         settings: DictionarySettings = DictionarySettings(),
+        swipeToDismiss: Boolean = false,
+        swipeThreshold: Int = 40,
+        darkMode: Boolean = false,
     ): String {
         val entries = entriesJson(results)
         val styles = dictionaryStylesJson(dictionaryStyles)
         val normalizedSettings = settings.normalized()
+        val effectiveSwipeThreshold = if (swipeToDismiss) swipeThreshold.coerceAtLeast(0) else 0
+        val colorScheme = if (darkMode) "dark" else "light"
         val topSpacer = if (topSpacerPx > 0) {
             """<div style="height: ${topSpacerPx}px;"></div>"""
         } else {
@@ -53,10 +58,11 @@ internal object LookupPopupHtml {
         }
         return """
             <!DOCTYPE html>
-            <html>
+            <html data-hoshi-color-scheme="$colorScheme">
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 <style>${assets.popupCss}</style>
+                <style>$androidColorSchemeCss</style>
                 <script>${assets.selectionJs.escapeScriptEnd()}</script>
                 <script>${assets.popupJs.escapeScriptEnd()}</script>
             </head>
@@ -102,13 +108,16 @@ internal object LookupPopupHtml {
                     window.embedMedia = false;
                     window.compactGlossariesAnki = false;
                     window.customCSS = ${JsonPrimitive(normalizedSettings.customCSS)};
-                    window.swipeThreshold = 80;
+                    window.swipeThreshold = $effectiveSwipeThreshold;
                     window.dictionaryStyles = $styles;
                     window.lookupEntries = $entries;
                     window.entryCount = window.lookupEntries.length;
                 </script>
                 <script>
                     (function() {
+                        if (!window.swipeThreshold) {
+                            return;
+                        }
                         var startX, startY;
                         document.addEventListener('touchstart', function(e) {
                             startX = e.touches[0].clientX;
@@ -216,4 +225,29 @@ internal object LookupPopupHtml {
 
     private fun String.escapeScriptEnd(): String =
         replace("</script>", "<\\/script>")
+
+    private const val androidColorSchemeCss = """
+        html[data-hoshi-color-scheme="light"],
+        html[data-hoshi-color-scheme="light"] body {
+            --background-color: #fff;
+            --background-color-light: #fff;
+            --text-color: #000;
+        }
+
+        html[data-hoshi-color-scheme="dark"],
+        html[data-hoshi-color-scheme="dark"] body {
+            --background-color: #000;
+            --background-color-light: #000;
+            --text-color: #fff;
+            --text-color-light1: #aaaaaa;
+            --text-color-light2: #999999;
+            --text-color-light3: #888888;
+            --text-color-light4: #777777;
+            --background-color-dark1: #333333;
+        }
+
+        html[data-hoshi-color-scheme="dark"] .overlay {
+            background: #222;
+        }
+    """
 }

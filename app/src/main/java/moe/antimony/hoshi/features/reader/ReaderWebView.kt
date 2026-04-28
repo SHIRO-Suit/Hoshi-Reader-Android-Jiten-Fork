@@ -117,6 +117,7 @@ fun ReaderWebView(
                 swipeToDismiss = effectiveSettings.popupSwipeToDismiss,
                 swipeThreshold = effectiveSettings.popupSwipeThreshold,
                 dictionarySettings = dictionarySettingsStore.load(),
+                darkMode = effectiveSettings.usesDarkInterface(systemDarkTheme),
             ),
         )
     fun lookupChildPopup(selection: ReaderSelectionData): Pair<LookupPopupItem, Int>? =
@@ -124,12 +125,13 @@ fun ReaderWebView(
             selection = selection,
             options = LookupPopupOptions(
                 isVertical = false,
-                isFullWidth = effectiveSettings.popupFullWidth,
+                isFullWidth = false,
                 width = effectiveSettings.popupWidth,
                 height = effectiveSettings.popupHeight,
                 swipeToDismiss = effectiveSettings.popupSwipeToDismiss,
                 swipeThreshold = effectiveSettings.popupSwipeThreshold,
                 dictionarySettings = dictionarySettingsStore.load(),
+                darkMode = effectiveSettings.usesDarkInterface(systemDarkTheme),
             ),
         )
     val handleTextSelected: (ReaderSelectionData) -> Int? = { selection ->

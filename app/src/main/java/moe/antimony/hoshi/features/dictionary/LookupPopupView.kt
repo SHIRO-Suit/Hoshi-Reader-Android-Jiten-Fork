@@ -19,10 +19,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import de.manhhao.hoshi.LookupResult
 import moe.antimony.hoshi.features.reader.ReaderSelectionData
+import kotlin.math.roundToInt
 
 data class LookupPopupState(
     val selection: ReaderSelectionData,
@@ -37,6 +41,7 @@ data class LookupPopupState(
     val swipeThreshold: Int = 40,
     val topInset: Double = 0.0,
     val bottomInset: Double = 0.0,
+    val darkMode: Boolean = false,
 )
 
 @Composable
@@ -50,16 +55,28 @@ fun LookupPopupView(
     if (state.results.isEmpty()) return
     val context = LocalContext.current
     val assets = remember(context) { LookupPopupAssets.load(context) }
-    val html = remember(state.results, state.dictionaryStyles, state.dictionarySettings, assets) {
+    val html = remember(
+        state.results,
+        state.dictionaryStyles,
+        state.dictionarySettings,
+        state.swipeToDismiss,
+        state.swipeThreshold,
+        state.darkMode,
+        assets,
+    ) {
         LookupPopupHtml.render(
             results = state.results,
             assets = assets,
             dictionaryStyles = state.dictionaryStyles,
             settings = state.dictionarySettings,
+            swipeToDismiss = state.swipeToDismiss,
+            swipeThreshold = state.swipeThreshold,
+            darkMode = state.darkMode,
         )
     }
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val density = LocalDensity.current
         val frame = LookupPopupLayout(
             selectionRect = state.selection.rect,
             screenWidth = maxWidth.value.toDouble(),
@@ -73,35 +90,45 @@ fun LookupPopupView(
         ).calculate()
         val frameX = frame.centerX - frame.width / 2
         val frameY = frame.centerY - frame.height / 2
-        Surface(
-            modifier = Modifier
-                .absoluteOffset(
-                    x = frameX.dp,
-                    y = frameY.dp,
+        Popup(
+            offset = with(density) {
+                androidx.compose.ui.unit.IntOffset(
+                    x = frameX.dp.toPx().roundToInt(),
+                    y = frameY.dp.toPx().roundToInt(),
                 )
-                .width(frame.width.dp)
-                .height(frame.height.dp)
-                .popupSwipeDismiss(
-                    enabled = state.swipeToDismiss,
-                    threshold = state.swipeThreshold.toFloat(),
-                    onSwipeDismiss = onSwipeDismiss,
-                ),
-            shape = RoundedCornerShape(8.dp),
-            tonalElevation = 8.dp,
-            shadowElevation = 8.dp,
+            },
+            properties = PopupProperties(
+                focusable = true,
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+            ),
         ) {
-            LookupPopupWebView(
-                html = html,
-                selectionOffsetX = frameX,
-                selectionOffsetY = frameY,
-                swipeToDismiss = state.swipeToDismiss,
-                swipeThreshold = state.swipeThreshold.toFloat(),
-                callbacks = PopupWebViewCallbacks(
-                    onTapOutside = onTapOutside,
-                    onSwipeDismiss = onSwipeDismiss,
-                    onTextSelected = onTextSelected,
-                ),
-            )
+            Surface(
+                modifier = Modifier
+                    .width(frame.width.dp)
+                    .height(frame.height.dp)
+                    .popupSwipeDismiss(
+                        enabled = state.swipeToDismiss,
+                        threshold = state.swipeThreshold.toFloat(),
+                        onSwipeDismiss = onSwipeDismiss,
+                    ),
+                shape = RoundedCornerShape(8.dp),
+                tonalElevation = 8.dp,
+                shadowElevation = 8.dp,
+            ) {
+                LookupPopupWebView(
+                    html = html,
+                    selectionOffsetX = frameX,
+                    selectionOffsetY = frameY,
+                    swipeToDismiss = state.swipeToDismiss,
+                    swipeThreshold = state.swipeThreshold.toFloat(),
+                    callbacks = PopupWebViewCallbacks(
+                        onTapOutside = onTapOutside,
+                        onSwipeDismiss = onSwipeDismiss,
+                        onTextSelected = onTextSelected,
+                    ),
+                )
+            }
         }
     }
 }
@@ -163,7 +190,7 @@ private class PopupWebViewSwipeListener(
     private var startY = 0f
 
     override fun onTouch(view: android.view.View, event: MotionEvent): Boolean {
-        if (!enabled) return false
+        view.onTouchEvent(event)
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 startX = event.x
@@ -172,16 +199,24 @@ private class PopupWebViewSwipeListener(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 val dx = event.x - startX
                 val dy = event.y - startY
-                if (kotlin.math.abs(dx) > threshold &&
-                    kotlin.math.abs(dy) < POPUP_SWIPE_VERTICAL_SLOP_PX
-                ) {
+                if (isPopupSwipeDismissTriggered(enabled, threshold, dx, dy)) {
                     onSwipeDismiss()
                 }
             }
         }
-        return false
+        return true
     }
 }
+
+internal fun isPopupSwipeDismissTriggered(
+    enabled: Boolean,
+    threshold: Float,
+    dx: Float,
+    dy: Float,
+): Boolean =
+    enabled &&
+        kotlin.math.abs(dx) > threshold &&
+        kotlin.math.abs(dy) < POPUP_SWIPE_VERTICAL_SLOP_PX
 
 private fun Modifier.popupSwipeDismiss(
     enabled: Boolean,

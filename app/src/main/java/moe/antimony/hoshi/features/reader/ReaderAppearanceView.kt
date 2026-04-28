@@ -485,7 +485,7 @@ private fun SegmentedRow(
 ) {
     val controls = @Composable {
         SingleChoiceSegmentedButtonRow(
-            modifier = if (options.size <= 2) Modifier.width((options.size * 64).dp) else Modifier.fillMaxWidth(),
+            modifier = if (options.size <= 2) Modifier.width(segmentedControlWidthDp(options.size).dp) else Modifier.fillMaxWidth(),
         ) {
             options.forEachIndexed { index, option ->
                 SegmentedButton(
@@ -526,6 +526,9 @@ private fun SegmentedRow(
         }
     }
 }
+
+internal fun segmentedControlWidthDp(optionCount: Int): Int =
+    if (optionCount <= 2) 180 else optionCount * 82
 
 @Composable
 private fun ReaderFontRow(

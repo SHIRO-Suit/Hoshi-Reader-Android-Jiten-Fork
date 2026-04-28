@@ -34,6 +34,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -68,6 +69,7 @@ internal object DictionarySearchContent {
         assets: LookupPopupAssets,
         dictionaryStyles: Map<String, String> = emptyMap(),
         dictionarySettings: DictionarySettings = DictionarySettings(),
+        darkMode: Boolean = false,
     ): DictionarySearchRenderState {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) {
@@ -95,6 +97,7 @@ internal object DictionarySearchContent {
                 dictionaryStyles = dictionaryStyles,
                 topSpacerPx = DictionarySearchTopSpacerPx,
                 settings = dictionarySettings,
+                darkMode = darkMode,
             ),
             hasResults = true,
             dictionaryStyles = dictionaryStyles,
@@ -119,11 +122,13 @@ fun DictionarySearchView(
     var dictionaryStyles by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var dictionarySettings by remember { mutableStateOf(dictionarySettingsStore.load()) }
     var popups by remember { mutableStateOf<List<LookupPopupItem>>(emptyList()) }
+    val popupDarkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val popupOptions = LookupPopupOptions(
         isVertical = false,
         topInset = DictionaryPopupTopInset,
         bottomInset = DictionaryPopupBottomInset,
         dictionarySettings = dictionarySettings,
+        darkMode = popupDarkMode,
     )
     val lookupPopup = { selection: moe.antimony.hoshi.features.reader.ReaderSelectionData ->
         createLookupPopupItem(
@@ -148,6 +153,7 @@ fun DictionarySearchView(
                         assets = assets,
                         dictionaryStyles = styles,
                         dictionarySettings = settings,
+                        darkMode = popupDarkMode,
                     )
                 }
             }.onSuccess { state ->

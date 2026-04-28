@@ -79,4 +79,9 @@ class ReaderSettingsTest {
         assertTrue(css.contains("break-inside: avoid !important;"))
         assertFalse(css.contains("text-align: start !important;"))
     }
+
+    @Test
+    fun twoOptionAppearanceSegmentsReserveEnoughWidthForBottomLabel() {
+        assertEquals(180, segmentedControlWidthDp(optionCount = 2))
+    }
 }
