@@ -2,6 +2,7 @@ package moe.antimony.hoshi
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +20,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         pendingImportUri = intent.importUri()
         enableEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         setContent {
             HoshiReaderTheme {
                 BookshelfView(

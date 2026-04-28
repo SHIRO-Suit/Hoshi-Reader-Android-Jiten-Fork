@@ -1,38 +1,64 @@
 package moe.antimony.hoshi.features.reader
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import kotlin.math.roundToInt
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import moe.antimony.hoshi.dictionary.LookupEngine
@@ -69,7 +95,11 @@ fun ReaderWebView(
 ) {
     var effectiveSettings by remember(readerSettings) { mutableStateOf(readerSettings) }
     var showAppearance by remember { mutableStateOf(false) }
+    var showReaderMenu by remember { mutableStateOf(false) }
     var lookupPopup by remember { mutableStateOf<LookupPopupState?>(null) }
+    val context = LocalContext.current
+    val view = LocalView.current
+    val systemDarkTheme = isSystemInDarkTheme()
     val handleTextSelected: (ReaderSelectionData) -> Int? = { selection ->
         val results = runCatching { LookupEngine.lookup(selection.text) }.getOrDefault(emptyList())
         lookupPopup = if (results.isEmpty()) null else LookupPopupState(selection, results)
@@ -85,77 +115,103 @@ fun ReaderWebView(
         )
     }
     var webView by remember { mutableStateOf<WebView?>(null) }
+    val chromeState = remember(book, chapterPosition) {
+        val chapterUnits = 1000
+        ReaderChromeState(
+            title = book.title,
+            currentCharacter = ((chapterPosition.index + chapterPosition.progress) * chapterUnits).roundToInt(),
+            totalCharacters = (book.chapters.size * chapterUnits).coerceAtLeast(chapterUnits),
+        )
+    }
 
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = book.title,
-                        maxLines = 1,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Text("‹")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showAppearance = true }) {
-                        Text("Aa")
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
-        Box(
+    BackHandler(onBack = onClose)
+    val useLightSystemBars = when (effectiveSettings.theme) {
+        ReaderTheme.Dark -> false
+        ReaderTheme.System -> !systemDarkTheme
+        ReaderTheme.Light, ReaderTheme.Sepia -> true
+    }
+    DisposableEffect(context, view, useLightSystemBars, systemDarkTheme) {
+        val activity = context.findActivity()
+        val controller = activity?.window?.let { window ->
+            WindowCompat.getInsetsController(window, view)
+        }
+        controller?.isAppearanceLightStatusBars = useLightSystemBars
+        controller?.isAppearanceLightNavigationBars = useLightSystemBars
+        onDispose {
+            controller?.isAppearanceLightStatusBars = !systemDarkTheme
+            controller?.isAppearanceLightNavigationBars = !systemDarkTheme
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(effectiveSettings.backgroundColor)),
+    ) {
+        ChapterWebView(
+            book = book,
+            chapterPosition = chapterPosition,
+            onWebViewReady = { webView = it },
+            onNextChapter = {
+                val next = chapterPosition.nextOrNull(book.chapters.lastIndex)
+                if (next != null) {
+                    chapterPosition = next
+                    onSaveBookmark(next.index, next.progress)
+                    true
+                } else {
+                    false
+                }
+            },
+            onPreviousChapter = {
+                val previous = chapterPosition.previousOrNull()
+                if (previous != null) {
+                    chapterPosition = previous
+                    onSaveBookmark(previous.index, previous.progress)
+                    true
+                } else {
+                    false
+                }
+            },
+            onSaveBookmark = { progress ->
+                onSaveBookmark(chapterPosition.index, progress)
+            },
+            readerSettings = effectiveSettings,
+            onTextSelected = handleTextSelected,
+            onClearLookupPopup = { lookupPopup = null },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .background(Color(effectiveSettings.backgroundColor)),
-        ) {
-            ChapterWebView(
-                book = book,
-                chapterPosition = chapterPosition,
-                onWebViewReady = { webView = it },
-                onNextChapter = {
-                    val next = chapterPosition.nextOrNull(book.chapters.lastIndex)
-                    if (next != null) {
-                        chapterPosition = next
-                        onSaveBookmark(next.index, next.progress)
-                        true
-                    } else {
-                        false
-                    }
-                },
-                onPreviousChapter = {
-                    val previous = chapterPosition.previousOrNull()
-                    if (previous != null) {
-                        chapterPosition = previous
-                        onSaveBookmark(previous.index, previous.progress)
-                        true
-                    } else {
-                        false
-                    }
-                },
-                onSaveBookmark = { progress ->
-                    onSaveBookmark(chapterPosition.index, progress)
-                },
-                readerSettings = effectiveSettings,
-                onTextSelected = handleTextSelected,
-                onClearLookupPopup = { lookupPopup = null },
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(top = ReaderWebViewTopPadding, bottom = ReaderWebViewBottomPadding),
+        )
+        ReaderTopInfo(
+            state = chromeState,
+            colors = readerChromeColors(effectiveSettings),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 22.dp, start = 96.dp, end = 96.dp),
+        )
+        ReaderBottomChrome(
+            settings = effectiveSettings,
+            onClose = onClose,
+            onMenu = { showReaderMenu = true },
+            menuExpanded = showReaderMenu,
+            onDismissMenu = { showReaderMenu = false },
+            onAppearance = {
+                showReaderMenu = false
+                showAppearance = true
+            },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+        lookupPopup?.let { popup ->
+            LookupPopupView(
+                state = popup,
+                onSwipeDismiss = { lookupPopup = null },
                 modifier = Modifier.fillMaxSize(),
             )
-            lookupPopup?.let { popup ->
-                LookupPopupView(
-                    state = popup,
-                    onSwipeDismiss = { lookupPopup = null },
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            webView?.let { _ -> Unit }
         }
+        webView?.let { _ -> Unit }
     }
     if (showAppearance) {
         ReaderAppearanceSheet(
@@ -166,6 +222,120 @@ fun ReaderWebView(
             },
             onDismiss = { showAppearance = false },
         )
+    }
+}
+
+@Composable
+private fun ReaderTopInfo(
+    state: ReaderChromeState,
+    colors: ReaderChromeColors,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = state.title,
+            color = Color(colors.infoText),
+            style = MaterialTheme.typography.labelLarge,
+            maxLines = 1,
+        )
+        Text(
+            text = state.progressText(),
+            color = Color(colors.infoText),
+            style = MaterialTheme.typography.labelMedium,
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.ReaderBottomChrome(
+    settings: ReaderSettings,
+    onClose: () -> Unit,
+    onMenu: () -> Unit,
+    menuExpanded: Boolean,
+    onDismissMenu: () -> Unit,
+    onAppearance: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = readerChromeColors(settings)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 26.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ReaderGlassButton(colors = colors, onClick = onClose) {
+            ChevronLeftGlyph(Color(colors.buttonContent))
+        }
+        Spacer(Modifier.weight(1f))
+        Box {
+            ReaderGlassButton(colors = colors, onClick = onMenu) {
+                SlidersGlyph(Color(colors.buttonContent))
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = onDismissMenu) {
+                DropdownMenuItem(
+                    text = { Text("Appearance") },
+                    onClick = onAppearance,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReaderGlassButton(
+    colors: ReaderChromeColors,
+    onClick: () -> Unit,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .shadow(18.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.18f))
+            .border(BorderStroke(1.dp, Color(colors.buttonBorder)), CircleShape)
+            .size(60.dp),
+        shape = CircleShape,
+        color = Color(colors.buttonContainer),
+        tonalElevation = 6.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(horizontal = 22.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun ChevronLeftGlyph(color: Color) {
+    Canvas(modifier = Modifier.size(30.dp)) {
+        val stroke = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
+        val path = Path().apply {
+            moveTo(size.width * 0.64f, size.height * 0.12f)
+            lineTo(size.width * 0.28f, size.height * 0.50f)
+            lineTo(size.width * 0.64f, size.height * 0.88f)
+        }
+        drawPath(path, color, style = stroke)
+    }
+}
+
+@Composable
+private fun SlidersGlyph(color: Color) {
+    Canvas(modifier = Modifier.size(30.dp)) {
+        val stroke = Stroke(width = 2.6.dp.toPx(), cap = StrokeCap.Round)
+        val yValues = listOf(size.height * 0.22f, size.height * 0.50f, size.height * 0.78f)
+        val knobXs = listOf(size.width * 0.62f, size.width * 0.38f, size.width * 0.70f)
+        yValues.forEachIndexed { index, y ->
+            drawLine(color, start = androidx.compose.ui.geometry.Offset(size.width * 0.18f, y), end = androidx.compose.ui.geometry.Offset(size.width * 0.82f, y), strokeWidth = stroke.width, cap = StrokeCap.Round)
+            drawCircle(color, radius = 4.2.dp.toPx(), center = androidx.compose.ui.geometry.Offset(knobXs[index], y), style = Stroke(width = stroke.width))
+        }
     }
 }
 
@@ -193,7 +363,7 @@ private fun ChapterWebView(
     val baseUrl = remember(chapter) { "https://hoshi.local/epub/${chapter.href}" }
 
     AndroidView(
-        modifier = modifier.background(Color(0xFFF7F3EA)),
+        modifier = modifier.background(Color(readerSettings.backgroundColor)),
         factory = { context ->
             WebView(context).apply {
                 settings.javaScriptEnabled = true
@@ -457,6 +627,14 @@ private data class ReaderSelectionPayloadRect(
 )
 
 private const val MAX_SELECTION_LENGTH = 16
+private val ReaderWebViewTopPadding = 72.dp
+private val ReaderWebViewBottomPadding = 96.dp
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 internal fun androidPixelsToCssPixels(value: Float, density: Float): Float =
     value / density.coerceAtLeast(1f)
