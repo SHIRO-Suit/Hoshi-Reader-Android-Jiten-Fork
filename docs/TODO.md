@@ -155,7 +155,9 @@
 11. `todo` - Regression coverage and release hardening
     - `done` - Add GitHub Actions signed APK release workflow for `v*` tags and manual dispatch, using repository signing secrets and uploading the APK plus GPLv3 `LICENSE` to the GitHub Release.
     - `done` - Give debug builds a distinct application id so debug and release installs can coexist on physical devices.
+    - `done` - Enable R8 code/resource optimization for release APKs and make release CI initialize the recursive dictionary bridge submodules used by native builds.
     - Add EPUB fixtures for cover, images, vertical text, horizontal text, complex spine, and broken resources.
     - Expand WebView pagination regression checks.
     - Keep Gradle `test`, `assembleDebug`, and `lint` passing before release-facing changes.
     - Verified Gradle manifest processing: `:app:processDebugMainManifest` writes package `moe.antimony.hoshi.debug` for debug builds, while `:app:processReleaseMainManifest` keeps release at `moe.antimony.hoshi`.
+    - Verified release optimization with `:app:assembleRelease`: Gradle ran `minifyReleaseWithR8`, `convertShrunkResourcesToBinaryRelease`, and `optimizeReleaseResources` successfully.

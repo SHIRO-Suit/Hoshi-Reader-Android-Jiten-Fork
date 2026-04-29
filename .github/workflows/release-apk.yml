@@ -56,19 +56,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ steps.release_tag.outputs.tag }}
-          submodules: false
+          submodules: recursive
           fetch-depth: 0
 
       - name: Initialize required submodules
         shell: bash
         run: |
           set -euo pipefail
-          git submodule update --init \
-            third_party/hoshidicts-kotlin-bridge \
-            third_party/hoshidicts-gplv3
-          git -C third_party/hoshidicts-gplv3 submodule update \
-            --init \
-            --recursive
+          git submodule update --init --recursive third_party/hoshidicts-kotlin-bridge
+          git submodule status --recursive
 
       - name: Set up JDK
         uses: actions/setup-java@v4

@@ -19,3 +19,14 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# JNI looks up these bridge classes and constructors by their JVM names.
+-keep class de.manhhao.hoshi.** { *; }
+
+# Keep JavaScript interfaces exposed to WebView content.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# UniFFI's generated Kotlin/JNA bindings are part of the native ABI boundary.
+-keep class uniffi.hoshiepub.** { *; }
