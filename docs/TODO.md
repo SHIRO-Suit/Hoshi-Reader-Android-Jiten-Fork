@@ -32,6 +32,7 @@
    - `done` - Align the main Books/Dictionary/Settings shell with iOS: floating Books chrome, cover-grid bookshelf, grouped Settings list, and bottom capsule tab bar.
    - `done` - Point Settings -> Report an Issue at the Android GitHub issue tracker instead of the iOS upstream tracker.
    - `done` - Align EPUB import deduplication with iOS title-based `Books/<safeTitle>` storage and calculate bookshelf progress from `bookmark.characterCount / bookinfo.characterCount`.
+   - `done` - Use transient content import intents for EPUB imports so Android's picker can show providers under "Browse files in other apps" on affected devices.
    - `todo` - Align multi-select, shelves, and batch actions with iOS.
    - Verified on emulator with `testdata/test.epub`: cleared app data, imported the EPUB twice through DocumentsUI, confirmed two shelf rows and two independent `files/Books/<uuid>/metadata.json` files, then opened a listed book into the reader.
    - Verified cover thumbnails on emulator with `testdata/test.epub`: imported through DocumentsUI, confirmed `metadata.cover` is `item/image/cover.jpg`, and visually checked the real cover image renders in the shelf row.
@@ -40,6 +41,7 @@
    - Verified import deduplication and full-book progress on emulator with `testdata/test.epub`: cleared app data, imported the same EPUB twice through Android DocumentsUI, confirmed `files/Books` contains only `屍人荘の殺人`, swiped to正文, confirmed `bookmark.json` saved `characterCount=90`, reader chrome showed `90 / 169326 0.05%`, and the bookshelf showed `0.1%`.
    - Verified bookshelf card layout on emulator with `testdata/test.epub`: imported through Android DocumentsUI, confirmed the progress bar and percentage render below the cover image instead of overlaying it, and confirmed the Books shell toolbar/tab icons are scaled down closer to the iOS proportions.
    - Verified Books toolbar scaling on emulator without clearing app data: installed the resize build on `emulator-5554`, opened Books, confirmed the sort/check/folder/add toolbar controls render smaller while preserving the existing Books interactions, and moved the shelf content upward so the books sit closer to the resized toolbar.
+   - Verified import picker intent fix on `emulator-5554`: installed debug build without clearing app data, tapped Books -> Import EPUB, confirmed DocumentsUI opened with root navigation, selected `test.epub`, and confirmed the reader opened. `FileImportContentContractTest` also passed on `SM-G9860` and `Pixel_10_Pro(AVD)`, covering `ACTION_GET_CONTENT`, MIME filters, multi-select, and URI deduplication for shared import contracts.
 
 3. `in_progress` - Reader settings
    - `done` - Implement iOS-aligned reader Appearance sheet entry from the reader.
@@ -48,6 +50,7 @@
    - `done` - Align reader chrome with iOS `ReaderView`: remove solid top/bottom bars, render title/progress as an overlay, use theme-aware floating circular controls, reserve transparent WebView space behind chrome, and set Android system bar icon contrast from the reader theme.
    - `done` - Align reader restore display timing with iOS: keep the WebView transparent while saved progress is restored, then fade it in after JS reports restore completion.
    - `done` - Align font family selection/import/delete with iOS `FontManager`: store imported fonts under `Fonts/`, use file basenames as font names, persist `selectedFont`, and inject selected imported fonts into the reader WebView through `@font-face`.
+   - `done` - Use transient content import intents for reader font imports so Android's picker can show providers under "Browse files in other apps" on affected devices.
    - `done` - Add the iOS-aligned Chapters sheet from the reader menu, flatten EPUB TOC entries, show current full-book progress, and jump selected chapters to their matching spine item.
    - `done` - Reuse one iOS-aligned Appearance settings implementation from both Settings -> Appearance and the reader menu, backed by the same `ReaderSettingsStore`; add implemented iOS reader toggles for furigana, layout advanced options, display progress/title controls, and popup sizing/swipe controls.
    - `done` - Fix Appearance theme controls and dark-mode readability: match iOS native segmented picker behavior by giving multi-option pickers their own full-width row, and apply reader-theme-aware content colors to the shared Appearance page/sheet.
@@ -121,6 +124,7 @@
    - `done` - Add iOS-aligned Term/Frequency/Pitch type picker and import-type menu, and route import/list/toggle/delete through the selected dictionary type.
    - `done` - Align iOS dictionary settings: default Dictionary tab, Lookup steppers, Behaviour toggles, custom CSS editor entry, and shared persistence matching `UserConfig` defaults.
    - `done` - Persist dictionary display order in `Dictionaries/config.json` and use Android long-press drag reordering to match iOS `.onMove`, so lookup order and management order stay aligned.
+   - `done` - Use transient content import intents for dictionary ZIP imports so Android's picker can show providers under "Browse files in other apps" on affected devices.
    - `todo` - Align download recommended dictionaries and update dictionaries state with iOS `DictionaryView`.
    - Do not reimplement Yomitan import or dictionary media handling outside the bridge.
    - Verified on emulator with `testdata/JMdict_english.zip`: imported through DocumentsUI, confirmed dictionary list shows `JMdict [2026-04-27]`, confirmed private files `Dictionaries/Term/JMdict [2026-04-27]/index.json`, `blobs.bin`, `hash.table`, and `Dictionaries/config.json`, and temporarily verified native lookup query returned `猫` for lookup text `猫` before removing the debug UI.
@@ -147,6 +151,7 @@
    - `done` - Align iOS `AudioView` under Settings -> Advanced with source ordering/toggles, custom source add/delete, auto-play, background audio mode, and Local Audio import/delete controls.
    - `done` - Inject iOS popup audio variables into the shared popup WebView renderer and route audio button taps through the same native playback bridge used by iOS `PopupWebView`.
    - `done` - Support iOS-compatible local `Audio/android.db` lookup semantics for `http://localhost:8765/localaudio/get/?term={term}&reading={reading}` and play returned local audio blobs.
+   - `done` - Use transient content import intents for local audio database imports so Android's picker can show providers under "Browse files in other apps" on affected devices.
    - `done` - Support configurable remote Yomitan audio source URLs, verified with `https://audiov2.animecards.site/audio/list?term={term}&reading={reading}&apiKey=04887404-aba9-43b8-abb8-0e3847038a76`.
    - `done` - Fix issue #3 by making the Background Audio segmented picker use one unified equal-size pill even when option labels wrap.
    - `todo` - Read dictionary media through the existing dictionary bridge.

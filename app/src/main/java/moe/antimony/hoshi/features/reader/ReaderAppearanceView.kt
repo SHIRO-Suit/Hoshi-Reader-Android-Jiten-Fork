@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import moe.antimony.hoshi.importing.FileImportContent
 import java.util.Locale
 import kotlin.math.round
 
@@ -159,7 +159,7 @@ private fun ReaderAppearanceContent(
     var fontMenuExpanded by remember { mutableStateOf(false) }
     var fontToDelete by remember { mutableStateOf<String?>(null) }
     var isImportingFont by remember { mutableStateOf(false) }
-    val fontImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+    val fontImporter = rememberLauncherForActivityResult(FileImportContent()) { uri: Uri? ->
         if (uri == null) return@rememberLauncherForActivityResult
         runCatching {
             context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
