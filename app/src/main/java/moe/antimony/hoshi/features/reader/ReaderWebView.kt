@@ -49,6 +49,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -544,6 +545,7 @@ private fun ChapterWebView(
     systemDark: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val currentOnTextSelected = rememberUpdatedState(onTextSelected)
     val chapter = book.chapters[chapterPosition.index]
     val fontFaceUrl = remember(readerSettings.selectedFont) {
         fontManager.webViewFontUrl(readerSettings.selectedFont)
@@ -571,7 +573,12 @@ private fun ChapterWebView(
                 disableNativeOverscrollStretch()
                 alpha = 0f
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                addJavascriptInterface(ReaderSelectionBridge(this, onTextSelected), "HoshiTextSelection")
+                addJavascriptInterface(
+                    ReaderSelectionBridge(this) { selection ->
+                        currentOnTextSelected.value(selection)
+                    },
+                    "HoshiTextSelection",
+                )
                 addJavascriptInterface(ReaderRestoreBridge(this), "HoshiReaderRestore")
                 webViewClient = EpubWebViewClient(book, fontManager)
                 setOnTouchListener(object : SwipePageTouchListener(context) {

@@ -23,8 +23,8 @@ data class ReaderSettings(
     val popupWidth: Int = 320,
     val popupHeight: Int = 250,
     val popupFullWidth: Boolean = false,
-    val popupSwipeToDismiss: Boolean = false,
-    val popupSwipeThreshold: Int = 40,
+    val popupSwipeToDismiss: Boolean = true,
+    val popupSwipeThreshold: Int = 30,
 ) {
     val bottomOverlapPx: Int
         get() = if (verticalWriting) fontSize else 0
@@ -118,8 +118,8 @@ class ReaderSettingsStore(context: Context) {
         popupWidth = preferences.getInt("popupWidth", 320),
         popupHeight = preferences.getInt("popupHeight", 250),
         popupFullWidth = preferences.getBoolean("popupFullWidth", false),
-        popupSwipeToDismiss = preferences.getBoolean("popupSwipeToDismiss", false),
-        popupSwipeThreshold = preferences.getInt("popupSwipeThreshold", 40),
+        popupSwipeToDismiss = preferences.getBoolean("popupSwipeToDismiss", true),
+        popupSwipeThreshold = preferences.getInt("popupSwipeThreshold", 30).coerceIn(20, 60),
     )
 
     fun save(settings: ReaderSettings) {

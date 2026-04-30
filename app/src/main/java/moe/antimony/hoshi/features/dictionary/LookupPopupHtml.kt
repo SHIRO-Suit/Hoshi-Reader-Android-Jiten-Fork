@@ -129,8 +129,11 @@ internal object LookupPopupHtml {
                         document.addEventListener('touchend', function(e) {
                             var dx = e.changedTouches[0].clientX - startX;
                             var dy = e.changedTouches[0].clientY - startY;
+                            var absDx = Math.abs(dx);
+                            var absDy = Math.abs(dy);
+                            var isHorizontalDismiss = absDx > window.swipeThreshold && absDx > absDy * 1.75;
                             var hasSelection = window.getSelection().toString();
-                            if (Math.abs(dx) > window.swipeThreshold && Math.abs(dy) < 20 && !hasSelection) {
+                            if (isHorizontalDismiss && !hasSelection) {
                                 webkit.messageHandlers.swipeDismiss.postMessage(null);
                             }
                         });

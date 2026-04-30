@@ -394,8 +394,8 @@ private fun ReaderAppearanceContent(
                         label = "Swipe Threshold",
                         value = settings.popupSwipeThreshold.toString(),
                         sliderValue = settings.popupSwipeThreshold.toFloat(),
-                        valueRange = 20f..80f,
-                        steps = 11,
+                        valueRange = 20f..60f,
+                        steps = 7,
                         onValueChange = { value ->
                             onSettingsChange(settings.copy(popupSwipeThreshold = (round(value / 5) * 5).toInt()))
                         },

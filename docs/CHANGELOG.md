@@ -10,6 +10,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Preserve embedded cover image ratios for Calibre SVG cover wrappers instead of stretching the cover image. #4
 - Make Android system Back return from Settings -> Appearance to Settings instead of closing the app. #21
 - Let EPUB, dictionary, font, and local audio database imports show Android providers that appear under "Browse files in other apps".
+- Make dictionary popup swipe-to-dismiss default on with a lower threshold range, tolerate natural diagonal horizontal swipes, and apply Appearance changes immediately inside an open reader.
 
 ## [v0.1.1] - 2026-04-30
 

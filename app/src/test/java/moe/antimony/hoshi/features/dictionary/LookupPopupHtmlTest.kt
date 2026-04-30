@@ -158,6 +158,22 @@ class LookupPopupHtmlTest {
     }
 
     @Test
+    fun swipeDismissUsesHorizontalIntentInsteadOfFixedVerticalLine() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),
+            assets = LookupPopupAssets(popupJs = "", popupCss = ""),
+            swipeToDismiss = true,
+            swipeThreshold = 40,
+        )
+
+        assertTrue(html.contains("var absDx = Math.abs(dx);"))
+        assertTrue(html.contains("var absDy = Math.abs(dy);"))
+        assertTrue(html.contains("var isHorizontalDismiss = absDx > window.swipeThreshold && absDx > absDy * 1.75;"))
+        assertTrue(html.contains("if (isHorizontalDismiss && !hasSelection)"))
+        assertFalse(html.contains("Math.abs(dy) < 20"))
+    }
+
+    @Test
     fun canForceIosPopupDarkColorSchemeForAndroidWebView() {
         val html = LookupPopupHtml.render(
             listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),

@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class ReaderSettingsTest {
     @Test
@@ -16,6 +17,8 @@ class ReaderSettingsTest {
         assertEquals(0, settings.verticalPadding)
         assertEquals(1.65, settings.lineHeight, 0.0)
         assertEquals("Hiragino Mincho ProN", settings.selectedFont)
+        assertTrue(settings.popupSwipeToDismiss)
+        assertEquals(30, settings.popupSwipeThreshold)
     }
 
     @Test
@@ -104,5 +107,25 @@ class ReaderSettingsTest {
     @Test
     fun twoOptionAppearanceSegmentsReserveEnoughWidthForBottomLabel() {
         assertEquals(180, segmentedControlWidthDp(optionCount = 2))
+    }
+
+    @Test
+    fun appearanceSwipeThresholdRangeMatchesAndroidGestureTuning() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/reader/ReaderAppearanceView.kt").readText()
+        val swipeThresholdRow = source.substringAfter("""label = "Swipe Threshold"""")
+            .substringBefore("onValueChange")
+
+        assertTrue(swipeThresholdRow.contains("valueRange = 20f..60f"))
+        assertTrue(swipeThresholdRow.contains("steps = 7"))
+    }
+
+    @Test
+    fun chapterWebViewUsesLatestSelectionCallbackAfterAppearanceChanges() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt").readText()
+        val chapterWebView = source.substringAfter("private fun ChapterWebView(")
+            .substringBefore("private fun String.injectReaderAssets")
+
+        assertTrue(chapterWebView.contains("rememberUpdatedState(onTextSelected)"))
+        assertTrue(chapterWebView.contains("currentOnTextSelected.value(selection)"))
     }
 }
