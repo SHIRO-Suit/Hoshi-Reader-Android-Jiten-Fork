@@ -22,6 +22,12 @@ internal object ReaderContentStyles {
         settings: ReaderSettings = ReaderSettings(),
         fontFaceUrl: String? = null,
         systemDark: Boolean = false,
+    ): String = "<style>\n${css(settings, fontFaceUrl, systemDark)}\n</style>"
+
+    fun css(
+        settings: ReaderSettings = ReaderSettings(),
+        fontFaceUrl: String? = null,
+        systemDark: Boolean = false,
     ): String {
         val textColor = settings.textColorCss(systemDark)
         val backgroundColor = settings.backgroundColor(systemDark).toReaderCssColor()
@@ -75,7 +81,6 @@ internal object ReaderContentStyles {
             """.trimIndent()
         }
         return """
-        <style>
         $fontFaceCss
         $pageBreakCss
         @media (prefers-color-scheme: light) { :root { --hoshi-system-text-color: #000; } }
@@ -105,8 +110,8 @@ internal object ReaderContentStyles {
         img.block-img {
             max-width: var(--hoshi-image-max-width, ${settings.imageMaxWidthFallbackCss}) !important;
             max-height: var(--hoshi-image-max-height, ${settings.imageMaxHeightFallbackCss}) !important;
-            width: var(--hoshi-image-max-width, ${settings.imageMaxWidthFallbackCss}) !important;
-            height: var(--hoshi-image-max-height, ${settings.imageMaxHeightFallbackCss}) !important;
+            width: auto !important;
+            height: auto !important;
             display: block !important;
             margin: auto !important;
             break-inside: avoid !important;
@@ -131,7 +136,6 @@ internal object ReaderContentStyles {
         a {
             color: rgba(66, 108, 245, 1) !important;
         }
-        </style>
         """.trimIndent()
     }
 }

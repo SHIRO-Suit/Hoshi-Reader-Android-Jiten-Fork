@@ -123,9 +123,23 @@ class ReaderSettingsTest {
     fun chapterWebViewUsesLatestSelectionCallbackAfterAppearanceChanges() {
         val source = File("src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt").readText()
         val chapterWebView = source.substringAfter("private fun ChapterWebView(")
-            .substringBefore("private fun String.injectReaderAssets")
+            .substringBefore("private class EpubWebViewClient")
 
         assertTrue(chapterWebView.contains("rememberUpdatedState(onTextSelected)"))
         assertTrue(chapterWebView.contains("currentOnTextSelected.value(selection)"))
+    }
+
+    @Test
+    fun chapterWebViewLoadsXhtmlUrlThenInjectsReaderAssetsLikeIos() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt").readText()
+        val chapterWebView = source.substringAfter("private fun ChapterWebView(")
+            .substringBefore("private class EpubWebViewClient")
+        val webViewClient = source.substringAfter("private class EpubWebViewClient(")
+            .substringBefore("private fun readerSetupScript")
+
+        assertTrue(chapterWebView.contains("webView.loadUrl(baseUrl)"))
+        assertFalse(chapterWebView.contains("loadDataWithBaseURL"))
+        assertTrue(chapterWebView.contains("view.evaluateJavascript(readerSetupScript, null)"))
+        assertTrue(webViewClient.contains("override fun onPageFinished"))
     }
 }

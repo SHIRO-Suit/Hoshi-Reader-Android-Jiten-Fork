@@ -14,6 +14,11 @@ internal object ReaderSelectionScripts {
 
     fun script(): String = """
         <script>
+        ${source()}
+        </script>
+    """.trimIndent()
+
+    fun source(): String = """
         window.hoshiSelection = {
           selection: null,
           scanDelimiters: '。、！？…‥「」『』（）()【】〈〉《》〔〕｛｝{}［］[]・：；:;，,.─\n\r',
@@ -233,6 +238,5 @@ internal object ReaderSelectionScripts {
             this.selection = null;
           }
         };
-        </script>
     """.trimIndent()
 }

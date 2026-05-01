@@ -107,6 +107,22 @@ class ReaderPaginationScriptsTest {
     }
 
     @Test
+    fun pageBoundariesUseLastActualContentPageInsteadOfReportedScrollHeight() {
+        val script = ReaderPaginationScripts.shellScript()
+
+        assertTrue(script.contains("contentLastPageScroll: function(context)"))
+        assertTrue(script.contains("contentFirstPageScroll: function(context)"))
+        assertTrue(script.contains("alignContentStartToPage: function(context, offset)"))
+        assertTrue(script.contains("Math.abs(safeOffset - nearestPage) < 1"))
+        assertTrue(script.contains("var edge = (context.vertical ? rect.bottom : rect.right) + currentScroll"))
+        assertTrue(script.contains("var edge = (context.vertical ? rect.top : rect.left) + currentScroll"))
+        assertTrue(script.contains("var mediaEdge = (context.vertical ? mediaRect.bottom : mediaRect.right) + currentScroll"))
+        assertTrue(script.contains("var mediaEdge = (context.vertical ? mediaRect.top : mediaRect.left) + currentScroll"))
+        assertTrue(script.contains("var minAlignedScroll = this.contentFirstPageScroll(context)"))
+        assertTrue(script.contains("var maxAlignedScroll = this.contentLastPageScroll(context)"))
+    }
+
+    @Test
     fun appendsTrailingSpacerUsingIosDefaultVerticalLayout() {
         val script = ReaderPaginationScripts.shellScript()
 
@@ -125,8 +141,8 @@ class ReaderPaginationScriptsTest {
         assertFalse(css.contains("line-height: 1.65 !important;"))
         assertTrue(css.contains("text-align: start !important;"))
         assertTrue(css.contains("max-width: var(--hoshi-image-max-width, 95vw) !important"))
-        assertTrue(css.contains("width: var(--hoshi-image-max-width, 95vw) !important"))
-        assertTrue(css.contains("height: var(--hoshi-image-max-height, calc(var(--page-height, 100vh) - 22px)) !important"))
+        assertTrue(css.contains("width: auto !important"))
+        assertTrue(css.contains("height: auto !important"))
         assertTrue(css.contains("::highlight(hoshi-selection)"))
         assertTrue(css.contains("background-color: rgba(160, 160, 160, 0.4) !important"))
     }

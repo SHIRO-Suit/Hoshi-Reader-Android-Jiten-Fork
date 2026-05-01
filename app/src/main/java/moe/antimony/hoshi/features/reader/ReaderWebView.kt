@@ -550,15 +550,15 @@ private fun ChapterWebView(
     val fontFaceUrl = remember(readerSettings.selectedFont) {
         fontManager.webViewFontUrl(readerSettings.selectedFont)
     }
-    val html = remember(chapter, chapterPosition.progress, readerSettings, fontFaceUrl, systemDark) {
-        chapter.html.injectReaderShell(
+    val baseUrl = remember(chapter) { "https://hoshi.local/epub/${chapter.href}" }
+    val readerSetupScript = remember(chapter, chapterPosition.progress, readerSettings, fontFaceUrl, systemDark) {
+        readerSetupScript(
             initialProgress = chapterPosition.progress,
             settings = readerSettings,
             fontFaceUrl = fontFaceUrl,
             systemDark = systemDark,
         )
     }
-    val baseUrl = remember(chapter) { "https://hoshi.local/epub/${chapter.href}" }
 
     AndroidView(
         modifier = modifier.background(Color(readerSettings.backgroundColor(systemDark))),
@@ -580,7 +580,9 @@ private fun ChapterWebView(
                     "HoshiTextSelection",
                 )
                 addJavascriptInterface(ReaderRestoreBridge(this), "HoshiReaderRestore")
-                webViewClient = EpubWebViewClient(book, fontManager)
+                webViewClient = EpubWebViewClient(book, fontManager) { view ->
+                    view.evaluateJavascript(readerSetupScript, null)
+                }
                 setOnTouchListener(object : SwipePageTouchListener(context) {
                     override fun onTap(x: Float, y: Float) {
                         val density = resources.displayMetrics.density
@@ -611,13 +613,15 @@ private fun ChapterWebView(
             }
         },
         update = { webView ->
-            val loadKey = "$baseUrl#${html.hashCode()}"
+            val loadKey = "$baseUrl#${readerSetupScript.hashCode()}"
             if (webView.tag != loadKey) {
                 webView.tag = loadKey
                 webView.animate().cancel()
                 webView.alpha = 0f
-                webView.webViewClient = EpubWebViewClient(book, fontManager)
-                webView.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null)
+                webView.webViewClient = EpubWebViewClient(book, fontManager) { view ->
+                    view.evaluateJavascript(readerSetupScript, null)
+                }
+                webView.loadUrl(baseUrl)
             }
         },
     )
@@ -626,7 +630,15 @@ private fun ChapterWebView(
 private class EpubWebViewClient(
     private val book: EpubBook,
     private val fontManager: ReaderFontManager,
+    private val onReaderPageFinished: (WebView) -> Unit,
 ) : WebViewClient() {
+    override fun onPageFinished(view: WebView, url: String?) {
+        super.onPageFinished(view, url)
+        if (Uri.parse(url ?: return).host == "hoshi.local") {
+            onReaderPageFinished(view)
+        }
+    }
+
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
         val uri = request.url ?: return null
         if (uri.host != "hoshi.local") return null
@@ -641,19 +653,44 @@ private class EpubWebViewClient(
     }
 }
 
-private fun String.injectReaderShell(
+private fun readerSetupScript(
     initialProgress: Double,
     settings: ReaderSettings,
     fontFaceUrl: String?,
     systemDark: Boolean,
 ): String {
-    val css = ReaderContentStyles.styleTag(settings, fontFaceUrl, systemDark)
-    val script = ReaderPaginationScripts.shellScript(initialProgress, settings)
-    val selectionScript = ReaderSelectionScripts.script()
-    return replace("</head>", "$css\n$script\n$selectionScript\n</head>", ignoreCase = true)
-        .takeIf { it != this }
-        ?: "$css\n$script\n$selectionScript\n$this"
+    val css = ReaderContentStyles.css(settings, fontFaceUrl, systemDark).javaScriptStringLiteral()
+    val selectionScript = ReaderSelectionScripts.source()
+    val paginationScript = ReaderPaginationScripts.shellScript(initialProgress, settings).scriptTagBody()
+    return """
+        (function() {
+          var style = document.createElement('style');
+          style.textContent = $css;
+          document.head.appendChild(style);
+          $selectionScript
+          $paginationScript
+        })();
+    """.trimIndent()
 }
+
+private fun String.scriptTagBody(): String =
+    substringAfter("<script>").substringBeforeLast("</script>").trim()
+
+private fun String.javaScriptStringLiteral(): String =
+    buildString(length + 2) {
+        append('"')
+        this@javaScriptStringLiteral.forEach { ch ->
+            when (ch) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> append(ch)
+            }
+        }
+        append('"')
+    }
 
 private fun File.mediaType(): String = when (extension.lowercase()) {
     "ttf" -> "font/ttf"

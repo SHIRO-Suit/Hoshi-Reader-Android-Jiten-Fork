@@ -94,6 +94,76 @@ internal object ReaderPaginationScripts {
           alignToPage: function(context, offset) {
             return Math.floor(Math.max(0, offset) / context.pageSize) * context.pageSize;
           },
+          alignContentStartToPage: function(context, offset) {
+            var safeOffset = Math.max(0, offset);
+            var nearestPage = Math.round(safeOffset / context.pageSize) * context.pageSize;
+            if (Math.abs(safeOffset - nearestPage) < 1) {
+              return nearestPage;
+            }
+            return this.alignToPage(context, safeOffset);
+          },
+          contentLastPageScroll: function(context) {
+            var currentScroll = this.getPagePosition(context);
+            var lastContentEdge = 0;
+            var walker = this.createWalker();
+            var node;
+            while (node = walker.nextNode()) {
+              if (this.countChars(node.textContent) <= 0) continue;
+              var range = document.createRange();
+              range.selectNodeContents(node);
+              var rects = range.getClientRects();
+              for (var i = 0; i < rects.length; i++) {
+                var rect = rects[i];
+                if (rect.width <= 0 || rect.height <= 0) continue;
+                var edge = (context.vertical ? rect.bottom : rect.right) + currentScroll;
+                lastContentEdge = Math.max(lastContentEdge, edge);
+              }
+            }
+
+            var media = document.querySelectorAll('img, svg, image, video, canvas');
+            for (var j = 0; j < media.length; j++) {
+              var mediaRect = media[j].getBoundingClientRect();
+              if (mediaRect.width <= 0 || mediaRect.height <= 0) continue;
+              var mediaEdge = (context.vertical ? mediaRect.bottom : mediaRect.right) + currentScroll;
+              lastContentEdge = Math.max(lastContentEdge, mediaEdge);
+            }
+
+            if (lastContentEdge <= 0) return 0;
+            var lastContentScroll = Math.floor(Math.max(0, lastContentEdge - 1) / context.pageSize) * context.pageSize;
+            var maxAlignedScroll = Math.floor(context.maxScroll / context.pageSize) * context.pageSize;
+            return Math.min(maxAlignedScroll, lastContentScroll);
+          },
+          contentFirstPageScroll: function(context) {
+            var currentScroll = this.getPagePosition(context);
+            var firstContentEdge = null;
+            var walker = this.createWalker();
+            var node;
+            while (node = walker.nextNode()) {
+              if (this.countChars(node.textContent) <= 0) continue;
+              var range = document.createRange();
+              range.selectNodeContents(node);
+              var rects = range.getClientRects();
+              for (var i = 0; i < rects.length; i++) {
+                var rect = rects[i];
+                if (rect.width <= 0 || rect.height <= 0) continue;
+                var edge = (context.vertical ? rect.top : rect.left) + currentScroll;
+                firstContentEdge = firstContentEdge === null ? edge : Math.min(firstContentEdge, edge);
+              }
+            }
+
+            var media = document.querySelectorAll('img, svg, image, video, canvas');
+            for (var j = 0; j < media.length; j++) {
+              var mediaRect = media[j].getBoundingClientRect();
+              if (mediaRect.width <= 0 || mediaRect.height <= 0) continue;
+              var mediaEdge = (context.vertical ? mediaRect.top : mediaRect.left) + currentScroll;
+              firstContentEdge = firstContentEdge === null ? mediaEdge : Math.min(firstContentEdge, mediaEdge);
+            }
+
+            if (firstContentEdge === null) return 0;
+            var maxAlignedScroll = Math.floor(context.maxScroll / context.pageSize) * context.pageSize;
+            var firstContentScroll = this.alignContentStartToPage(context, firstContentEdge);
+            return Math.min(maxAlignedScroll, firstContentScroll);
+          },
           calculateProgress: function() {
             var vertical = this.isVertical();
             var walker = this.createWalker();
@@ -117,12 +187,13 @@ internal object ReaderPaginationScripts {
           restoreProgress: function(progress) {
             var context = this.getScrollContext();
             if (context.pageSize <= 0 || progress <= 0) {
-              this.setPagePosition(context, 0);
+              var firstPage = this.contentFirstPageScroll(context);
+              this.setPagePosition(context, firstPage);
               this.notifyRestoreComplete();
               return;
             }
             if (progress >= 0.99) {
-              var lastPage = Math.floor(context.maxScroll / context.pageSize) * context.pageSize;
+              var lastPage = this.contentLastPageScroll(context);
               this.setPagePosition(context, Math.max(0, lastPage));
               this.notifyRestoreComplete();
               return;
@@ -154,7 +225,8 @@ internal object ReaderPaginationScripts {
               var targetScroll = this.alignToPage(context, anchor);
               this.setPagePosition(context, targetScroll);
             } else {
-              this.setPagePosition(context, 0);
+              var firstPage = this.contentFirstPageScroll(context);
+              this.setPagePosition(context, firstPage);
             }
             this.notifyRestoreComplete();
           },
@@ -162,7 +234,8 @@ internal object ReaderPaginationScripts {
             var context = this.getScrollContext();
             if (context.pageSize <= 0) return "limit";
             var currentScroll = this.getPagePosition(context);
-            var maxAlignedScroll = Math.floor(context.maxScroll / context.pageSize) * context.pageSize;
+            var minAlignedScroll = this.contentFirstPageScroll(context);
+            var maxAlignedScroll = this.contentLastPageScroll(context);
             if (direction === "forward") {
               if ((currentScroll + context.pageSize) <= (maxAlignedScroll + 1)) {
                 var targetForward = Math.round((currentScroll + context.pageSize) / context.pageSize) * context.pageSize;
@@ -171,8 +244,9 @@ internal object ReaderPaginationScripts {
               }
               return "limit";
             } else {
-              if (currentScroll > 0) {
+              if (currentScroll > (minAlignedScroll + 1)) {
                 var targetBack = Math.round((currentScroll - context.pageSize) / context.pageSize) * context.pageSize;
+                targetBack = Math.max(minAlignedScroll, targetBack);
                 this.setPagePosition(context, targetBack);
                 return "scrolled";
               }
@@ -180,7 +254,9 @@ internal object ReaderPaginationScripts {
             }
           }
         };
-        window.addEventListener('load', function() {
+        window.hoshiReader.initialize = function() {
+          if (window.hoshiReader.didInitialize) return;
+          window.hoshiReader.didInitialize = true;
           var viewport = document.querySelector('meta[name="viewport"]');
           if (viewport) { viewport.remove(); }
           var newViewport = document.createElement('meta');
@@ -229,7 +305,13 @@ internal object ReaderPaginationScripts {
             window.hoshiReader.buildNodeOffsets();
             window.hoshiReader.restoreProgress($initialProgress);
           });
+        };
+        window.addEventListener('load', function() {
+          window.hoshiReader.initialize();
         });
+        if (document.readyState === 'complete') {
+          window.hoshiReader.initialize();
+        }
         </script>
     """.trimIndent()
 }
