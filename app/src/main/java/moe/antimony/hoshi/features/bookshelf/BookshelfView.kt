@@ -614,8 +614,13 @@ private fun BooksTab(
                 .padding(innerPadding),
         ) {
             val contentWidthDp = layoutSpec.constrainedContentWidthDp(maxWidth.value.toInt())
+            val bookContentAlignment = if (layoutSpec.navigationLayout == MainShellNavigationLayout.NavigationRail) {
+                Alignment.TopStart
+            } else {
+                Alignment.TopCenter
+            }
             val contentModifier = Modifier
-                .align(Alignment.TopCenter)
+                .align(bookContentAlignment)
                 .widthIn(max = layoutSpec.contentMaxWidthDp.dp)
                 .fillMaxWidth()
 

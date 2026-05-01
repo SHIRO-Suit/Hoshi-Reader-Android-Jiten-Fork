@@ -174,4 +174,13 @@ class MainShellUiTest {
         assertFalse(source.contains("NavigationRailInset"))
         assertFalse(source.contains(".padding(start = NavigationRailInset)"))
     }
+
+    @Test
+    fun bookshelfContentStartsAfterNavigationRailOnLargeScreens() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
+
+        assertTrue(source.contains("layoutSpec.navigationLayout == MainShellNavigationLayout.NavigationRail"))
+        assertTrue(source.contains("Alignment.TopStart"))
+        assertTrue(source.contains(".align(bookContentAlignment)"))
+    }
 }

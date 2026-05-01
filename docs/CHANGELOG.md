@@ -14,6 +14,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Reduce decorative shadows, elevation, transparency, and reader fade animation across the main shell, dictionary search/popup, reader chrome, and settings groups for lower-power e-ink devices, while keeping low-cost outline borders for visible control boundaries.
 - Use full-width Material-style dividers between Settings entries instead of iOS-style inset separators.
 - Remove the duplicate large-screen navigation rail inset so tablet and landscape layouts do not waste extra blank space beside the left navigation rail.
+- Align the Books shelf content to the start of the large-screen content area instead of centering the constrained grid with a wide empty gutter.
 
 ### Fixed
 
