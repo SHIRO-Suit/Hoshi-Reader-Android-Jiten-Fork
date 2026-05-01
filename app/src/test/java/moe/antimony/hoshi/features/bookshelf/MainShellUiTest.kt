@@ -2,9 +2,15 @@ package moe.antimony.hoshi.features.bookshelf
 
 import moe.antimony.hoshi.epub.BookMetadata
 import moe.antimony.hoshi.epub.BookEntry
+import moe.antimony.hoshi.epub.BookInfo
+import moe.antimony.hoshi.epub.BookStorage
+import moe.antimony.hoshi.epub.Bookmark
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.nio.file.Files
 
 class MainShellUiTest {
     @Test
@@ -50,8 +56,24 @@ class MainShellUiTest {
         val spec = MainShellLayoutSpec.forWidthDp(360)
 
         assertEquals(MainShellNavigationLayout.BottomBar, spec.navigationLayout)
+        assertEquals(64, spec.compactNavigationHeightDp)
         assertEquals(16, spec.pageHorizontalPaddingDp)
         assertEquals(2, spec.bookGridColumns(contentWidthDp = 360))
+    }
+
+    @Test
+    fun bookshelfHeaderUsesCompactMaterialTypography() {
+        val spec = MainShellLayoutSpec.forWidthDp(360)
+
+        assertEquals(MainShellTextStyle.TitleLarge, spec.shelfTitleTextStyle)
+        assertEquals(MainShellFontWeight.SemiBold, spec.shelfTitleFontWeight)
+        assertEquals(MainShellTextStyle.TitleMedium, spec.shelfCountTextStyle)
+        assertEquals(0, spec.shelfHeaderVerticalPaddingDp)
+        assertEquals(0, spec.bookGridTopPaddingDp)
+        assertEquals(12, spec.bookGridVerticalSpacingDp)
+        assertEquals(0, spec.bookGridBottomPaddingDp)
+        assertEquals(MainShellTextStyle.BodyLarge, spec.bookTitleTextStyle)
+        assertEquals(MainShellFontWeight.Normal, spec.bookTitleFontWeight)
     }
 
     @Test
@@ -70,5 +92,78 @@ class MainShellUiTest {
         assertEquals(MainShellNavigationLayout.NavigationRail, spec.navigationLayout)
         assertEquals(1040, spec.contentMaxWidthDp)
         assertEquals(5, spec.bookGridColumns(contentWidthDp = 1040))
+    }
+
+    @Test
+    fun bookshelfGridDisablesOverscrollAndKeepsDividerOnContentBoundary() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
+
+        assertTrue(source.contains("CompositionLocalProvider(LocalOverscrollFactory provides null)"))
+        assertTrue(source.contains(".padding(bottom = innerPadding.calculateBottomPadding())"))
+        assertTrue(source.contains("contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)"))
+        assertTrue(source.contains("BookCoverBitmapCache.load(coverFile)"))
+        assertTrue(source.contains("loadBookProgressById(entries, bookStorage)"))
+    }
+
+    @Test
+    fun coverDecodeSampleSizeKeepsCoversNearTargetSize() {
+        assertEquals(1, coverDecodeSampleSize(width = 600, height = 800, maxDimensionPx = 900))
+        assertEquals(2, coverDecodeSampleSize(width = 1200, height = 1800, maxDimensionPx = 900))
+        assertEquals(4, coverDecodeSampleSize(width = 2400, height = 3600, maxDimensionPx = 900))
+    }
+
+    @Test
+    fun bookProgressIsLoadedOnceForShelfEntries() {
+        val filesDir = Files.createTempDirectory("hoshi-bookshelf-progress").toFile()
+        try {
+            val storage = BookStorage(filesDir)
+            val root = File(filesDir, "Books/book-a").also { it.mkdirs() }
+            storage.saveBookInfo(root, BookInfo(characterCount = 200, chapterInfo = emptyMap()))
+            storage.saveBookmark(
+                root,
+                Bookmark(
+                    chapterIndex = 0,
+                    progress = 0.0,
+                    characterCount = 50,
+                ),
+            )
+            val entry = BookEntry(
+                root = root,
+                metadata = BookMetadata(
+                    id = "a",
+                    title = "Book A",
+                    cover = null,
+                    folder = "book-a",
+                    lastAccess = 1.0,
+                ),
+            )
+
+            assertEquals(0.25, loadBookProgressById(listOf(entry), storage).getValue("a"), 0.0001)
+        } finally {
+            filesDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun mainSurfacesAvoidExpensiveDecorativeEffects() {
+        val sourceFiles = listOf(
+            "src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt",
+            "src/main/java/moe/antimony/hoshi/features/dictionary/DictionarySearchView.kt",
+            "src/main/java/moe/antimony/hoshi/features/dictionary/LookupPopupView.kt",
+            "src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt",
+        )
+        val source = sourceFiles.joinToString("\n") { File(it).readText() }
+
+        assertFalse(source.contains(".shadow("))
+        assertFalse(source.contains("webView.animate()"))
+        assertFalse(source.contains("tonalElevation = 8.dp"))
+        assertFalse(source.contains("shadowElevation = 8.dp"))
+    }
+
+    @Test
+    fun settingsRowsUseMaterialFullWidthDividers() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
+
+        assertFalse(source.contains("Modifier.padding(start = 72.dp)"))
     }
 }

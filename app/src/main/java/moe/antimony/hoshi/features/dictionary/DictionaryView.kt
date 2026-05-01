@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -340,7 +341,8 @@ fun DictionaryView(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(24.dp),
                             color = colorScheme.surface,
-                            tonalElevation = 1.dp,
+                            border = BorderStroke(1.dp, colorScheme.outlineVariant),
+                            tonalElevation = 0.dp,
                         ) {
                             Column {
                                 ListItem(
@@ -440,7 +442,6 @@ fun DictionaryView(
                                 .zIndex(if (isDragging) 1f else 0f)
                                 .graphicsLayer {
                                     translationY = if (isDragging) dragOffsetY else 0f
-                                    shadowElevation = if (isDragging) 16f else 0f
                                 },
                             onDragStart = { startDrag(index, dictionary.path.name) },
                             onDrag = { delta ->
@@ -554,7 +555,8 @@ private fun DictionaryRow(
             },
             shape = RoundedCornerShape(20.dp),
             color = colorScheme.surface,
-            tonalElevation = 1.dp,
+            border = BorderStroke(1.dp, colorScheme.outlineVariant),
+            tonalElevation = 0.dp,
         ) {
             ListItem(
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -748,7 +750,8 @@ private fun DictionaryCustomCssView(
                 .padding(16.dp),
             shape = RoundedCornerShape(18.dp),
             color = colorScheme.surface,
-            tonalElevation = 1.dp,
+            border = BorderStroke(1.dp, colorScheme.outlineVariant),
+            tonalElevation = 0.dp,
         ) {
             BasicTextField(
                 value = settings.customCSS,
@@ -780,7 +783,8 @@ private fun SettingsGroup(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        tonalElevation = 0.dp,
     ) {
         Column(content = content)
     }

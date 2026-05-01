@@ -2,6 +2,7 @@ package moe.antimony.hoshi.features.dictionary
 
 import android.annotation.SuppressLint
 import android.webkit.WebView
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.absoluteOffset
@@ -95,6 +96,7 @@ fun LookupPopupView(
         val frameX = frame.centerX - frame.width / 2
         val frameY = frame.centerY - frame.height / 2
         val popupBackground = if (state.darkMode) Color.Black else Color.White
+        val popupBorder = if (state.darkMode) Color(0xFF3A3A3C) else Color(0xFFD1D1D6)
         Surface(
             modifier = Modifier
                 .absoluteOffset(
@@ -106,8 +108,9 @@ fun LookupPopupView(
                 .zIndex(2f),
             shape = RoundedCornerShape(8.dp),
             color = popupBackground,
-            tonalElevation = 8.dp,
-            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, popupBorder),
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
         ) {
             LookupPopupWebView(
                 html = html,

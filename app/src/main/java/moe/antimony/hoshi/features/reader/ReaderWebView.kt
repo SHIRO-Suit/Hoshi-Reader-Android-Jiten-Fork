@@ -13,7 +13,6 @@ import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -53,7 +52,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -433,17 +431,11 @@ private fun ReaderMenuCard(
 ) {
     Surface(
         modifier = modifier
-            .width(276.dp)
-            .shadow(
-                elevation = 24.dp,
-                shape = RoundedCornerShape(28.dp),
-                ambientColor = Color.Black.copy(alpha = 0.18f),
-                spotColor = Color.Black.copy(alpha = 0.18f),
-            )
-            .border(BorderStroke(1.dp, Color(colors.menuBorder)), RoundedCornerShape(28.dp)),
+            .width(276.dp),
         shape = RoundedCornerShape(28.dp),
         color = Color(colors.menuContainer),
-        tonalElevation = 8.dp,
+        border = BorderStroke(1.dp, Color(colors.menuBorder)),
+        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
         Column(
@@ -518,12 +510,11 @@ private fun ReaderGlassButton(
 ) {
     Surface(
         modifier = Modifier
-            .shadow(18.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.18f), spotColor = Color.Black.copy(alpha = 0.18f))
-            .border(BorderStroke(1.dp, Color(colors.buttonBorder)), CircleShape)
             .size(54.dp),
         shape = CircleShape,
         color = Color(colors.buttonContainer),
-        tonalElevation = 6.dp,
+        border = BorderStroke(1.dp, Color(colors.buttonBorder)),
+        tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
         Row(
@@ -624,7 +615,6 @@ private fun ChapterWebView(
             val loadKey = "$baseUrl#${readerSetupScript.hashCode()}"
             if (webView.tag != loadKey) {
                 webView.tag = loadKey
-                webView.animate().cancel()
                 webView.alpha = 0f
                 webView.webViewClient = EpubWebViewClient(book, fontManager) { view ->
                     view.evaluateJavascript(readerSetupScript, null)
@@ -757,10 +747,7 @@ private class ReaderRestoreBridge(
     @JavascriptInterface
     fun postMessage(@Suppress("UNUSED_PARAMETER") message: String) {
         webView.post {
-            webView.animate()
-                .alpha(1f)
-                .setDuration(250L)
-                .start()
+            webView.alpha = 1f
         }
     }
 }

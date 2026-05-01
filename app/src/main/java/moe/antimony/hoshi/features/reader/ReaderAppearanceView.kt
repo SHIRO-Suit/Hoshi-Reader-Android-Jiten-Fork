@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -470,7 +471,8 @@ private fun AppearanceSection(
             shape = RoundedCornerShape(28.dp),
             color = palette.group,
             contentColor = palette.onGroup,
-            tonalElevation = 1.dp,
+            border = BorderStroke(1.dp, palette.divider),
+            tonalElevation = 0.dp,
         ) {
             Column(content = content)
         }

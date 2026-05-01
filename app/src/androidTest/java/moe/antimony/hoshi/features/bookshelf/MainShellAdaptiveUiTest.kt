@@ -33,8 +33,17 @@ class MainShellAdaptiveUiTest {
 
         val rootBounds = composeRule.onNodeWithTag(RootTag).getUnclippedBoundsInRoot()
         val contentBounds = composeRule.onNodeWithTag(ContentTag).getUnclippedBoundsInRoot()
+        val navigationBounds = composeRule.onNodeWithTag(CompactNavigationBarTag).getUnclippedBoundsInRoot()
 
-        assertTrue(contentBounds.bottom < rootBounds.bottom)
+        assertTrue((rootBounds.bottom - contentBounds.bottom).value >= 72f)
+        assertTrue(
+            "navigationBounds=$navigationBounds rootBounds=$rootBounds contentBounds=$contentBounds",
+            navigationBounds.height >= 72f,
+        )
+        assertTrue(
+            "navigationBounds=$navigationBounds rootBounds=$rootBounds contentBounds=$contentBounds",
+            navigationBounds.bottom <= rootBounds.bottom,
+        )
     }
 
     @Test
@@ -102,6 +111,9 @@ class MainShellAdaptiveUiTest {
 
     private val DpRect.width
         get() = right - left
+
+    private val DpRect.height: Float
+        get() = (bottom - top).value
 
     private companion object {
         const val RootTag = "main-shell-root"

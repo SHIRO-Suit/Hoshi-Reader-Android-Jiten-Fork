@@ -1,12 +1,15 @@
 package moe.antimony.hoshi.features.bookshelf
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.LruCache
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,11 +21,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -58,6 +63,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,21 +73,24 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -104,6 +114,7 @@ import moe.antimony.hoshi.features.reader.ReaderSettings
 import moe.antimony.hoshi.features.reader.ReaderWebView
 import moe.antimony.hoshi.importing.FileImportContent
 import java.io.File
+import kotlin.math.max
 
 private const val ReportIssueUrl = "https://github.com/HuangAntimony/Hoshi-Reader-Android/issues"
 
@@ -137,6 +148,7 @@ fun BookshelfView(
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var contextMenuEntry by remember { mutableStateOf<BookEntry?>(null) }
     var deleteCandidate by remember { mutableStateOf<BookEntry?>(null) }
+    var bookProgressById by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var selectedBookRoot by remember { mutableStateOf<File?>(null) }
     var book by remember { mutableStateOf<EpubBook?>(null) }
     var bookmark by remember { mutableStateOf<Bookmark?>(null) }
@@ -144,8 +156,15 @@ fun BookshelfView(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    fun reloadBookEntries() {
-        bookEntries = bookStorage.loadBookEntries(sortOption)
+    fun reloadBookEntries(option: BookSortOption = sortOption) {
+        scope.launch {
+            val (entries, progressById) = withContext(Dispatchers.IO) {
+                val entries = bookStorage.loadBookEntries(option)
+                entries to loadBookProgressById(entries, bookStorage)
+            }
+            bookEntries = entries
+            bookProgressById = progressById
+        }
     }
 
     fun saveMetadata(root: File, parsedBook: EpubBook, previous: BookMetadata? = null) {
@@ -267,6 +286,14 @@ fun BookshelfView(
                     lastModified = bookStorage.currentAppleReferenceDateSeconds(),
                 )
                 bookmark = savedBookmark
+                val total = parsedBook.bookInfo.characterCount
+                val readingProgress = if (total > 0) {
+                    savedBookmark.characterCount.toDouble().div(total.toDouble()).coerceIn(0.0, 1.0)
+                } else {
+                    0.0
+                }
+                val bookId = bookEntries.firstOrNull { it.root == file }?.metadata?.id ?: file.name
+                bookProgressById = bookProgressById + (bookId to readingProgress)
                 scope.launch(Dispatchers.IO) {
                     bookStorage.saveBookmark(file, savedBookmark)
                 }
@@ -317,6 +344,7 @@ fun BookshelfView(
                 modifier = contentModifier,
                 layoutSpec = layoutSpec,
                 bookEntries = bookEntries,
+                bookProgressById = bookProgressById,
                 bookStorage = bookStorage,
                 isLoading = isLoading,
                 errorMessage = errorMessage,
@@ -326,7 +354,7 @@ fun BookshelfView(
                 onSortChange = {
                     sortOption = it
                     sortMenuExpanded = false
-                    reloadBookEntries()
+                    reloadBookEntries(it)
                 },
                 onImport = ::launchBookImporter,
                 onOpenBook = { parseBook(it.root, openReader = true, refreshAccess = true) },
@@ -417,39 +445,113 @@ internal fun HoshiMainShell(
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val layoutSpec = MainShellLayoutSpec.forWidthDp(maxWidth.value.toInt())
-        NavigationSuiteScaffold(
-            modifier = Modifier.fillMaxSize(),
-            layoutType = layoutSpec.toNavigationSuiteType(),
-            navigationSuiteItems = {
-                MainTab.entries.forEach { tab ->
-                    item(
-                        selected = tab == selectedTab,
-                        onClick = { onSelectedTabChange(tab) },
-                        icon = { BottomTabGlyph(tab, Modifier.size(24.dp)) },
-                        label = { Text(tab.label) },
+        if (layoutSpec.navigationLayout == MainShellNavigationLayout.BottomBar) {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onBackground,
+                bottomBar = {
+                    HoshiCompactBottomNavigation(
+                        selectedTab = selectedTab,
+                        onSelectedTabChange = onSelectedTabChange,
+                        layoutSpec = layoutSpec,
+                    )
+                },
+            ) { innerPadding ->
+                Box(Modifier.fillMaxSize()) {
+                    content(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        layoutSpec,
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = innerPadding.calculateBottomPadding()),
+                        color = MaterialTheme.colorScheme.outlineVariant,
                     )
                 }
-            },
-            containerColor = MaterialTheme.colorScheme.background,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-        ) {
-            content(
-                Modifier
-                    .fillMaxSize()
-                    .then(
-                        if (layoutSpec.navigationLayout == MainShellNavigationLayout.NavigationRail) {
-                            Modifier.padding(start = NavigationRailInset)
-                        } else {
-                            Modifier
-                        },
-                    ),
-                layoutSpec,
-            )
+            }
+        } else {
+            NavigationSuiteScaffold(
+                modifier = Modifier.fillMaxSize(),
+                layoutType = layoutSpec.toNavigationSuiteType(),
+                navigationSuiteItems = {
+                    MainTab.entries.forEach { tab ->
+                        item(
+                            selected = tab == selectedTab,
+                            onClick = { onSelectedTabChange(tab) },
+                            icon = { BottomTabGlyph(tab, Modifier.size(24.dp)) },
+                            label = { Text(tab.label) },
+                        )
+                    }
+                },
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onBackground,
+            ) {
+                content(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(start = NavigationRailInset),
+                    layoutSpec,
+                )
+            }
         }
     }
 }
 
 private val NavigationRailInset = 80.dp
+
+internal const val CompactNavigationBarTag = "compact-navigation-bar"
+
+@Composable
+private fun HoshiCompactBottomNavigation(
+    selectedTab: MainTab,
+    onSelectedTabChange: (MainTab) -> Unit,
+    layoutSpec: MainShellLayoutSpec,
+) {
+    val containerColor = MaterialTheme.colorScheme.background
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(CompactNavigationBarTag),
+        color = containerColor,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Column {
+            Spacer(Modifier.height(4.dp))
+            NavigationBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(layoutSpec.compactNavigationHeightDp.dp),
+                containerColor = containerColor,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                tonalElevation = 0.dp,
+                windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
+            ) {
+                MainTab.entries.forEach { tab ->
+                    NavigationBarItem(
+                        selected = tab == selectedTab,
+                        onClick = { onSelectedTabChange(tab) },
+                        icon = { BottomTabGlyph(tab, Modifier.size(24.dp)) },
+                        label = {
+                            Text(
+                                text = tab.label,
+                                style = MaterialTheme.typography.labelMedium,
+                            )
+                        },
+                    )
+                }
+            }
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+            )
+        }
+    }
+}
 
 private fun MainShellLayoutSpec.toNavigationSuiteType(): NavigationSuiteType =
     when (navigationLayout) {
@@ -458,10 +560,26 @@ private fun MainShellLayoutSpec.toNavigationSuiteType(): NavigationSuiteType =
     }
 
 @Composable
+private fun MainShellTextStyle.toTextStyle(): TextStyle =
+    when (this) {
+        MainShellTextStyle.BodyLarge -> MaterialTheme.typography.bodyLarge
+        MainShellTextStyle.TitleMedium -> MaterialTheme.typography.titleMedium
+        MainShellTextStyle.TitleLarge -> MaterialTheme.typography.titleLarge
+    }
+
+private fun MainShellFontWeight.toFontWeight(): FontWeight =
+    when (this) {
+        MainShellFontWeight.Normal -> FontWeight.Normal
+        MainShellFontWeight.Medium -> FontWeight.Medium
+        MainShellFontWeight.SemiBold -> FontWeight.SemiBold
+    }
+
+@Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun BooksTab(
     layoutSpec: MainShellLayoutSpec,
     bookEntries: List<BookEntry>,
+    bookProgressById: Map<String, Double>,
     bookStorage: BookStorage,
     isLoading: Boolean,
     errorMessage: String?,
@@ -482,8 +600,10 @@ private fun BooksTab(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
+        contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp),
         topBar = {
             BooksTopAppBar(
+                layoutSpec = layoutSpec,
                 sortOption = sortOption,
                 sortMenuExpanded = sortMenuExpanded,
                 onSortMenuExpandedChange = onSortMenuExpandedChange,
@@ -516,58 +636,63 @@ private fun BooksTab(
                         .fillMaxWidth()
                         .padding(horizontal = layoutSpec.pageHorizontalPaddingDp.dp),
                 )
-                else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(layoutSpec.bookGridColumns(contentWidthDp)),
-                    modifier = contentModifier.fillMaxHeight(),
-                    contentPadding = PaddingValues(
-                        start = layoutSpec.pageHorizontalPaddingDp.dp,
-                        end = layoutSpec.pageHorizontalPaddingDp.dp,
-                        top = 24.dp,
-                        bottom = 24.dp,
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(layoutSpec.bookGridSpacingDp.dp),
-                    verticalArrangement = Arrangement.spacedBy(24.dp),
-                ) {
-                    sections.forEach { section ->
-                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                            BookshelfSectionHeader(
-                                title = section.title,
-                                count = section.books.size,
-                            )
-                        }
-                        items(
-                            items = section.books,
-                            key = { it.metadata.id },
-                        ) { entry ->
-                            Box {
-                                BookGridCell(
-                                    entry = entry,
-                                    bookStorage = bookStorage,
-                                    onOpen = { onOpenBook(entry) },
-                                    onLongPress = { onContextMenuEntryChange(entry) },
+                else -> CompositionLocalProvider(LocalOverscrollFactory provides null) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(layoutSpec.bookGridColumns(contentWidthDp)),
+                        modifier = contentModifier.fillMaxHeight(),
+                        contentPadding = PaddingValues(
+                            start = layoutSpec.pageHorizontalPaddingDp.dp,
+                            end = layoutSpec.pageHorizontalPaddingDp.dp,
+                            top = layoutSpec.bookGridTopPaddingDp.dp,
+                            bottom = layoutSpec.bookGridBottomPaddingDp.dp,
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(layoutSpec.bookGridSpacingDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(layoutSpec.bookGridVerticalSpacingDp.dp),
+                    ) {
+                        sections.forEach { section ->
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                BookshelfSectionHeader(
+                                    title = section.title,
+                                    count = section.books.size,
+                                    layoutSpec = layoutSpec,
                                 )
-                                DropdownMenu(
-                                    expanded = contextMenuEntry?.metadata?.id == entry.metadata.id,
-                                    onDismissRequest = { onContextMenuEntryChange(null) },
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Delete") },
-                                        onClick = {
-                                            contextMenuEntry?.let(onDeleteCandidate)
-                                            onContextMenuEntryChange(null)
-                                        },
+                            }
+                            items(
+                                items = section.books,
+                                key = { it.metadata.id },
+                            ) { entry ->
+                                Box {
+                                    BookGridCell(
+                                        entry = entry,
+                                        progress = bookProgressById[entry.metadata.id] ?: 0.0,
+                                        bookStorage = bookStorage,
+                                        layoutSpec = layoutSpec,
+                                        onOpen = { onOpenBook(entry) },
+                                        onLongPress = { onContextMenuEntryChange(entry) },
                                     )
+                                    DropdownMenu(
+                                        expanded = contextMenuEntry?.metadata?.id == entry.metadata.id,
+                                        onDismissRequest = { onContextMenuEntryChange(null) },
+                                    ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Delete") },
+                                            onClick = {
+                                                contextMenuEntry?.let(onDeleteCandidate)
+                                                onContextMenuEntryChange(null)
+                                            },
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                    errorMessage?.let { message ->
-                        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                            Text(
-                                text = message,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(top = 8.dp),
-                            )
+                        errorMessage?.let { message ->
+                            item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                                Text(
+                                    text = message,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -579,6 +704,7 @@ private fun BooksTab(
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 private fun BooksTopAppBar(
+    layoutSpec: MainShellLayoutSpec,
     sortOption: BookSortOption,
     sortMenuExpanded: Boolean,
     onSortMenuExpandedChange: (Boolean) -> Unit,
@@ -654,23 +780,27 @@ private fun BooksTopAppBar(
 }
 
 @Composable
-private fun BookshelfSectionHeader(title: String, count: Int) {
+private fun BookshelfSectionHeader(
+    title: String,
+    count: Int,
+    layoutSpec: MainShellLayoutSpec,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp, bottom = 2.dp),
+            .padding(vertical = layoutSpec.shelfHeaderVerticalPaddingDp.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Black,
+            style = layoutSpec.shelfTitleTextStyle.toTextStyle(),
+            fontWeight = layoutSpec.shelfTitleFontWeight.toFontWeight(),
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.width(12.dp))
         Text(
             text = count.toString(),
-            style = MaterialTheme.typography.headlineSmall,
+            style = layoutSpec.shelfCountTextStyle.toTextStyle(),
             color = Color(0xFF8C8C92),
         )
         Spacer(Modifier.width(8.dp))
@@ -681,7 +811,9 @@ private fun BookshelfSectionHeader(title: String, count: Int) {
 @Composable
 private fun BookGridCell(
     entry: BookEntry,
+    progress: Double,
     bookStorage: BookStorage,
+    layoutSpec: MainShellLayoutSpec,
     onOpen: () -> Unit,
     onLongPress: () -> Unit,
 ) {
@@ -694,13 +826,13 @@ private fun BookGridCell(
         BookCoverCard(entry = entry, bookStorage = bookStorage)
         Spacer(Modifier.height(6.dp))
         ReadingProgressPill(
-            progress = remember(entry) { bookStorage.loadReadingProgress(entry.root) },
+            progress = progress,
         )
         Spacer(Modifier.height(6.dp))
         Text(
             text = entry.metadata.title ?: entry.root.name,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
+            style = layoutSpec.bookTitleTextStyle.toTextStyle(),
+            fontWeight = layoutSpec.bookTitleFontWeight.toFontWeight(),
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -708,32 +840,79 @@ private fun BookGridCell(
     }
 }
 
+internal fun loadBookProgressById(
+    entries: List<BookEntry>,
+    bookStorage: BookStorage,
+): Map<String, Double> =
+    entries.associate { entry ->
+        entry.metadata.id to bookStorage.loadReadingProgress(entry.root)
+    }
+
 @Composable
 private fun BookCoverCard(entry: BookEntry, bookStorage: BookStorage) {
     val coverFile = remember(entry) { bookStorage.coverFile(entry) }
-    val bitmap = remember(coverFile) {
-        coverFile?.absolutePath?.let(BitmapFactory::decodeFile)
+    val bitmap by produceState<Bitmap?>(initialValue = null, key1 = coverFile) {
+        value = BookCoverBitmapCache.load(coverFile)
     }
     val shape = RoundedCornerShape(10.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(0.72f)
-            .shadow(10.dp, shape, ambientColor = Color.Black.copy(alpha = 0.12f), spotColor = Color.Black.copy(alpha = 0.12f))
             .clip(shape)
             .background(Color.White)
             .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.9f)), shape),
         contentAlignment = Alignment.Center,
     ) {
-        if (bitmap != null) {
+        bitmap?.let { coverBitmap ->
             Image(
-                bitmap = bitmap.asImageBitmap(),
+                bitmap = coverBitmap.asImageBitmap(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
             )
         }
     }
+}
+
+private object BookCoverBitmapCache {
+    private const val MaxCoverDimensionPx = 900
+    private val cache = object : LruCache<String, Bitmap>(24 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    }
+
+    suspend fun load(coverFile: File?): Bitmap? = withContext(Dispatchers.IO) {
+        coverFile ?: return@withContext null
+        val key = coverFile.cacheKey()
+        synchronized(cache) {
+            cache.get(key)?.let { return@withContext it }
+        }
+        val bitmap = decodeSampledCoverBitmap(coverFile, MaxCoverDimensionPx) ?: return@withContext null
+        synchronized(cache) {
+            cache.put(key, bitmap)
+        }
+        bitmap
+    }
+
+    private fun File.cacheKey(): String = "$absolutePath:${lastModified()}:${length()}"
+}
+
+internal fun coverDecodeSampleSize(width: Int, height: Int, maxDimensionPx: Int): Int {
+    if (width <= 0 || height <= 0 || maxDimensionPx <= 0) return 1
+    var sampleSize = 1
+    while (max(width / sampleSize, height / sampleSize) > maxDimensionPx) {
+        sampleSize *= 2
+    }
+    return sampleSize
+}
+
+private fun decodeSampledCoverBitmap(file: File, maxDimensionPx: Int): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(file.absolutePath, bounds)
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = coverDecodeSampleSize(bounds.outWidth, bounds.outHeight, maxDimensionPx)
+    }
+    return BitmapFactory.decodeFile(file.absolutePath, options)
 }
 
 @Composable
@@ -833,7 +1012,8 @@ private fun SettingsGroupCard(
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        tonalElevation = 0.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
@@ -841,7 +1021,6 @@ private fun SettingsGroupCard(
                 SettingsRow(row = row, onClick = { onDestination(row.destination) })
                 if (index != rows.lastIndex) {
                     HorizontalDivider(
-                        modifier = Modifier.padding(start = 72.dp),
                         color = MaterialTheme.colorScheme.outlineVariant,
                     )
                 }
