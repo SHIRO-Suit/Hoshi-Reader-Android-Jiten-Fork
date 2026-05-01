@@ -11,6 +11,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Prevent the reader from briefly flashing the start of a chapter before restoring the saved reading position. #30
 - Delay lookup popup display until its first rendered entry is ready, avoiding a blank white popup flash on slow-refresh e-ink screens.
 - Speed up dictionary results and lookup popups by serving shared popup assets from the WebView bridge and fetching entries lazily instead of embedding every entry in the initial HTML.
+- Reflow reader pages after device orientation changes so the chapter is rendered for the new screen ratio. #31
 
 ## [v0.1.4] - 2026-05-01
 

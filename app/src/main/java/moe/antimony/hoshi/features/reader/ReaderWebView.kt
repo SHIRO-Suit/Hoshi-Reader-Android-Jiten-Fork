@@ -53,8 +53,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
@@ -103,6 +105,7 @@ fun ReaderWebView(
     var showReaderMenu by remember { mutableStateOf(false) }
     var lookupPopups by remember { mutableStateOf<List<LookupPopupItem>>(emptyList()) }
     var webView by remember { mutableStateOf<WebView?>(null) }
+    var readerWebViewViewportSize by remember { mutableStateOf(IntSize.Zero) }
     val context = LocalContext.current
     val fontManager = remember { ReaderFontManager(context.filesDir) }
     val dictionarySettingsStore = remember { DictionarySettingsStore(context) }
@@ -210,6 +213,15 @@ fun ReaderWebView(
             ChapterWebView(
                 book = book,
                 chapterPosition = readerPosition.loadPosition,
+                webViewViewportSize = readerWebViewViewportSize,
+                onReaderViewportSizeChanged = { size ->
+                    if (size != readerWebViewViewportSize) {
+                        if (readerWebViewViewportSize != IntSize.Zero) {
+                            readerPosition = readerPosition.prepareReloadAtDisplayedPosition()
+                        }
+                        readerWebViewViewportSize = size
+                    }
+                },
                 onWebViewReady = { webView = it },
                 onNextChapter = {
                     val next = readerPosition.loadPosition.nextOrNull(book.chapters.lastIndex)
@@ -533,6 +545,8 @@ private fun ReaderGlassButton(
 private fun ChapterWebView(
     book: EpubBook,
     chapterPosition: ReaderChapterPosition,
+    webViewViewportSize: IntSize,
+    onReaderViewportSizeChanged: (IntSize) -> Unit,
     onWebViewReady: (WebView) -> Unit,
     onNextChapter: () -> Boolean,
     onPreviousChapter: () -> Boolean,
@@ -560,7 +574,9 @@ private fun ChapterWebView(
     }
 
     AndroidView(
-        modifier = modifier.background(Color(readerSettings.backgroundColor(systemDark))),
+        modifier = modifier
+            .onSizeChanged(onReaderViewportSizeChanged)
+            .background(Color(readerSettings.backgroundColor(systemDark))),
         factory = { context ->
             WebView(context).apply {
                 settings.javaScriptEnabled = true
@@ -612,7 +628,7 @@ private fun ChapterWebView(
             }
         },
         update = { webView ->
-            val loadKey = "$baseUrl#${readerSetupScript.hashCode()}"
+            val loadKey = "$baseUrl#${readerSetupScript.hashCode()}#$webViewViewportSize"
             if (webView.tag != loadKey) {
                 webView.tag = loadKey
                 webView.alpha = 0f

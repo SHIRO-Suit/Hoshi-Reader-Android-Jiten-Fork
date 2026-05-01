@@ -178,4 +178,19 @@ class ReaderSettingsTest {
         assertTrue(chapterWebView.contains("view.evaluateJavascript(readerSetupScript, null)"))
         assertTrue(webViewClient.contains("override fun onPageFinished"))
     }
+
+    @Test
+    fun chapterWebViewReloadsForViewportSizeLikeIosWebViewStateIdentity() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt").readText()
+        val readerView = source.substringAfter("fun ReaderWebView(")
+            .substringBefore("private fun ReaderTopInfo(")
+        val chapterWebView = source.substringAfter("private fun ChapterWebView(")
+            .substringBefore("private class EpubWebViewClient")
+
+        assertTrue(readerView.contains("prepareReloadAtDisplayedPosition()"))
+        assertTrue(readerView.contains("onReaderViewportSizeChanged"))
+        assertTrue(chapterWebView.contains("onSizeChanged"))
+        assertTrue(chapterWebView.contains("webViewViewportSize"))
+        assertTrue(chapterWebView.contains("baseUrl#${'$'}{readerSetupScript.hashCode()}#${'$'}webViewViewportSize"))
+    }
 }

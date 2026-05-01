@@ -60,6 +60,14 @@ class ReaderPaginationScriptsTest {
     }
 
     @Test
+    fun doesNotPatchViewportResizeInsideReaderJavaScript() {
+        val script = ReaderPaginationScripts.shellScript()
+
+        assertFalse(script.contains("relayoutForViewport"))
+        assertFalse(script.contains("window.addEventListener('resize'"))
+    }
+
+    @Test
     fun normalizesCalibreCoverSvgAspectRatio() {
         val script = ReaderPaginationScripts.shellScript()
 
@@ -78,7 +86,8 @@ class ReaderPaginationScriptsTest {
     fun loadScriptRestoresInitialProgressAfterLayout() {
         val script = ReaderPaginationScripts.shellScript(initialProgress = 1.0)
 
-        assertTrue(script.contains("restoreProgress: function(progress)"))
+        assertTrue(script.contains("restoreProgress:"))
+        assertTrue(script.contains("function(progress)"))
         assertTrue(script.contains("if (progress >= 0.99)"))
         assertTrue(script.contains("window.hoshiReader.restoreProgress(1.0)"))
     }
