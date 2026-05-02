@@ -255,6 +255,33 @@ class LookupPopupHtmlTest {
     }
 
     @Test
+    fun eInkDarkPopupCssKeepsTextReadableOnBlackBackground() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),
+            assets = LookupPopupAssets(popupJs = "", popupCss = ""),
+            darkMode = true,
+            eInkMode = true,
+        )
+
+        assertTrue(html.contains("""data-hoshi-color-scheme="dark""""))
+        assertTrue(html.contains("""data-hoshi-eink-mode="true""""))
+        assertTrue(
+            html.contains(
+                """html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] body""",
+            ),
+        )
+        assertTrue(html.contains("--text-color: #fff;"))
+        assertTrue(html.contains("--background-color: #000;"))
+        assertTrue(
+            html.contains(
+                """html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .frequency-group""",
+            ),
+        )
+        assertTrue(html.contains("border: 1px solid #fff !important;"))
+        assertTrue(html.contains("color: #fff !important;"))
+    }
+
+    @Test
     fun injectsEnabledAudioSourcesUsingIosPopupVariables() {
         val html = LookupPopupHtml.render(
             listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),

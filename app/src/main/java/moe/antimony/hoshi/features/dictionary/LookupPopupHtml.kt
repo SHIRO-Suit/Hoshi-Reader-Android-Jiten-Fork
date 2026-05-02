@@ -399,6 +399,53 @@ internal object LookupPopupHtml {
             color: #000 !important;
             border-top: 1px solid #000 !important;
         }
+
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"],
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] body {
+            --background-color: #000;
+            --background-color-light: #000;
+            --text-color: #fff;
+            --text-color-light1: #fff;
+            --text-color-light2: #fff;
+            --text-color-light3: #fff;
+            --text-color-light4: #fff;
+            --background-color-dark1: #000;
+            color-scheme: dark;
+        }
+
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .deinflection-tag,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .expr-tag,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .glossary-tag,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .pitch-dict-label,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .frequency-group {
+            background-color: #000 !important;
+            color: #fff !important;
+            border: 1px solid #fff !important;
+        }
+
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .frequency-dict-label {
+            background-color: #000 !important;
+            color: #fff !important;
+            border-right: 1px solid #fff !important;
+        }
+
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .frequency-values,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .audio-button,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .mine-button,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .overlay {
+            background-color: #000 !important;
+            color: #fff !important;
+        }
+
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .audio-button.pressed,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .audio-button:active,
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .mine-button:active {
+            outline: 1px solid #fff !important;
+        }
+
+        html[data-hoshi-color-scheme="dark"][data-hoshi-eink-mode="true"] .overlay {
+            border-top: 1px solid #fff !important;
+        }
     """
 
     private const val PopupAssetBaseUrl = "https://hoshi.local/popup"

@@ -18,6 +18,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Use the same compact Settings detail header for Dictionaries, Appearance, and Advanced so subpage content starts directly below a single top bar.
 - Prevent dictionary lookups from starting when tapping links, ruby text, or popup cross-reference links, and align reader WebView text sizing with iOS.
 - Keep reader progress and page turns in sync after tapping EPUB internal chapter links from the in-book table of contents. #39
+- Keep lookup popup text, tags, and controls readable when E-ink Mode and Dark theme are both enabled. #37
 
 ## [v0.1.6] - 2026-05-02
 
