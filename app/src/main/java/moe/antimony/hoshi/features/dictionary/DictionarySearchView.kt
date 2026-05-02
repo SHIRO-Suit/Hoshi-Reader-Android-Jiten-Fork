@@ -4,7 +4,8 @@ import android.annotation.SuppressLint
 import android.webkit.WebView
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -283,35 +285,20 @@ fun DictionarySearchView(
                 ),
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(backCount, forwardCount) {
-                        var totalX = 0f
-                        var totalY = 0f
-                        detectDragGestures(
-                            onDrag = { _, dragAmount ->
-                                totalX += dragAmount.x
-                                totalY += dragAmount.y
-                            },
-                            onDragEnd = {
-                                if (abs(totalX) > 30f && abs(totalX) > abs(totalY) * 1.75f) {
-                                    if (totalX > 0 && backCount > 0) {
-                                        backSignal += 1
-                                        backCount -= 1
-                                        forwardCount += 1
-                                    } else if (totalX < 0 && forwardCount > 0) {
-                                        forwardSignal += 1
-                                        forwardCount -= 1
-                                        backCount += 1
-                                    }
-                                }
-                                totalX = 0f
-                                totalY = 0f
-                            },
-                            onDragCancel = {
-                                totalX = 0f
-                                totalY = 0f
-                            },
-                        )
-                    },
+                    .observeDictionaryHistorySwipe(
+                        backCount = backCount,
+                        forwardCount = forwardCount,
+                        onBack = {
+                            backSignal += 1
+                            backCount -= 1
+                            forwardCount += 1
+                        },
+                        onForward = {
+                            forwardSignal += 1
+                            forwardCount -= 1
+                            backCount += 1
+                        },
+                    ),
             )
             errorMessage != null -> DictionarySearchMessage(
                 text = requireNotNull(errorMessage),
@@ -339,6 +326,39 @@ fun DictionarySearchView(
             onRootPopupDismissed = { resultClearSelectionSignal += 1 },
             modifier = Modifier.fillMaxSize(),
         )
+    }
+}
+
+private fun Modifier.observeDictionaryHistorySwipe(
+    backCount: Int,
+    forwardCount: Int,
+    onBack: () -> Unit,
+    onForward: () -> Unit,
+): Modifier = pointerInput(backCount, forwardCount) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        var lastPosition = down.position
+        var totalX = 0f
+        var totalY = 0f
+        do {
+            val event = awaitPointerEvent(pass = PointerEventPass.Final)
+            val change = event.changes.firstOrNull { it.id == down.id } ?: event.changes.firstOrNull()
+            if (change != null) {
+                val currentPosition = change.position
+                val delta = currentPosition - lastPosition
+                totalX += delta.x
+                totalY += delta.y
+                lastPosition = currentPosition
+            }
+        } while (event.changes.any { it.pressed })
+
+        if (abs(totalX) > 30f && abs(totalX) > abs(totalY) * 1.75f) {
+            if (totalX > 0 && backCount > 0) {
+                onBack()
+            } else if (totalX < 0 && forwardCount > 0) {
+                onForward()
+            }
+        }
     }
 }
 

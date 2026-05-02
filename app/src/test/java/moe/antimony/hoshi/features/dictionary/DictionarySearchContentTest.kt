@@ -10,6 +10,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class DictionarySearchContentTest {
     @Test
@@ -111,6 +112,16 @@ class DictionarySearchContentTest {
         assertTrue(options.darkMode)
         assertTrue(options.eInkMode)
         assertTrue(options.audioSettings.enableAutoplay)
+    }
+
+    @Test
+    fun dictionarySearchHistoryGestureDoesNotConsumeWebViewVerticalScroll() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/dictionary/DictionarySearchView.kt").readText()
+        val webViewModifier = source.substringAfter("html.isNotBlank() -> DictionaryResultWebView(")
+            .substringBefore("errorMessage != null ->")
+
+        assertFalse(webViewModifier.contains("detectDragGestures("))
+        assertTrue(webViewModifier.contains("observeDictionaryHistorySwipe("))
     }
 
     private fun lookupResult(): LookupResult = LookupResult(
