@@ -198,7 +198,7 @@ class LookupPopupHtmlTest {
             darkMode = true,
         )
 
-        assertTrue(html.contains("""<html data-hoshi-color-scheme="dark">"""))
+        assertTrue(html.contains("""data-hoshi-color-scheme="dark""""))
         assertTrue(html.contains("html[data-hoshi-color-scheme=\"dark\"],"))
         assertTrue(html.contains("--text-color: #fff;"))
         assertTrue(html.contains("background-color: #000 !important;"))
@@ -214,9 +214,42 @@ class LookupPopupHtmlTest {
             darkMode = false,
         )
 
-        assertTrue(html.contains("""<html data-hoshi-color-scheme="light">"""))
+        assertTrue(html.contains("""data-hoshi-color-scheme="light""""))
         assertTrue(html.contains("background-color: #fff !important;"))
         assertTrue(html.contains("color-scheme: light;"))
+    }
+
+    @Test
+    fun doesNotInjectEInkPopupCssWhenEInkModeIsOff() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),
+            assets = LookupPopupAssets(popupJs = "", popupCss = ""),
+            eInkMode = false,
+        )
+
+        assertTrue(html.contains("""data-hoshi-eink-mode="false""""))
+        assertFalse(html.contains("E Ink CSS for Yomitan"))
+        assertFalse(html.contains("""html[data-hoshi-eink-mode="true"] .frequency-group"""))
+        assertFalse(html.contains("""html[data-hoshi-eink-mode="true"] .audio-button"""))
+    }
+
+    @Test
+    fun injectsScopedEInkPopupCssForHoshiPopupDom() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "eat")),
+            assets = LookupPopupAssets(popupJs = "", popupCss = ""),
+            eInkMode = true,
+        )
+
+        assertTrue(html.contains("""data-hoshi-eink-mode="true""""))
+        assertTrue(html.contains("Adapted from E Ink CSS for Yomitan"))
+        assertTrue(html.contains("""html[data-hoshi-eink-mode="true"] .frequency-group"""))
+        assertTrue(html.contains("""html[data-hoshi-eink-mode="true"] .frequency-dict-label"""))
+        assertTrue(html.contains("""html[data-hoshi-eink-mode="true"] .glossary-tag"""))
+        assertTrue(html.contains("""html[data-hoshi-eink-mode="true"] .audio-button"""))
+        assertTrue(html.contains("""html[data-hoshi-eink-mode="true"] .mine-button"""))
+        assertTrue(html.contains("border-radius: 0 !important;"))
+        assertTrue(html.contains("transition: none !important;"))
     }
 
     @Test

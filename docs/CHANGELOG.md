@@ -13,6 +13,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 - Reduce excess top spacing in Books, Settings, and the Advanced settings header so those screens use more visible space near the status bar. #36
 - Make Android system Back return from Settings -> Diagnostics to Settings instead of closing the app.
+- Render lookup popups in e-ink mode with high-contrast square black/white styling for dictionary tags, frequency labels, and popup controls.
 - Fix Dictionary tab lookup results rendering blank after search in v0.1.5 by loading popup CSS and JavaScript from the shared WebView bridge regardless of the result page base URL. #33
 - Render SVG dictionary media in lookup popups, restoring icons embedded in structured dictionary definitions. #35
 - Fix a crash when opening `また、同じ夢を見ていた.epub` by normalizing EPUB-private CSS before Android WebView renders reader chapters. #34

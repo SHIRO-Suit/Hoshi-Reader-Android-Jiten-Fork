@@ -40,6 +40,7 @@ internal object LookupPopupHtml {
         swipeToDismiss: Boolean = false,
         swipeThreshold: Int = 40,
         darkMode: Boolean = false,
+        eInkMode: Boolean = false,
         audioSettings: AudioSettings = AudioSettings(),
     ): String {
         val entryCount = results.size
@@ -54,6 +55,7 @@ internal object LookupPopupHtml {
         val colorScheme = if (darkMode) "dark" else "light"
         val popupCss = assets?.let { """<style>${it.popupCss}</style>""" }
             ?: """<link rel="stylesheet" href="$PopupAssetBaseUrl/popup.css">"""
+        val eInkCss = if (eInkMode) """<style>$eInkPopupCss</style>""" else ""
         val selectionJs = assets?.let { """<script>${it.selectionJs}</script>""" }
             ?: """<script src="$PopupAssetBaseUrl/selection.js"></script>"""
         val popupJs = assets?.let { """<script>${it.popupJs}</script>""" }
@@ -70,11 +72,12 @@ internal object LookupPopupHtml {
         }
         return """
             <!DOCTYPE html>
-            <html data-hoshi-color-scheme="$colorScheme">
+            <html data-hoshi-color-scheme="$colorScheme" data-hoshi-eink-mode="$eInkMode">
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 $popupCss
                 <style>$androidColorSchemeCss</style>
+                $eInkCss
                 $selectionJs
                 $popupJs
             </head>
@@ -302,6 +305,92 @@ internal object LookupPopupHtml {
 
         html[data-hoshi-color-scheme="dark"] .glossary-group > div[data-dictionary] {
             color: var(--text-color) !important;
+        }
+    """
+
+    private const val eInkPopupCss = """
+        /*
+         * Adapted from E Ink CSS for Yomitan:
+         * https://github.com/Mansive/yomitan-eink-css
+         */
+        html[data-hoshi-eink-mode="true"],
+        html[data-hoshi-eink-mode="true"] body {
+            --background-color: #fff;
+            --background-color-light: #fff;
+            --text-color: #000;
+            --text-color-light1: #000;
+            --text-color-light2: #000;
+            --text-color-light3: #000;
+            --text-color-light4: #000;
+            --background-color-dark1: #fff;
+            color-scheme: light;
+        }
+
+        html[data-hoshi-eink-mode="true"] *,
+        html[data-hoshi-eink-mode="true"] *::before,
+        html[data-hoshi-eink-mode="true"] *::after {
+            transition: none !important;
+            animation-duration: 0s !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .deinflection-tag,
+        html[data-hoshi-eink-mode="true"] .expr-tag,
+        html[data-hoshi-eink-mode="true"] .glossary-tag,
+        html[data-hoshi-eink-mode="true"] .pitch-dict-label {
+            background-color: #fff !important;
+            color: #000 !important;
+            border: 1px solid #000 !important;
+            border-radius: 0 !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .frequency-group {
+            background-color: #fff !important;
+            color: #000 !important;
+            border: 1px solid #000 !important;
+            border-radius: 0 !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .frequency-dict-label {
+            background-color: #fff !important;
+            color: #000 !important;
+            border-right: 1px solid #000 !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .frequency-values {
+            background-color: #fff !important;
+            color: #000 !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .audio-button,
+        html[data-hoshi-eink-mode="true"] .mine-button {
+            border-radius: 0 !important;
+            background-color: transparent !important;
+            color: #000 !important;
+            opacity: 1 !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .audio-button.pressed,
+        html[data-hoshi-eink-mode="true"] .audio-button:active,
+        html[data-hoshi-eink-mode="true"] .mine-button:active {
+            background-color: #fff !important;
+            outline: 1px solid #000 !important;
+            outline-offset: -1px !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .glossary-group > summary::before {
+            opacity: 1 !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .dict-label {
+            opacity: 1 !important;
+        }
+
+        html[data-hoshi-eink-mode="true"] .overlay {
+            background: #fff !important;
+            color: #000 !important;
+            border-top: 1px solid #000 !important;
         }
     """
 

@@ -3,7 +3,9 @@ package moe.antimony.hoshi.features.dictionary
 import moe.antimony.hoshi.features.reader.ReaderSelectionData
 import moe.antimony.hoshi.features.reader.ReaderSelectionRect
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class LookupPopupTest {
     @Test
@@ -107,5 +109,15 @@ class LookupPopupTest {
 
         assertEquals(1, afterDismissingChild.single { it.id == "root" }.clearSelectionSignal)
         assertEquals(1, afterDismissingGrandchild.single { it.id == "child" }.clearSelectionSignal)
+    }
+
+    @Test
+    fun popupStateCarriesEInkModeFromOptions() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/dictionary/LookupPopupStack.kt").readText()
+        val stateCreation = source.substringAfter("state = LookupPopupState(")
+            .substringBefore("),")
+
+        assertTrue(source.contains("val eInkMode: Boolean = false"))
+        assertTrue(stateCreation.contains("eInkMode = options.eInkMode"))
     }
 }

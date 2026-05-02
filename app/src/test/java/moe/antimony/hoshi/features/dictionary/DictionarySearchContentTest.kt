@@ -69,9 +69,27 @@ class DictionarySearchContentTest {
     }
 
     @Test
+    fun dictionarySearchCanRenderEInkPopupCssFromReaderSettings() {
+        val state = DictionarySearchContent.runLookup(
+            query = " 猫 ",
+            lookup = { listOf(lookupResult()) },
+            assets = LookupPopupAssets(
+                popupJs = "window.renderPopup = function() {};",
+                popupCss = ".entry-header {}",
+            ),
+            eInkMode = ReaderSettings(eInkMode = true).eInkMode,
+        )
+
+        assertTrue(state.hasResults)
+        assertTrue(state.html.contains("""data-hoshi-eink-mode="true""""))
+        assertTrue(state.html.contains("""html[data-hoshi-eink-mode="true"] .frequency-group"""))
+    }
+
+    @Test
     fun dictionaryPopupOptionsUseAppearancePopupSettingsLikeIos() {
         val options = dictionarySearchPopupOptions(
             readerSettings = ReaderSettings(
+                eInkMode = true,
                 popupWidth = 480,
                 popupHeight = 360,
                 popupFullWidth = true,
@@ -91,6 +109,29 @@ class DictionarySearchContentTest {
         assertEquals(65, options.swipeThreshold)
         assertEquals(7, options.dictionarySettings.maxResults)
         assertTrue(options.darkMode)
+        assertTrue(options.eInkMode)
         assertTrue(options.audioSettings.enableAutoplay)
     }
+
+    private fun lookupResult(): LookupResult = LookupResult(
+        matched = "猫",
+        deinflected = "猫",
+        process = emptyArray(),
+        term = TermResult(
+            expression = "猫",
+            reading = "ねこ",
+            rules = "",
+            glossaries = arrayOf(
+                GlossaryEntry(
+                    dictName = "JMdict",
+                    glossary = "cat",
+                    definitionTags = "",
+                    termTags = "",
+                ),
+            ),
+            frequencies = emptyArray<FrequencyEntry>(),
+            pitches = emptyArray<PitchEntry>(),
+        ),
+        preprocessorSteps = 0,
+    )
 }

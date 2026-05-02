@@ -21,6 +21,7 @@ internal data class LookupPopupOptions(
     val bottomInset: Double = 0.0,
     val dictionarySettings: DictionarySettings = DictionarySettings(),
     val darkMode: Boolean = false,
+    val eInkMode: Boolean = false,
     val audioSettings: AudioSettings = AudioSettings(),
 )
 
@@ -56,6 +57,7 @@ internal fun createLookupPopupItem(
             topInset = options.topInset,
             bottomInset = options.bottomInset,
             darkMode = options.darkMode,
+            eInkMode = options.eInkMode,
             audioSettings = options.audioSettings,
         ),
     ) to first.matched.codePointCount(0, first.matched.length)

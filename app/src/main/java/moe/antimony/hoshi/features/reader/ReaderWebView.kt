@@ -125,6 +125,7 @@ fun ReaderWebView(
                 swipeThreshold = effectiveSettings.popupSwipeThreshold,
                 dictionarySettings = dictionarySettingsStore.load(),
                 darkMode = effectiveSettings.usesDarkInterface(systemDarkTheme),
+                eInkMode = effectiveSettings.eInkMode,
                 audioSettings = audioSettingsStore.load(),
             ),
         )
@@ -140,6 +141,7 @@ fun ReaderWebView(
                 swipeThreshold = effectiveSettings.popupSwipeThreshold,
                 dictionarySettings = dictionarySettingsStore.load(),
                 darkMode = effectiveSettings.usesDarkInterface(systemDarkTheme),
+                eInkMode = effectiveSettings.eInkMode,
                 audioSettings = audioSettingsStore.load(),
             ),
         )

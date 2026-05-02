@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -45,6 +46,7 @@ data class LookupPopupState(
     val topInset: Double = 0.0,
     val bottomInset: Double = 0.0,
     val darkMode: Boolean = false,
+    val eInkMode: Boolean = false,
     val audioSettings: AudioSettings = AudioSettings(),
 )
 
@@ -67,6 +69,7 @@ fun LookupPopupView(
         state.swipeToDismiss,
         state.swipeThreshold,
         state.darkMode,
+        state.eInkMode,
         state.audioSettings,
     ) {
         LookupPopupHtml.render(
@@ -76,6 +79,7 @@ fun LookupPopupView(
             swipeToDismiss = state.swipeToDismiss,
             swipeThreshold = state.swipeThreshold,
             darkMode = state.darkMode,
+            eInkMode = state.eInkMode,
             audioSettings = state.audioSettings,
         )
     }
@@ -96,7 +100,12 @@ fun LookupPopupView(
         val frameX = frame.centerX - frame.width / 2
         val frameY = frame.centerY - frame.height / 2
         val popupBackground = if (state.darkMode) Color.Black else Color.White
-        val popupBorder = if (state.darkMode) Color(0xFF3A3A3C) else Color(0xFFD1D1D6)
+        val popupBorder = when {
+            state.eInkMode && state.darkMode -> Color.White
+            state.eInkMode -> Color.Black
+            state.darkMode -> Color(0xFF3A3A3C)
+            else -> Color(0xFFD1D1D6)
+        }
         Surface(
             modifier = Modifier
                 .absoluteOffset(
@@ -107,7 +116,7 @@ fun LookupPopupView(
                 .height(frame.height.dp)
                 .alpha(if (contentReady) 1f else 0f)
                 .zIndex(2f),
-            shape = RoundedCornerShape(8.dp),
+            shape = if (state.eInkMode) RectangleShape else RoundedCornerShape(8.dp),
             color = popupBackground,
             border = BorderStroke(1.dp, popupBorder),
             tonalElevation = 0.dp,

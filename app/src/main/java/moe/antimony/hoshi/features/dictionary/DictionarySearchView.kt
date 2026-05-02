@@ -79,6 +79,7 @@ internal object DictionarySearchContent {
         dictionaryStyles: Map<String, String> = emptyMap(),
         dictionarySettings: DictionarySettings = DictionarySettings(),
         darkMode: Boolean = false,
+        eInkMode: Boolean = false,
         audioSettings: AudioSettings = AudioSettings(),
     ): DictionarySearchRenderState {
         val trimmed = query.trim()
@@ -110,6 +111,7 @@ internal object DictionarySearchContent {
                 topSpacerPx = DictionarySearchTopSpacerPx,
                 settings = dictionarySettings,
                 darkMode = darkMode,
+                eInkMode = eInkMode,
                 audioSettings = audioSettings,
             ),
             results = results,
@@ -135,6 +137,7 @@ internal fun dictionarySearchPopupOptions(
     bottomInset = DictionaryPopupBottomInset,
     dictionarySettings = dictionarySettings,
     darkMode = darkMode,
+    eInkMode = readerSettings.eInkMode,
     audioSettings = audioSettings,
 )
 
@@ -191,6 +194,7 @@ fun DictionarySearchView(
                         dictionaryStyles = styles,
                         dictionarySettings = settings,
                         darkMode = popupDarkMode,
+                        eInkMode = readerSettings.eInkMode,
                         audioSettings = loadedAudioSettings,
                     )
                 }
