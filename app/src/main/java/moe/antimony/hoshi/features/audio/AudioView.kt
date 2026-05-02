@@ -61,7 +61,9 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import moe.antimony.hoshi.features.sasayaki.SasayakiSettingsView
 import moe.antimony.hoshi.importing.FileImportContent
+import moe.antimony.hoshi.importing.ImportFileType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +74,13 @@ fun AdvancedSettingsView(
     var destination by remember { mutableStateOf<AdvancedDestination?>(null) }
     if (destination == AdvancedDestination.Audio) {
         AudioSettingsView(
+            onClose = { destination = null },
+            modifier = modifier,
+        )
+        return
+    }
+    if (destination == AdvancedDestination.Sasayaki) {
+        SasayakiSettingsView(
             onClose = { destination = null },
             modifier = modifier,
         )
@@ -114,7 +123,8 @@ fun AdvancedSettingsView(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         leadingContent = { Icon(Icons.Rounded.GraphicEq, contentDescription = null) },
                         headlineContent = { Text("Sasayaki (Audiobooks)") },
-                        supportingContent = { Text("Not implemented yet") },
+                        supportingContent = { Text("Read along with matched audiobook subtitles") },
+                        modifier = Modifier.clickable { destination = AdvancedDestination.Sasayaki },
                     )
                 }
             }
@@ -335,7 +345,7 @@ fun AudioSettingsView(
                                 trailingContent = {
                                     Button(
                                         enabled = !isImporting,
-                                        onClick = { importer.launch(arrayOf("*/*")) },
+                                        onClick = { importer.launch(ImportFileType.LocalAudioDatabase.mimeTypes) },
                                     ) {
                                         Text(if (isImporting) "Importing" else "Import")
                                     }
@@ -510,6 +520,7 @@ private fun BackIconButton(onClick: () -> Unit) {
 
 private enum class AdvancedDestination {
     Audio,
+    Sasayaki,
 }
 
 private const val ProgressUpdateBytes = 64L * 1024L * 1024L

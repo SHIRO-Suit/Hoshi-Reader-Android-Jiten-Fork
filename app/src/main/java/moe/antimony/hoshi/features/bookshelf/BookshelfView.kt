@@ -115,7 +115,10 @@ import moe.antimony.hoshi.features.reader.ReaderAppearanceScreen
 import moe.antimony.hoshi.features.reader.ReaderFontManager
 import moe.antimony.hoshi.features.reader.ReaderSettings
 import moe.antimony.hoshi.features.reader.ReaderWebView
+import moe.antimony.hoshi.features.sasayaki.SasayakiMatchView
+import moe.antimony.hoshi.features.sasayaki.SasayakiSettingsStore
 import moe.antimony.hoshi.importing.FileImportContent
+import moe.antimony.hoshi.importing.ImportFileType
 import moe.antimony.hoshi.ui.theme.LocalHoshiEInkMode
 import java.io.File
 import kotlin.math.max
@@ -136,6 +139,7 @@ fun BookshelfView(
     val bookStorage = remember { BookStorage(context.filesDir) }
     val dictionaryRepository = remember { DictionaryRepository(context.filesDir, context.cacheDir) }
     val dictionarySettingsStore = remember { DictionarySettingsStore(context) }
+    val sasayakiSettingsStore = remember { SasayakiSettingsStore(context) }
     val readerFontManager = remember { ReaderFontManager(context.filesDir) }
     var selectedTab by remember {
         mutableStateOf(
@@ -152,6 +156,8 @@ fun BookshelfView(
     var sortMenuExpanded by remember { mutableStateOf(false) }
     var contextMenuEntry by remember { mutableStateOf<BookEntry?>(null) }
     var deleteCandidate by remember { mutableStateOf<BookEntry?>(null) }
+    var sasayakiMatchEntry by remember { mutableStateOf<BookEntry?>(null) }
+    var sasayakiEnabled by remember { mutableStateOf(sasayakiSettingsStore.load().enabled) }
     var bookProgressById by remember { mutableStateOf<Map<String, Double>>(emptyMap()) }
     var selectedBookRoot by remember { mutableStateOf<File?>(null) }
     var book by remember { mutableStateOf<EpubBook?>(null) }
@@ -253,7 +259,7 @@ fun BookshelfView(
     }
 
     fun launchBookImporter() {
-        importer.launch(arrayOf("application/epub+zip", "application/octet-stream"))
+        importer.launch(ImportFileType.Epub.mimeTypes)
     }
 
     fun updateReaderSettings(settings: ReaderSettings) {
@@ -276,6 +282,7 @@ fun BookshelfView(
     if (isReading && book != null) {
         ReaderWebView(
             book = requireNotNull(book),
+            bookRoot = selectedBookRoot,
             initialChapterIndex = bookmark?.chapterIndex ?: 0,
             initialProgress = bookmark?.progress ?: 0.0,
             readerSettings = readerSettings,
@@ -308,6 +315,16 @@ fun BookshelfView(
         return
     }
 
+    sasayakiMatchEntry?.let { entry ->
+        SasayakiMatchView(
+            bookEntry = entry,
+            bookStorage = bookStorage,
+            onClose = { sasayakiMatchEntry = null },
+            modifier = modifier.fillMaxSize(),
+        )
+        return
+    }
+
     if (settingsDestination == SettingsDestination.Dictionaries) {
         DictionaryView(
             onClose = { settingsDestination = null },
@@ -329,7 +346,10 @@ fun BookshelfView(
 
     if (settingsDestination == SettingsDestination.Advanced) {
         AdvancedSettingsView(
-            onClose = { settingsDestination = null },
+            onClose = {
+                sasayakiEnabled = sasayakiSettingsStore.load().enabled
+                settingsDestination = null
+            },
             modifier = modifier.fillMaxSize(),
         )
         return
@@ -373,6 +393,10 @@ fun BookshelfView(
                 contextMenuEntry = contextMenuEntry,
                 onContextMenuEntryChange = { contextMenuEntry = it },
                 onDeleteCandidate = { deleteCandidate = it },
+                sasayakiEnabled = sasayakiEnabled,
+                onMatchSasayaki = { entry ->
+                    sasayakiMatchEntry = entry
+                },
             )
             MainTab.Dictionary -> DictionarySearchView(
                 readerSettings = readerSettings,
@@ -601,6 +625,8 @@ private fun BooksTab(
     contextMenuEntry: BookEntry?,
     onContextMenuEntryChange: (BookEntry?) -> Unit,
     onDeleteCandidate: (BookEntry) -> Unit,
+    sasayakiEnabled: Boolean,
+    onMatchSasayaki: (BookEntry) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val sections = remember(bookEntries) { bookshelfSections(bookEntries) }
@@ -695,6 +721,15 @@ private fun BooksTab(
                                                 onContextMenuEntryChange(null)
                                             },
                                         )
+                                        if (sasayakiEnabled) {
+                                            DropdownMenuItem(
+                                                text = { Text("Match Sasayaki") },
+                                                onClick = {
+                                                    contextMenuEntry?.let(onMatchSasayaki)
+                                                    onContextMenuEntryChange(null)
+                                                },
+                                            )
+                                        }
                                     }
                                 }
                             }

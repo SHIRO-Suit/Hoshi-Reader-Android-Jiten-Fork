@@ -116,6 +116,31 @@ class ReaderPaginationScriptsTest {
     }
 
     @Test
+    fun exposesSasayakiCueWrappingAndHighlightingLikeIos() {
+        val script = ReaderPaginationScripts.shellScript()
+
+        assertTrue(script.contains("cueWrappers: new Map()"))
+        assertTrue(script.contains("collectSasayakiCueRanges: function(cues)"))
+        assertTrue(script.contains("applySasayakiCues: function(cues)"))
+        assertTrue(script.contains("highlightSasayakiCue: function(cueId, reveal)"))
+        assertTrue(script.contains("clearSasayakiCue: function()"))
+        assertTrue(script.contains("resetSasayakiCues: function()"))
+        assertTrue(script.contains("className = 'hoshi-sasayaki-cue'"))
+        assertTrue(script.contains("hoshi-sasayaki-active"))
+    }
+
+    @Test
+    fun sasayakiRevealScrollsToRangeCenterLikeIos() {
+        val script = ReaderPaginationScripts.shellScript()
+        val scrollToRange = script.substringAfter("scrollToRange: function(range)")
+            .substringBefore("calculateProgress: function()")
+
+        assertTrue(scrollToRange.contains("if (context.pageSize <= 0)"))
+        assertTrue(scrollToRange.contains("var anchor = (context.vertical ? (rect.top + rect.bottom) / 2 : (rect.left + rect.right) / 2) + currentScroll"))
+        assertFalse(scrollToRange.contains("var anchor = (context.vertical ? rect.top : rect.left) + currentScroll"))
+    }
+
+    @Test
     fun pageBoundariesUseLastActualContentPageInsteadOfReportedScrollHeight() {
         val script = ReaderPaginationScripts.shellScript()
 

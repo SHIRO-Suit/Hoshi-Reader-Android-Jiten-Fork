@@ -4,6 +4,7 @@ import uniffi.hoshiepub.EpubBook as NativeEpubBook
 import uniffi.hoshiepub.TocNode as NativeTocNode
 import uniffi.hoshiepub.parseExtractedEpub
 import java.io.File
+import javax.xml.parsers.DocumentBuilderFactory
 
 data class EpubBook(
     val title: String,
@@ -40,6 +41,10 @@ data class EpubChapter(
     val href: String,
     val mediaType: String,
     val html: String,
+    val spineIndex: Int? = null,
+    val linear: Boolean = true,
+    val properties: String? = null,
+    val isGuideToc: Boolean = false,
 )
 
 data class EpubTocItem(
@@ -76,6 +81,7 @@ class EpubBookParser {
     private fun NativeEpubBook.toReaderBook(root: File): EpubBook {
         val manifest = manifest().associateBy { it.id }
         val contentDirectory = File(contentDir())
+        val guideTocHrefs = root.readGuideTocHrefs()
         val chapters = spine().mapIndexedNotNull { index, spineItem ->
             val manifestItem = manifest[spineItem.idref] ?: return@mapIndexedNotNull null
             if (!manifestItem.mediaType.isHtmlMediaType()) return@mapIndexedNotNull null
@@ -88,6 +94,11 @@ class EpubBookParser {
                 href = href,
                 mediaType = manifestItem.mediaType,
                 html = readSpineItemText(index.toUInt()),
+                spineIndex = index,
+                linear = spineItem.linear,
+                properties = manifestItem.properties,
+                isGuideToc = guideTocHrefs.contains(manifestItem.href.normalizeResourceHref()) ||
+                    guideTocHrefs.contains(href.normalizeResourceHref()),
             )
         }
 
@@ -137,6 +148,41 @@ private fun File.relativeHref(root: File): String? {
     }.getOrNull()
 }
 
+private fun File.readGuideTocHrefs(): Set<String> =
+    runCatching {
+        val documentBuilder = DocumentBuilderFactory.newInstance()
+            .apply {
+                isNamespaceAware = true
+                runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
+                runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
+                runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
+            }
+            .newDocumentBuilder()
+        val container = documentBuilder.parse(resolve("META-INF/container.xml"))
+        val rootfiles = container.getElementsByTagNameNS("*", "rootfile")
+        val packagePath = (0 until rootfiles.length)
+            .asSequence()
+            .mapNotNull { index ->
+                rootfiles.item(index).attributes?.getNamedItem("full-path")?.nodeValue
+            }
+            .firstOrNull()
+            ?: return@runCatching emptySet()
+        val packageFile = resolve(packagePath)
+        val packageDir = packageFile.parentFile ?: this
+        val packageDocument = documentBuilder.parse(packageFile)
+        val references = packageDocument.getElementsByTagNameNS("*", "reference")
+        buildSet {
+            for (index in 0 until references.length) {
+                val attributes = references.item(index).attributes ?: continue
+                val type = attributes.getNamedItem("type")?.nodeValue.orEmpty()
+                if (!type.equals("toc", ignoreCase = true)) continue
+                val href = attributes.getNamedItem("href")?.nodeValue?.normalizeResourceHref() ?: continue
+                add(href)
+                packageDir.resolve(href).relativeHref(this@readGuideTocHrefs)?.let(::add)
+            }
+        }
+    }.getOrDefault(emptySet())
+
 private fun String.normalizeResourceHref(): String =
     trim()
         .replace('\\', '/')
@@ -173,22 +219,6 @@ private fun List<EpubChapter>.toBookInfo(): BookInfo {
         total += count
     }
     return BookInfo(characterCount = total, chapterInfo = chapterInfo)
-}
-
-private fun String.filteredReaderText(): String {
-    var text = Regex("(?s)<body.*?</body>").find(this)?.value ?: this
-    text = text.replace(Regex("(?s)<rt[^>]*>.*?</rt>"), "")
-    text = text.replace(Regex("(?s)<(script|style)[^>]*>.*?</\\1>"), "")
-    text = text.replace(Regex("<[^>]+>"), "")
-    text = text
-        .replace("&nbsp;", " ")
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-    return text.replace(
-        Regex("[^0-9A-Za-z○◯々-〇〻ぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\\u2E80-\\u2FDF\\p{IsHan}]"),
-        "",
-    )
 }
 
 private fun String.codePointCount(): Int =
