@@ -12,6 +12,7 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.view.KeyEvent
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -82,6 +83,7 @@ import moe.antimony.hoshi.features.sasayaki.SasayakiCueRange
 import moe.antimony.hoshi.features.sasayaki.SasayakiMatch
 import moe.antimony.hoshi.features.sasayaki.SasayakiMatchData
 import moe.antimony.hoshi.features.sasayaki.SasayakiPlayer
+import moe.antimony.hoshi.features.sasayaki.SasayakiScreenAwake
 import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
 import moe.antimony.hoshi.features.sasayaki.SasayakiSettingsStore
 import moe.antimony.hoshi.features.sasayaki.SasayakiSheet
@@ -331,6 +333,21 @@ fun ReaderWebView(
     DisposableEffect(onReaderKeyEventHandlerChange) {
         onReaderKeyEventHandlerChange { event -> currentReaderKeyHandler.value(event) }
         onDispose { onReaderKeyEventHandlerChange(null) }
+    }
+    val keepScreenOnForSasayaki = SasayakiScreenAwake.shouldKeepScreenOn(
+        isPlaying = sasayakiPlayer?.isPlaying == true,
+        autoScroll = sasayakiSettings.autoScroll,
+    )
+    DisposableEffect(context, keepScreenOnForSasayaki) {
+        val window = context.findActivity()?.window
+        if (keepScreenOnForSasayaki) {
+            window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     BackHandler(onBack = onClose)
