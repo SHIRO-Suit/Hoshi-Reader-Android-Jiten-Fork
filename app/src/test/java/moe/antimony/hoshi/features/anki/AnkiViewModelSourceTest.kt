@@ -14,4 +14,22 @@ class AnkiViewModelSourceTest {
         assertTrue(source.contains("attemptedRestoreFetch = true"))
         assertTrue(source.contains("fetchConfiguration()"))
     }
+
+    @Test
+    fun emptyFieldMappingsRemoveExistingFieldMapping() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/anki/AnkiViewModel.kt").readText()
+        val updateFieldMapping = source.substringAfter("fun updateFieldMapping(")
+            .substringBefore("fun updateTags(")
+
+        assertTrue(updateFieldMapping.contains("settings.fieldMappings - field"))
+    }
+
+    @Test
+    fun lapisDefaultsAreAppliedOnlyWhenSelectingNoteType() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/anki/AnkiViewModel.kt").readText()
+        val selectNoteType = source.substringAfter("fun selectNoteType(")
+            .substringBefore("fun updateFieldMapping(")
+
+        assertTrue(selectNoteType.contains("fieldMappings = LapisPreset.applyDefaults(noteType, emptyMap())"))
+    }
 }

@@ -35,9 +35,9 @@ class AnkiRepository(
         if (decks.isEmpty() || noteTypes.isEmpty()) {
             return@withContext AnkiFetchResult.Error("No AnkiDroid decks or note types were found.")
         }
-        val selectedDeck = decks.firstOrNull { !it.name.equals("Default", ignoreCase = true) } ?: decks.first()
-        val selectedNoteType = noteTypes.firstOrNull { LapisPreset.matches(it) } ?: noteTypes.first()
         settingsRepository.update { current ->
+            val selectedDeck = selectDeckAfterFetch(decks, current)
+            val selectedNoteType = selectNoteTypeAfterFetch(noteTypes, current)
             current.copy(
                 selectedDeckId = selectedDeck.id,
                 selectedDeckName = selectedDeck.name,
@@ -45,7 +45,7 @@ class AnkiRepository(
                 selectedNoteTypeName = selectedNoteType.name,
                 availableDecks = decks,
                 availableNoteTypes = noteTypes,
-                fieldMappings = LapisPreset.applyDefaults(selectedNoteType, current.fieldMappings),
+                fieldMappings = fieldMappingsAfterFetch(selectedNoteType, current),
             )
         }
         AnkiFetchResult.Success(decks, noteTypes)
@@ -66,10 +66,7 @@ class AnkiRepository(
         val noteType = availableNoteTypes.firstOrNull { it.id == settings.selectedNoteTypeId }
             ?: settings.selectedNoteTypeName?.let { name -> availableNoteTypes.firstOrNull { it.name == name } }
             ?: return@withContext false
-        val fieldMappings = LapisPreset.applyDefaults(noteType, settings.fieldMappings)
-        if (fieldMappings != settings.fieldMappings) {
-            settingsRepository.update { it.copy(fieldMappings = fieldMappings) }
-        }
+        val fieldMappings = settings.fieldMappings
         val payload = runCatching { AnkiMiningPayload.fromJson(rawPayload) }.getOrNull()
             ?: return@withContext false
         val mediaContext = AnkiMiningContext(
@@ -150,6 +147,42 @@ class AnkiRepository(
 }
 
 private const val TAG = "AnkiRepository"
+
+internal fun selectDeckAfterFetch(
+    decks: List<AnkiDeck>,
+    current: AnkiSettings,
+): AnkiDeck =
+    decks.firstOrNull { it.id == current.selectedDeckId }
+        ?: current.selectedDeckName?.let { name -> decks.firstOrNull { it.name == name } }
+        ?: decks.firstOrNull { !it.name.equals("Default", ignoreCase = true) }
+        ?: decks.first()
+
+internal fun selectNoteTypeAfterFetch(
+    noteTypes: List<AnkiNoteType>,
+    current: AnkiSettings,
+): AnkiNoteType =
+    noteTypes.firstOrNull { it.id == current.selectedNoteTypeId }
+        ?: current.selectedNoteTypeName?.let { name -> noteTypes.firstOrNull { it.name == name } }
+        ?: noteTypes.firstOrNull { LapisPreset.matches(it) }
+        ?: noteTypes.first()
+
+internal fun fieldMappingsAfterFetch(
+    selectedNoteType: AnkiNoteType,
+    current: AnkiSettings,
+): Map<String, String> =
+    if (LapisPreset.matches(selectedNoteType) && !currentSelectionMatchesLapis(current)) {
+        LapisPreset.applyDefaults(selectedNoteType, emptyMap())
+    } else {
+        current.fieldMappings
+    }
+
+private fun currentSelectionMatchesLapis(current: AnkiSettings): Boolean =
+    current.availableNoteTypes.firstOrNull {
+        it.id == current.selectedNoteTypeId || it.name == current.selectedNoteTypeName
+    }
+        ?.let(LapisPreset::matches)
+        ?: current.selectedNoteTypeName?.contains("lapis", ignoreCase = true)
+        ?: false
 
 sealed interface AnkiFetchResult {
     data class Success(
