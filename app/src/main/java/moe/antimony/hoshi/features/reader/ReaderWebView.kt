@@ -965,19 +965,29 @@ private fun ChapterWebView(
 
                     override fun onLeftSwipe() {
                         currentOnClearLookupPopup.value()
-                        webView.navigatePage(
-                            ReaderNavigationDirection.Backward,
-                            currentOnPreviousChapter.value,
-                            currentOnSaveBookmark.value,
+                        val direction = readerNavigationDirectionForSwipe(
+                            isVerticalWriting = readerSettings.verticalWriting,
+                            swipeDirection = ReaderSwipeDirection.Left,
+                        )
+                        webView.navigatePageForDirection(
+                            direction = direction,
+                            onNextChapter = currentOnNextChapter.value,
+                            onPreviousChapter = currentOnPreviousChapter.value,
+                            onScrolled = currentOnSaveBookmark.value,
                         )
                     }
 
                     override fun onRightSwipe() {
                         currentOnClearLookupPopup.value()
-                        webView.navigatePage(
-                            ReaderNavigationDirection.Forward,
-                            currentOnNextChapter.value,
-                            currentOnSaveBookmark.value,
+                        val direction = readerNavigationDirectionForSwipe(
+                            isVerticalWriting = readerSettings.verticalWriting,
+                            swipeDirection = ReaderSwipeDirection.Right,
+                        )
+                        webView.navigatePageForDirection(
+                            direction = direction,
+                            onNextChapter = currentOnNextChapter.value,
+                            onPreviousChapter = currentOnPreviousChapter.value,
+                            onScrolled = currentOnSaveBookmark.value,
                         )
                     }
                 })
@@ -1104,6 +1114,19 @@ private fun WebView.navigatePage(
             onLimit()
         }
     }
+}
+
+private fun WebView.navigatePageForDirection(
+    direction: ReaderNavigationDirection,
+    onNextChapter: () -> Boolean,
+    onPreviousChapter: () -> Boolean,
+    onScrolled: (progress: Double) -> Unit,
+) {
+    val onLimit = when (direction) {
+        ReaderNavigationDirection.Forward -> onNextChapter
+        ReaderNavigationDirection.Backward -> onPreviousChapter
+    }
+    navigatePage(direction, onLimit, onScrolled)
 }
 
 private class ContinuousScrollTouchListener(

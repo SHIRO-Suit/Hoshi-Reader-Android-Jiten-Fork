@@ -39,6 +39,7 @@ Status: `in_progress`
 
 Status: `in_progress`
 
+- Paginated swipe direction now follows iOS per text orientation: horizontal left-swipe advances, vertical right-swipe advances.
 - Continuous scroll mode is implemented behind Appearance -> Layout -> Mode; keep paginated and continuous reader validation in scope for future reader changes, including forward chapter-boundary landings at the chapter start, Android visual-state-gated chapter jumps, and stable progress counters during rapid boundary flips.
 - Wire remaining iOS `PopupWebView` Anki mining behavior beyond selected popup text export.
 - Re-run diagonal popup swipe validation when a reliable Reader or nested Dictionary popup state is available.
