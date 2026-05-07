@@ -76,6 +76,9 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import java.util.WeakHashMap
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.ListSerializer
@@ -229,6 +232,10 @@ fun ReaderWebView(
             popup.copy(sasayakiCue = sasayakiCueForSelection(selection)) to highlightCount
         }
 
+    fun closeReader() {
+        webView?.flushPendingPageTurnProgress()
+        onClose()
+    }
     fun clearReaderSelection() {
         webView?.evaluateJavascript(ReaderSelectionCommand.ClearSelection.source, null)
     }
@@ -242,7 +249,9 @@ fun ReaderWebView(
         stateHolder.setLookupPopups(nextPopups, ::resumeSasayakiAfterLookupIfNeeded)
     }
     fun closeLookupPopupsAndSelection() {
-        clearReaderSelection()
+        if (lookupPopups.isNotEmpty()) {
+            clearReaderSelection()
+        }
         setLookupPopups(emptyList())
     }
     fun updateSasayakiSettings(settings: SasayakiSettings) {
@@ -272,6 +281,9 @@ fun ReaderWebView(
         val savedPosition = stateHolder.recordDisplayedProgress(progress)
         onSaveBookmark(savedPosition.index, savedPosition.progress)
     }
+    fun displayPagedTurnProgress(progress: Double) {
+        stateHolder.recordDisplayedProgress(progress)
+    }
     fun saveContinuousScrollProgress(progress: Double, restoreEpoch: Int) {
         val savedPosition = stateHolder.recordContinuousScrollProgress(progress, restoreEpoch) ?: return
         onSaveBookmark(savedPosition.index, savedPosition.progress)
@@ -283,7 +295,7 @@ fun ReaderWebView(
             ReaderNavigationDirection.Forward -> ::goToNextChapter
             ReaderNavigationDirection.Backward -> ::goToPreviousChapter
         }
-        currentWebView.navigatePage(direction, onLimit, ::saveDisplayedProgress)
+        currentWebView.navigatePage(direction, onLimit, ::displayPagedTurnProgress, ::saveDisplayedProgress)
         return true
     }
     fun pauseSasayakiForLookupIfNeeded() {
@@ -385,7 +397,21 @@ fun ReaderWebView(
         }
     }
 
-    BackHandler(onBack = onClose)
+    DisposableEffect(view) {
+        val lifecycle = view.findViewTreeLifecycleOwner()?.lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                webView?.flushPendingPageTurnProgress()
+            }
+        }
+        lifecycle?.addObserver(observer)
+        onDispose {
+            webView?.flushPendingPageTurnProgress()
+            lifecycle?.removeObserver(observer)
+        }
+    }
+
+    BackHandler(onBack = ::closeReader)
     val useLightSystemBars = when (effectiveSettings.theme) {
         ReaderTheme.Dark -> false
         ReaderTheme.System -> !systemDarkTheme
@@ -435,6 +461,9 @@ fun ReaderWebView(
                 },
                 onSaveBookmark = { progress ->
                     saveDisplayedProgress(progress)
+                },
+                onDisplayProgress = { progress ->
+                    displayPagedTurnProgress(progress)
                 },
                 onContinuousScrollProgress = { progress, restoreEpoch ->
                     saveContinuousScrollProgress(progress, restoreEpoch)
@@ -497,7 +526,7 @@ fun ReaderWebView(
         ReaderBottomChrome(
             settings = effectiveSettings,
             colors = readerChromeColors(effectiveSettings, systemDarkTheme),
-            onClose = onClose,
+            onClose = ::closeReader,
             onMenu = stateHolder::showReaderMenu,
             menuExpanded = showReaderMenu,
             onDismissMenu = stateHolder::dismissReaderMenu,
@@ -819,6 +848,7 @@ private fun ChapterWebView(
     onNextChapter: () -> Boolean,
     onPreviousChapter: () -> Boolean,
     onSaveBookmark: (progress: Double) -> Unit,
+    onDisplayProgress: (progress: Double) -> Unit,
     onContinuousScrollProgress: (progress: Double, restoreEpoch: Int) -> Unit,
     onInternalLink: (ReaderInternalLinkTarget) -> Unit,
     readerSettings: ReaderSettings,
@@ -833,6 +863,7 @@ private fun ChapterWebView(
 ) {
     val currentOnTextSelected = rememberUpdatedState(onTextSelected)
     val currentOnSaveBookmark = rememberUpdatedState(onSaveBookmark)
+    val currentOnDisplayProgress = rememberUpdatedState(onDisplayProgress)
     val currentOnContinuousScrollProgress = rememberUpdatedState(onContinuousScrollProgress)
     val currentOnClearLookupPopup = rememberUpdatedState(onClearLookupPopup)
     val currentOnNextChapter = rememberUpdatedState(onNextChapter)
@@ -958,7 +989,7 @@ private fun ChapterWebView(
                 }
             } else {
                 webView.setOnScrollChangeListener(null)
-                webView.setOnTouchListener(object : SwipePageTouchListener(webView.context) {
+                webView.setOnTouchListener(object : SwipePageTouchListener() {
                     override fun onTap(x: Float, y: Float) {
                         selectAt(x, y)
                     }
@@ -973,7 +1004,8 @@ private fun ChapterWebView(
                             direction = direction,
                             onNextChapter = currentOnNextChapter.value,
                             onPreviousChapter = currentOnPreviousChapter.value,
-                            onScrolled = currentOnSaveBookmark.value,
+                            onDisplayedProgress = currentOnDisplayProgress.value,
+                            onSaveProgress = currentOnSaveBookmark.value,
                         )
                     }
 
@@ -987,7 +1019,8 @@ private fun ChapterWebView(
                             direction = direction,
                             onNextChapter = currentOnNextChapter.value,
                             onPreviousChapter = currentOnPreviousChapter.value,
-                            onScrolled = currentOnSaveBookmark.value,
+                            onDisplayedProgress = currentOnDisplayProgress.value,
+                            onSaveProgress = currentOnSaveBookmark.value,
                         )
                     }
                 })
@@ -1103,30 +1136,62 @@ internal fun File.mediaType(): String = when (extension.lowercase()) {
 private fun WebView.navigatePage(
     direction: ReaderNavigationDirection,
     onLimit: () -> Boolean,
-    onScrolled: (progress: Double) -> Unit,
+    onDisplayedProgress: (progress: Double) -> Unit,
+    onSaveProgress: (progress: Double) -> Unit,
 ) {
     evaluateJavascript(ReaderPaginationScripts.paginateInvocation(direction)) { result ->
         if (ReaderPaginationScripts.didScroll(result)) {
-            evaluateJavascript(ReaderPaginationScripts.progressInvocation()) { progressResult ->
-                ReaderPaginationScripts.doubleResult(progressResult)?.let(onScrolled)
+            readerPageTurnProgressCallbacks.remove(this)?.let(::removeCallbacks)
+            val webView = this
+            val requestId = nextReaderPageTurnProgressRequestId()
+            readerPageTurnProgressRequestIds[webView] = requestId
+            webView.evaluateJavascript(ReaderPaginationScripts.progressInvocation()) { progressResult ->
+                if (readerPageTurnProgressRequestIds[webView] != requestId) return@evaluateJavascript
+                val progress = ReaderPaginationScripts.doubleResult(progressResult) ?: return@evaluateJavascript
+                onDisplayedProgress(progress)
+                lateinit var progressCallback: Runnable
+                progressCallback = Runnable {
+                    if (readerPageTurnProgressRequestIds[webView] != requestId) return@Runnable
+                    readerPageTurnProgressRequestIds.remove(webView)
+                    if (readerPageTurnProgressCallbacks[webView] == progressCallback) {
+                        readerPageTurnProgressCallbacks.remove(webView)
+                    }
+                    onSaveProgress(progress)
+                }
+                readerPageTurnProgressCallbacks[webView] = progressCallback
+                postDelayed(progressCallback, PAGE_TURN_PROGRESS_SAVE_DELAY_MS)
             }
         } else {
+            readerPageTurnProgressCallbacks.remove(this)?.let(::removeCallbacks)
+            readerPageTurnProgressRequestIds.remove(this)
             onLimit()
         }
     }
+}
+
+private fun nextReaderPageTurnProgressRequestId(): Long {
+    readerPageTurnProgressRequestId += 1
+    return readerPageTurnProgressRequestId
 }
 
 private fun WebView.navigatePageForDirection(
     direction: ReaderNavigationDirection,
     onNextChapter: () -> Boolean,
     onPreviousChapter: () -> Boolean,
-    onScrolled: (progress: Double) -> Unit,
+    onDisplayedProgress: (progress: Double) -> Unit,
+    onSaveProgress: (progress: Double) -> Unit,
 ) {
     val onLimit = when (direction) {
         ReaderNavigationDirection.Forward -> onNextChapter
         ReaderNavigationDirection.Backward -> onPreviousChapter
     }
-    navigatePage(direction, onLimit, onScrolled)
+    navigatePage(direction, onLimit, onDisplayedProgress, onSaveProgress)
+}
+
+private fun WebView.flushPendingPageTurnProgress() {
+    val progressCallback = readerPageTurnProgressCallbacks.remove(this) ?: return
+    removeCallbacks(progressCallback)
+    progressCallback.run()
 }
 
 private class ContinuousScrollTouchListener(
@@ -1218,8 +1283,12 @@ private fun WebView.showAfterReaderRestore() {
 }
 
 private val readerRestoreGenerations = WeakHashMap<WebView, Long>()
+private val readerPageTurnProgressCallbacks = WeakHashMap<WebView, Runnable>()
+private val readerPageTurnProgressRequestIds = WeakHashMap<WebView, Long>()
+private var readerPageTurnProgressRequestId = 0L
 private const val MAX_SELECTION_LENGTH = 16
 private const val CONTINUOUS_PROGRESS_THROTTLE_MS = 250L
+private const val PAGE_TURN_PROGRESS_SAVE_DELAY_MS = 1_000L
 private val ReaderWebViewTopPadding = 44.dp
 private val ReaderWebViewBottomPadding = 56.dp
 
