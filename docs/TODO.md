@@ -1,6 +1,6 @@
 # Hoshi Android Agent TODO
 
-Last updated: 2026-05-09
+Last updated: 2026-05-10
 
 This file is the short operational handoff for future agents.
 
@@ -74,7 +74,7 @@ Status: `in_progress`
 
 - Android now targets AnkiDroid's native API instead of AnkiMobile callbacks.
 - Current unit coverage tracks Anki settings field rows, duplicate collection/deck scope and cross-model settings, the tags editor sharing the same focused text editing path without handlebar choices, Fetch preserving still-available deck/model selections, blank/non-Lapis -> Lapis applying defaults, and Lapis -> Lapis Fetch/mining not refilling edited mappings.
-- Current emulator/device validation covers Lapis field mapping restore, field mapping list scrolling, dictionary-specific Anki handlebars without first-glossary fallback, MK3 SVG dictionary media/inline gaiji styling, selected sentence occurrence bolding, Sasayaki sentence-expanded cue audio mining, and local audio source mining.
+- Current emulator/device validation covers Lapis field mapping restore, field mapping list scrolling, dictionary-specific Anki handlebars without first-glossary fallback, MK3 SVG dictionary media/inline gaiji styling, selected sentence occurrence bolding, Sasayaki sentence-expanded cue audio mining with playable `.aac` media, and local audio source mining.
 - Next: expand duplicate and future AnkiConnect backend coverage.
 - Keep AnkiConnect behind the Anki backend boundary; do not add it by coupling popup mining directly to HTTP calls.
 
@@ -84,7 +84,7 @@ Status: `in_progress`
 
 - Read dictionary media through the existing dictionary bridge.
 - Keep Sasayaki sidecars iOS-compatible.
-- Sasayaki audiobook playback and dictionary word audio now use Media3 ExoPlayer; keep standard Android media previous/next controls, paused Sasayaki cue reveal, lookup audio, and Anki cue export behavior-protected.
+- Sasayaki audiobook playback and dictionary word audio now use Media3 ExoPlayer; Sasayaki Anki cue export uses Media3 Transformer. Keep standard Android media previous/next controls, paused Sasayaki cue reveal, lookup audio, and Anki cue export behavior-protected.
 - Dictionary word audio now owns short audio-focus policy instead of delegating it to ExoPlayer, preserving Interrupt, best-effort Lower Volume, and Keep Volume background-audio behavior.
 - Local audio `android.db` import uses a broad Android picker MIME for vendor file-manager compatibility, with Hoshi-side `.db` validation after selection.
 
