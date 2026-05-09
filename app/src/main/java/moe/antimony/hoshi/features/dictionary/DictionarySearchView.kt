@@ -172,7 +172,7 @@ fun DictionarySearchView(
                             ),
                         )
                     },
-                    onDuplicateCheck = ankiViewModel::duplicateCheck,
+                    onDuplicateCheck = ankiViewModel::duplicateCheckAsync,
                 ),
                 modifier = Modifier
                     .fillMaxSize()

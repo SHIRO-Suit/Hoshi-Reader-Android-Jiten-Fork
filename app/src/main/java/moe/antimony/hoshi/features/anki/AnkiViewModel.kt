@@ -146,8 +146,12 @@ class AnkiViewModel(
             )
         }
 
-    fun duplicateCheck(expression: String): Boolean =
-        runBlocking {
-            repository.isDuplicate(expression, _uiState.value.noteTypes)
+    fun duplicateCheckAsync(expression: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val isDuplicate = runCatching {
+                repository.isDuplicate(expression, _uiState.value.noteTypes)
+            }.getOrDefault(false)
+            onResult(isDuplicate)
         }
+    }
 }

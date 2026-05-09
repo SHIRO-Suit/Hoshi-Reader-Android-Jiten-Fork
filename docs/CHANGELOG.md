@@ -9,6 +9,10 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 - Let selected or shared text from Android Translate and Share actions open directly in Hoshi's lookup popup.
 
+### Fixed
+
+- Keep reader lookup popups responsive after configuring AnkiDroid by checking duplicate status asynchronously.
+
 ## [v0.3.3] - 2026-05-09
 
 ### Added

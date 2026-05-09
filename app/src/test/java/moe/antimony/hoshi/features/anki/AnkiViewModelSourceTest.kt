@@ -32,4 +32,15 @@ class AnkiViewModelSourceTest {
 
         assertTrue(selectNoteType.contains("fieldMappings = LapisPreset.applyDefaults(noteType, emptyMap())"))
     }
+
+    @Test
+    fun duplicateChecksForPopupUseViewModelScopeInsteadOfRunBlocking() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/anki/AnkiViewModel.kt").readText()
+        val duplicateCheckAsync = source.substringAfter("fun duplicateCheckAsync(")
+
+        assertTrue(source.contains("fun duplicateCheckAsync(expression: String, onResult: (Boolean) -> Unit)"))
+        assertTrue(duplicateCheckAsync.contains("viewModelScope.launch"))
+        assertTrue(duplicateCheckAsync.contains("onResult("))
+        assertTrue(!duplicateCheckAsync.substringBefore("fun ").contains("runBlocking"))
+    }
 }

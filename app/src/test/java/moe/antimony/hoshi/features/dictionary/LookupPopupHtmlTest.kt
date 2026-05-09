@@ -214,7 +214,10 @@ class LookupPopupHtmlTest {
         assertTrue(html.contains("window.embedMedia = true;"))
         assertTrue(html.contains("window.compactGlossariesAnki = true;"))
         assertTrue(html.contains("mineEntry: { postMessage: async function(content) { return window.HoshiPopup.mineEntry(JSON.stringify(content)); } }"))
-        assertTrue(html.contains("duplicateCheck: { postMessage: async function(expression) { return window.HoshiPopup.duplicateCheck(expression); } }"))
+        assertTrue(html.contains("duplicateCheck: { postMessage: function(expression) { return window.HoshiAndroidPopup.requestMessage('duplicateCheck', expression); } }"))
+        assertTrue(html.contains("pendingMessages[id] = resolve;"))
+        assertTrue(html.contains("resolveMessage: function(id, result)"))
+        assertFalse(html.contains("window.HoshiPopup.duplicateCheck(expression)"))
     }
 
     @Test

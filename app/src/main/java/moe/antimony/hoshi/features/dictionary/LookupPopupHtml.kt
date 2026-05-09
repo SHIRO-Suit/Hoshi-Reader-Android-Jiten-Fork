@@ -86,11 +86,13 @@ internal object LookupPopupHtml {
             </head>
             <body>
                 <script>
-                    window.HoshiAndroidPopup = window.HoshiAndroidPopup || {
-                        postMessage: function(name, body) {
+                    window.HoshiAndroidPopup = window.HoshiAndroidPopup || (function() {
+                        var nextMessageId = 1;
+                        var pendingMessages = {};
+                        function postMessage(name, body, id) {
                             try {
                                 if (window.HoshiPopup && window.HoshiPopup.postMessage) {
-                                    window.HoshiPopup.postMessage(JSON.stringify({ name: name, body: body || null }));
+                                    window.HoshiPopup.postMessage(JSON.stringify({ name: name, id: id || null, body: body || null }));
                                 }
                             } catch (e) {
                                 console.warn('HoshiPopup bridge failed', e);
@@ -99,7 +101,23 @@ internal object LookupPopupHtml {
                                 window.location.href = 'hoshi-popup://' + name;
                             }
                         }
-                    };
+                        return {
+                            postMessage: postMessage,
+                            requestMessage: function(name, body) {
+                                return new Promise(function(resolve) {
+                                    var id = String(nextMessageId++);
+                                    pendingMessages[id] = resolve;
+                                    postMessage(name, body, id);
+                                });
+                            },
+                            resolveMessage: function(id, result) {
+                                var resolve = pendingMessages[id];
+                                if (!resolve) return;
+                                delete pendingMessages[id];
+                                resolve(result);
+                            }
+                        };
+                    })();
                     window.webkit = {
                         messageHandlers: {
                             openLink: { postMessage: function(url) { window.HoshiAndroidPopup.postMessage('openLink', url); } },
@@ -109,7 +127,7 @@ internal object LookupPopupHtml {
                             playWordAudio: { postMessage: function(content) { window.HoshiAndroidPopup.postMessage('playWordAudio', content); } },
                             contentReady: { postMessage: function() { window.HoshiAndroidPopup.postMessage('contentReady'); } },
                             mineEntry: { postMessage: async function(content) { return window.HoshiPopup.mineEntry(JSON.stringify(content)); } },
-                            duplicateCheck: { postMessage: async function(expression) { return window.HoshiPopup.duplicateCheck(expression); } },
+                            duplicateCheck: { postMessage: function(expression) { return window.HoshiAndroidPopup.requestMessage('duplicateCheck', expression); } },
                             getEntry: { postMessage: async function(index) {
                                 if (window.HoshiPopup && window.HoshiPopup.getEntry) {
                                     var entryJson = window.HoshiPopup.getEntry(index);

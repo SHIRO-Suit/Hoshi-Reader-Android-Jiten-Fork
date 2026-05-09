@@ -110,6 +110,7 @@ Status: `in_progress`
 ## Persistent Blockers
 
 - Diagonal popup swipe validation is blocked until adb or manual setup can reliably reach a Reader or nested Dictionary popup state suitable for gesture verification.
+- Manual reader/Anki popup validation is blocked in the current device session because adb lists devices but install and shell commands hang; retry on a responsive emulator or physical device.
 
 ## Required Validation
 

@@ -68,9 +68,20 @@ class PopupWebViewMessagesTest {
             .readText()
 
         assertTrue(source.contains("val onMineEntry: (String) -> Boolean"))
-        assertTrue(source.contains("val onDuplicateCheck: (String) -> Boolean"))
+        assertTrue(source.contains("val onDuplicateCheck: (String, (Boolean) -> Unit) -> Unit"))
         assertTrue(source.contains("@JavascriptInterface\n    fun mineEntry"))
-        assertTrue(source.contains("@JavascriptInterface\n    fun duplicateCheck"))
+    }
+
+    @Test
+    fun popupBridgeHandlesDuplicateChecksAsAsyncMessages() {
+        val source = File("src/main/java/moe/antimony/hoshi/features/dictionary/PopupWebViewMessages.kt")
+            .readText()
+
+        assertTrue(source.contains("\"duplicateCheck\" ->"))
+        assertTrue(source.contains("val messageId = payload.optString(\"id\")"))
+        assertTrue(source.contains("callbacks.onDuplicateCheck(expression) { isDuplicate ->"))
+        assertTrue(source.contains("resolveMessage"))
+        assertFalse(source.contains("@JavascriptInterface\n    fun duplicateCheck"))
     }
 
     @Test

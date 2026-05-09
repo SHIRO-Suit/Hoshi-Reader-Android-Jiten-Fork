@@ -289,8 +289,8 @@ fun LookupPopupView(
                             }.onFailure { Log.w("LookupPopupView", "Failed to mine popup entry", it) }
                                 .getOrDefault(false)
                         },
-                        onDuplicateCheck = { expression ->
-                            ankiViewModel.duplicateCheck(expression)
+                        onDuplicateCheck = { expression, reply ->
+                            ankiViewModel.duplicateCheckAsync(expression, reply)
                         },
                         onContentReady = {
                             contentReady = true

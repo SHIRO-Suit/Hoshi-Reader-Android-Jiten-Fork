@@ -8,6 +8,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import org.json.JSONObject.quote
 import java.io.ByteArrayInputStream
 import de.manhhao.hoshi.HoshiDicts
 import de.manhhao.hoshi.LookupResult
@@ -28,7 +29,7 @@ internal class PopupWebViewCallbacks(
     val onPlayWordAudio: (String, AudioPlaybackMode) -> Unit = { _, _ -> },
     val onContentReady: () -> Unit = {},
     val onMineEntry: (String) -> Boolean = { false },
-    val onDuplicateCheck: (String) -> Boolean = { false },
+    val onDuplicateCheck: (String, (Boolean) -> Unit) -> Unit = { _, reply -> reply(false) },
 )
 
 internal class PopupWebViewCallbackHolder(
@@ -161,10 +162,6 @@ internal class PopupWebViewBridge(
         runCatching { callbackHolder.callbacks.onMineEntry(payloadJson) }.getOrDefault(false)
 
     @JavascriptInterface
-    fun duplicateCheck(expression: String): Boolean =
-        runCatching { callbackHolder.callbacks.onDuplicateCheck(expression) }.getOrDefault(false)
-
-    @JavascriptInterface
     fun postMessage(message: String) {
         val payload = runCatching { JSONObject(message) }.getOrNull() ?: return
         val callbacks = callbackHolder.callbacks
@@ -185,6 +182,18 @@ internal class PopupWebViewBridge(
                 mainHandler.post {
                     val highlightCount = callbacks.onTextSelected(selection) ?: return@post
                     webView.evaluateJavascript("window.hoshiSelection.highlightSelection($highlightCount)", null)
+                }
+            }
+            "duplicateCheck" -> {
+                val messageId = payload.optString("id").takeIf { it.isNotBlank() } ?: return
+                val expression = payload.optString("body").takeIf { it.isNotBlank() } ?: return
+                callbacks.onDuplicateCheck(expression) { isDuplicate ->
+                    mainHandler.post {
+                        webView.evaluateJavascript(
+                            "window.HoshiAndroidPopup && window.HoshiAndroidPopup.resolveMessage(${quote(messageId)}, $isDuplicate)",
+                            null,
+                        )
+                    }
                 }
             }
         }
