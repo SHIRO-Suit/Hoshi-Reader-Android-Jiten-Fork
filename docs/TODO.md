@@ -117,6 +117,7 @@ Status: `in_progress`
 - Expand WebView pagination regression checks.
 - Replace brittle source-string tests with behavior tests in areas being refactored; keep source guards only for security, SAF/native/build wiring, or framework constraints that cannot be tested behaviorally.
 - Release build speed is being hardened through cached Gradle/Rust native tasks, a slim release APK workflow, and a separate full test/lint CI gate.
+- Launcher icons use the iOS Hoshi vector artwork through Android VectorDrawable resources with extra circular-mask padding; keep launcher icon updates vector-only and avoid generated density bitmaps.
 - Keep release/debug native build behavior stable while architecture refactoring proceeds.
 
 ## Persistent Blockers
