@@ -50,17 +50,18 @@ data class LookupPopupLayout(
             } else {
                 selectionRect.x - popupPadding - width / 2
             }
-            return raw.coerceIn(width / 2, screenWidth - width / 2)
+            return clampLikeIos(raw, width / 2, screenWidth - width / 2)
         }
         val raw = selectionRect.x + width / 2
-        return raw.coerceIn(width / 2 + screenBorderPadding, screenWidth - width / 2 - screenBorderPadding)
+        return clampLikeIos(raw, width / 2 + screenBorderPadding, screenWidth - width / 2 - screenBorderPadding)
     }
 
     private fun centerY(height: Double): Double {
         if (isFullWidth) return screenHeight - height / 2 - screenBorderPadding
         if (isVertical) {
             val raw = selectionRect.y + height / 2
-            return raw.coerceIn(
+            return clampLikeIos(
+                raw,
                 height / 2 + screenBorderPadding + topInset,
                 screenHeight - bottomInset - height / 2 - screenBorderPadding,
             )
@@ -70,7 +71,8 @@ data class LookupPopupLayout(
         } else {
             selectionRect.y - popupPadding - height / 2
         }
-        return raw.coerceIn(
+        return clampLikeIos(
+            raw,
             height / 2 + topInset + screenBorderPadding,
             screenHeight - bottomInset - height / 2 - screenBorderPadding,
         )
@@ -82,6 +84,9 @@ data class LookupPopupLayout(
     private fun spaceBelow(): Double = screenHeight - bottomInset - selectionRect.y - selectionRect.height - popupPadding
     private fun showOnRight(): Boolean = spaceRight() >= spaceLeft()
     private fun showBelow(height: Double): Boolean = spaceBelow() >= height
+
+    private fun clampLikeIos(value: Double, minimum: Double, maximum: Double): Double =
+        maxOf(minimum, minOf(value, maximum))
 
     private companion object {
         const val popupPadding = 4.0

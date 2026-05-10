@@ -67,6 +67,22 @@ class LookupPopupTest {
     }
 
     @Test
+    fun verticalLayoutUsesIosClampWhenPopupIsTallerThanAvailableHeight() {
+        val layout = LookupPopupLayout(
+            selectionRect = ReaderSelectionRect(x = 100.0, y = 0.0, width = 20.0, height = 30.0),
+            screenWidth = 400.0,
+            screenHeight = 244.62222290039062,
+            maxWidth = 320.0,
+            maxHeight = 250.0,
+            isVertical = true,
+        )
+
+        val result = layout.calculate()
+
+        assertEquals(131.0, result.centerY, 0.0)
+    }
+
+    @Test
     fun dismissPopupAtClosesTheSelectedPopupAndItsChildren() {
         val popups = listOf("root", "child", "grandchild").map { id ->
             LookupPopupItem(
