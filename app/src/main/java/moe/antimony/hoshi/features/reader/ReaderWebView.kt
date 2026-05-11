@@ -577,6 +577,8 @@ fun ReaderWebView(
                 stateHolder.applySettings(it)
                 onReaderSettingsChange(it)
             },
+            sasayakiSettings = sasayakiSettings,
+            onSasayakiSettingsChange = ::updateSasayakiSettings,
             fontManager = fontManager,
             onDismiss = stateHolder::dismissAppearance,
         )

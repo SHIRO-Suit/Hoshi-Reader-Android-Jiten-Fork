@@ -5,6 +5,10 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 ## [Unreleased]
 
+### Fixed
+
+- Turn on Sasayaki, the reader Sasayaki toggle, auto-scroll, and lookup auto-pause by default, and expose the reader Sasayaki toggle from Appearance settings.
+
 ## [v0.4.2] - 2026-05-12
 
 ### Fixed

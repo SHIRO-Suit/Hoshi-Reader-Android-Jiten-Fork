@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 
 data class SasayakiSettings(
-    val enabled: Boolean = false,
-    val showReaderToggle: Boolean = false,
+    val enabled: Boolean = true,
+    val showReaderToggle: Boolean = true,
     val copyAudiobookToPrivateStorage: Boolean = false,
     val autoScroll: Boolean = true,
     val autoPause: Boolean = true,
@@ -41,8 +41,8 @@ class SasayakiSettingsStore(context: Context) : SasayakiSettingsLegacySource {
 
     override fun load(): SasayakiSettings =
         SasayakiSettings(
-            enabled = preferences.getBoolean(KEY_ENABLE, false),
-            showReaderToggle = preferences.getBoolean(KEY_SHOW_READER_TOGGLE, false),
+            enabled = preferences.getBoolean(KEY_ENABLE, true),
+            showReaderToggle = preferences.getBoolean(KEY_SHOW_READER_TOGGLE, true),
             copyAudiobookToPrivateStorage = preferences.getBoolean(KEY_COPY_AUDIOBOOK_TO_PRIVATE_STORAGE, false),
             autoScroll = preferences.getBoolean(KEY_AUTO_SCROLL, true),
             autoPause = preferences.getBoolean(KEY_AUTO_PAUSE, true),
@@ -114,8 +114,8 @@ class SasayakiSettingsRepository(
 
     private fun Preferences.toSasayakiSettings(): SasayakiSettings =
         SasayakiSettings(
-            enabled = this[KEY_ENABLE] ?: false,
-            showReaderToggle = this[KEY_SHOW_READER_TOGGLE] ?: false,
+            enabled = this[KEY_ENABLE] ?: true,
+            showReaderToggle = this[KEY_SHOW_READER_TOGGLE] ?: true,
             copyAudiobookToPrivateStorage = this[KEY_COPY_AUDIOBOOK_TO_PRIVATE_STORAGE] ?: false,
             autoScroll = this[KEY_AUTO_SCROLL] ?: true,
             autoPause = this[KEY_AUTO_PAUSE] ?: true,

@@ -22,7 +22,15 @@ class SasayakiSettingsRepositoryTest {
     @Test
     fun emitsDefaultSettingsWhenThereIsNoLegacyStore() = runBlocking {
         repository().use { repository ->
-            assertEquals(SasayakiSettings(), repository.settings.first())
+            assertEquals(
+                SasayakiSettings(
+                    enabled = true,
+                    showReaderToggle = true,
+                    autoScroll = true,
+                    autoPause = true,
+                ),
+                repository.settings.first(),
+            )
         }
     }
 

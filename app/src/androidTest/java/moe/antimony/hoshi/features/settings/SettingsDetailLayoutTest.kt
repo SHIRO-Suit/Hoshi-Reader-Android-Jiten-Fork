@@ -69,6 +69,8 @@ class SettingsDetailLayoutTest {
                     ReaderAppearanceScreen(
                         settings = ReaderSettings(),
                         onSettingsChange = {},
+                        sasayakiSettings = moe.antimony.hoshi.features.sasayaki.SasayakiSettings(),
+                        onSasayakiSettingsChange = {},
                         fontManager = ReaderFontManager(
                             ApplicationProvider.getApplicationContext<Context>().filesDir,
                         ),

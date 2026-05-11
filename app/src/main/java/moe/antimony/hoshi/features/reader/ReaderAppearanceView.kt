@@ -59,6 +59,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.antimony.hoshi.features.settings.SettingsDetailScaffold
+import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
 import moe.antimony.hoshi.importing.FileImportContent
 import moe.antimony.hoshi.importing.ImportFileType
 import moe.antimony.hoshi.importing.importDisplayName
@@ -71,6 +72,8 @@ import kotlin.math.round
 internal fun ReaderAppearanceScreen(
     settings: ReaderSettings,
     onSettingsChange: (ReaderSettings) -> Unit,
+    sasayakiSettings: SasayakiSettings,
+    onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
     fontManager: ReaderFontManager,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -86,6 +89,8 @@ internal fun ReaderAppearanceScreen(
         ReaderAppearanceContent(
             settings = settings,
             onSettingsChange = onSettingsChange,
+            sasayakiSettings = sasayakiSettings,
+            onSasayakiSettingsChange = onSasayakiSettingsChange,
             fontManager = fontManager,
             contentPadding = PaddingValues(
                 start = 24.dp,
@@ -104,6 +109,8 @@ internal fun ReaderAppearanceScreen(
 internal fun ReaderAppearanceSheet(
     settings: ReaderSettings,
     onSettingsChange: (ReaderSettings) -> Unit,
+    sasayakiSettings: SasayakiSettings,
+    onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
     fontManager: ReaderFontManager,
     onDismiss: () -> Unit,
 ) {
@@ -125,6 +132,8 @@ internal fun ReaderAppearanceSheet(
         ReaderAppearanceContent(
             settings = settings,
             onSettingsChange = onSettingsChange,
+            sasayakiSettings = sasayakiSettings,
+            onSasayakiSettingsChange = onSasayakiSettingsChange,
             fontManager = fontManager,
             contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 32.dp),
             showDone = true,
@@ -138,6 +147,8 @@ internal fun ReaderAppearanceSheet(
 private fun ReaderAppearanceContent(
     settings: ReaderSettings,
     onSettingsChange: (ReaderSettings) -> Unit,
+    sasayakiSettings: SasayakiSettings,
+    onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
     fontManager: ReaderFontManager,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -387,6 +398,16 @@ private fun ReaderAppearanceContent(
                         palette = palette,
                     )
                 }
+                readerAppearanceSasayakiRows(sasayakiSettings).forEach { label ->
+                    AppearanceDivider(palette)
+                    SwitchRow(
+                        label = label,
+                        checked = sasayakiSettings.showReaderToggle,
+                        onCheckedChange = {
+                            onSasayakiSettingsChange(sasayakiSettings.copy(showReaderToggle = it))
+                        },
+                    )
+                }
             }
         }
         item {
@@ -489,6 +510,9 @@ private fun ReaderAppearanceContent(
         )
     }
 }
+
+internal fun readerAppearanceSasayakiRows(settings: SasayakiSettings): List<String> =
+    if (settings.enabled) listOf("Show Sasayaki Toggle") else emptyList()
 
 @Composable
 private fun AppearanceSection(

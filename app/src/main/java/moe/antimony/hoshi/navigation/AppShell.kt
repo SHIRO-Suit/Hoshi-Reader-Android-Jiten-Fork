@@ -13,7 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -41,7 +43,9 @@ import moe.antimony.hoshi.features.reader.ReaderBehaviorScreen
 import moe.antimony.hoshi.features.reader.ReaderFontManager
 import moe.antimony.hoshi.features.reader.ReaderSettings
 import moe.antimony.hoshi.features.sasayaki.SasayakiMatchView
+import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
 import moe.antimony.hoshi.features.update.AboutScreen
+import kotlinx.coroutines.launch
 
 private const val ReportIssueUrl = "https://github.com/HuangAntimony/Hoshi-Reader-Android/issues"
 
@@ -74,12 +78,28 @@ fun AppShell(
     val bookRepository = appContainer.bookRepository
     val readerRouteStateHolder = remember(appContainer) { appContainer.readerRouteStateHolder() }
     val readerFontManager = appContainer.readerFontManager
+    val sasayakiSettingsRepository = appContainer.sasayakiSettingsRepository
+    val scope = rememberCoroutineScope()
     val currentReaderSettings by rememberUpdatedState(readerSettings)
     val currentOnReaderSettingsChange by rememberUpdatedState(onReaderSettingsChange)
     val currentOnReaderKeyEventHandlerChange by rememberUpdatedState(onReaderKeyEventHandlerChange)
     val currentPendingImportUri by rememberUpdatedState(pendingImportUri)
     val readerBookmarkRefreshState = remember { ReaderBookmarkRefreshState() }
     var bookshelfRefreshKey by remember { mutableIntStateOf(0) }
+    var sasayakiSettings by remember { mutableStateOf(SasayakiSettings()) }
+
+    LaunchedEffect(sasayakiSettingsRepository) {
+        sasayakiSettingsRepository.settings.collect { settings ->
+            sasayakiSettings = settings
+        }
+    }
+
+    fun updateSasayakiSettings(settings: SasayakiSettings) {
+        sasayakiSettings = settings
+        scope.launch {
+            sasayakiSettingsRepository.update { settings }
+        }
+    }
 
     LaunchedEffect(dictionarySettingsRepository) {
         dictionarySettingsRepository.settings.collect { settings ->
@@ -187,6 +207,8 @@ fun AppShell(
                         route = route,
                         readerSettings = currentReaderSettings,
                         onReaderSettingsChange = currentOnReaderSettingsChange,
+                        sasayakiSettings = sasayakiSettings,
+                        onSasayakiSettingsChange = ::updateSasayakiSettings,
                         readerFontManager = readerFontManager,
                         onClose = ::popRoute,
                         onBooksRestored = { bookshelfRefreshKey += 1 },
@@ -302,6 +324,8 @@ private fun SettingsDetailDestination(
     route: AppRoute.SettingsDetailRoute,
     readerSettings: ReaderSettings,
     onReaderSettingsChange: (ReaderSettings) -> Unit,
+    sasayakiSettings: SasayakiSettings,
+    onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
     readerFontManager: ReaderFontManager,
     onClose: () -> Unit,
     onBooksRestored: () -> Unit,
@@ -319,6 +343,8 @@ private fun SettingsDetailDestination(
         SettingsDetailSection.Appearance -> ReaderAppearanceScreen(
             settings = readerSettings,
             onSettingsChange = onReaderSettingsChange,
+            sasayakiSettings = sasayakiSettings,
+            onSasayakiSettingsChange = onSasayakiSettingsChange,
             fontManager = readerFontManager,
             onClose = onClose,
             modifier = Modifier.fillMaxSize(),
