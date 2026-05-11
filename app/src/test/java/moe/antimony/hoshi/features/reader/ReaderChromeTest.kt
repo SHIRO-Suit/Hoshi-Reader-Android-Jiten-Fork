@@ -124,6 +124,66 @@ class ReaderChromeTest {
     }
 
     @Test
+    fun focusModeKeepsTheReaderContentPaddingStable() {
+        val state = ReaderChromeState(
+            title = "屍人荘の殺人",
+            currentCharacter = 355,
+            totalCharacters = 169325,
+        )
+        val normalLayout = readerChromeLayout(
+            state = state,
+            settings = ReaderSettings(),
+            showSasayakiToggle = true,
+            focusMode = false,
+        )
+        val focusLayout = readerChromeLayout(
+            state = state,
+            settings = ReaderSettings(),
+            showSasayakiToggle = true,
+            focusMode = true,
+        )
+
+        assertEquals(normalLayout.topWebViewPaddingDp, focusLayout.topWebViewPaddingDp)
+        assertEquals(normalLayout.showProgressInBottomBar, focusLayout.showProgressInBottomBar)
+    }
+
+    @Test
+    fun focusModeEntryTapAreaStaysBetweenBottomButtonClusters() {
+        val metrics = readerBottomChromeMetrics()
+        val skipButtons = ReaderSasayakiBottomSkipButtons(
+            visible = true,
+            buttonSizeDp = metrics.buttonSizeDp,
+            iconSizeDp = metrics.secondaryIconSizeDp,
+            adjacentSpacingDp = metrics.trailingButtonSpacingDp,
+        )
+
+        assertEquals(
+            metrics.horizontalPaddingDp + metrics.buttonSizeDp,
+            readerFocusModeToggleArea(
+                metrics = metrics,
+                sasayakiSkipButtons = skipButtons.copy(visible = false),
+                focusMode = false,
+            ).horizontalPaddingDp,
+        )
+        assertEquals(
+            metrics.horizontalPaddingDp + metrics.buttonSizeDp + metrics.trailingButtonSpacingDp + metrics.buttonSizeDp,
+            readerFocusModeToggleArea(
+                metrics = metrics,
+                sasayakiSkipButtons = skipButtons,
+                focusMode = false,
+            ).horizontalPaddingDp,
+        )
+        assertEquals(
+            0,
+            readerFocusModeToggleArea(
+                metrics = metrics,
+                sasayakiSkipButtons = skipButtons,
+                focusMode = true,
+            ).horizontalPaddingDp,
+        )
+    }
+
+    @Test
     fun bottomChromeUsesCompactControlsAndKeepsReaderContentFlushToButtonTop() {
         val metrics = readerBottomChromeMetrics()
 

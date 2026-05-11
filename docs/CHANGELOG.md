@@ -5,6 +5,10 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 ## [Unreleased]
 
+### Added
+
+- Add an iOS-style reader focus mode that hides reader chrome and the Android status bar while keeping the reading layout stable.
+
 ### Changed
 
 - Move the reader Sasayaki play/pause shortcut to the top-right chrome and let its visible state reserve top reader space like iOS.

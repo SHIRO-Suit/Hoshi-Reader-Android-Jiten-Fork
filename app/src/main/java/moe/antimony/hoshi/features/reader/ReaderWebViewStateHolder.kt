@@ -25,6 +25,9 @@ internal class ReaderWebViewStateHolder(
     var showReaderMenu by mutableStateOf(false)
         private set
 
+    var focusMode by mutableStateOf(false)
+        private set
+
     var lookupPopups by mutableStateOf<List<LookupPopupItem>>(emptyList())
         private set
 
@@ -67,6 +70,13 @@ internal class ReaderWebViewStateHolder(
 
     fun dismissReaderMenu() {
         showReaderMenu = false
+    }
+
+    fun toggleFocusMode() {
+        focusMode = !focusMode
+        if (focusMode) {
+            showReaderMenu = false
+        }
     }
 
     fun openChaptersFromMenu() {

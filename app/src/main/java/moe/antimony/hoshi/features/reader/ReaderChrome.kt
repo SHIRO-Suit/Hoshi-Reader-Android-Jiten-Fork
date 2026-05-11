@@ -49,6 +49,10 @@ data class ReaderSasayakiBottomSkipButtons(
     val adjacentSpacingDp: Int,
 )
 
+data class ReaderFocusModeToggleArea(
+    val horizontalPaddingDp: Int,
+)
+
 data class ReaderBottomChromeMetrics(
     val buttonSizeDp: Int,
     val topSasayakiButtonSizeDp: Int,
@@ -73,6 +77,7 @@ fun readerChromeLayout(
     state: ReaderChromeState,
     settings: ReaderSettings,
     showSasayakiToggle: Boolean = false,
+    focusMode: Boolean = false,
 ): ReaderChromeLayout {
     val progress = state.progressText(settings)
     return ReaderChromeLayout(
@@ -125,6 +130,24 @@ fun readerSasayakiBottomSkipButtons(
         iconSizeDp = metrics.secondaryIconSizeDp,
         adjacentSpacingDp = metrics.trailingButtonSpacingDp,
     )
+
+fun readerFocusModeToggleArea(
+    metrics: ReaderBottomChromeMetrics,
+    sasayakiSkipButtons: ReaderSasayakiBottomSkipButtons,
+    focusMode: Boolean,
+): ReaderFocusModeToggleArea {
+    if (focusMode) {
+        return ReaderFocusModeToggleArea(horizontalPaddingDp = 0)
+    }
+    val sideClusterWidth = if (sasayakiSkipButtons.visible) {
+        metrics.buttonSizeDp + sasayakiSkipButtons.adjacentSpacingDp + sasayakiSkipButtons.buttonSizeDp
+    } else {
+        metrics.buttonSizeDp
+    }
+    return ReaderFocusModeToggleArea(
+        horizontalPaddingDp = metrics.horizontalPaddingDp + sideClusterWidth,
+    )
+}
 
 fun readerChromeColors(settings: ReaderSettings, systemDark: Boolean): ReaderChromeColors = when {
     settings.eInkMode && settings.usesDarkInterface(systemDark) -> ReaderChromeColors(

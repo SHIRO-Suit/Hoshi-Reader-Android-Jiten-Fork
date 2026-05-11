@@ -33,12 +33,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -73,11 +75,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.findViewTreeLifecycleOwner
@@ -194,6 +199,7 @@ fun ReaderWebView(
     val showAppearance = stateHolder.showAppearance
     val showChapters = stateHolder.showChapters
     val showSasayaki = stateHolder.showSasayaki
+    val focusMode = stateHolder.focusMode
     val sasayakiWasPausedByLookup = stateHolder.sasayakiWasPausedByLookup
     fun sasayakiCueForSelection(selection: ReaderSelectionData): SasayakiMatch? {
         val player = sasayakiPlayer ?: return null
@@ -443,8 +449,23 @@ fun ReaderWebView(
             controller?.isAppearanceLightNavigationBars = !systemDarkTheme
         }
     }
+    DisposableEffect(context, view, focusMode) {
+        val activity = context.findActivity()
+        val controller = activity?.window?.let { window ->
+            WindowCompat.getInsetsController(window, view)
+        }
+        if (focusMode) {
+            controller?.hide(WindowInsetsCompat.Type.statusBars())
+        } else {
+            controller?.show(WindowInsetsCompat.Type.statusBars())
+        }
+        onDispose {
+            controller?.show(WindowInsetsCompat.Type.statusBars())
+        }
+    }
 
     val bottomChromeMetrics = readerBottomChromeMetrics()
+    val stableStatusBarPadding = rememberStableStatusBarPadding()
     val sasayakiBottomSkipButtons = readerSasayakiBottomSkipButtons(
         settings = sasayakiSettings,
         hasAudio = sasayakiPlayer?.hasAudio == true,
@@ -472,6 +493,7 @@ fun ReaderWebView(
         chromeState,
         effectiveSettings,
         showSasayakiToggle = reserveSasayakiTopToggle || showSasayakiTopToggle,
+        focusMode = focusMode,
     )
     Box(
         modifier = modifier
@@ -481,7 +503,7 @@ fun ReaderWebView(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
+                .padding(top = stableStatusBarPadding)
                 .navigationBarsPadding()
                 .padding(
                     top = chromeLayout.topWebViewPaddingDp.dp,
@@ -565,13 +587,21 @@ fun ReaderWebView(
             colors = readerChromeColors(effectiveSettings, systemDarkTheme),
             onSasayakiToggle = onSasayakiTopToggle,
             sasayakiPlaying = sasayakiPlayer?.isPlaying == true || sasayakiWasPausedByLookup,
+            focusMode = focusMode,
             metrics = bottomChromeMetrics,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .statusBarsPadding()
+                .padding(top = stableStatusBarPadding)
                 .padding(horizontal = 15.dp),
         )
-        ReaderBottomChrome(
+        ReaderFocusModeToggleArea(
+            metrics = bottomChromeMetrics,
+            sasayakiSkipButtons = sasayakiBottomSkipButtons,
+            focusMode = focusMode,
+            onToggleFocusMode = stateHolder::toggleFocusMode,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+        if (!focusMode) ReaderBottomChrome(
             state = chromeState,
             settings = effectiveSettings,
             layout = chromeLayout,
@@ -639,18 +669,19 @@ private fun ReaderTopInfo(
     colors: ReaderChromeColors,
     onSasayakiToggle: (() -> Unit)?,
     sasayakiPlaying: Boolean,
+    focusMode: Boolean,
     metrics: ReaderBottomChromeMetrics,
     modifier: Modifier = Modifier,
 ) {
     val progress = state.progressText(settings)
-    if (!settings.showTitle && onSasayakiToggle == null && (progress.isBlank() || !settings.showProgressTop)) return
+    if ((focusMode || !settings.showTitle) && onSasayakiToggle == null && (focusMode || progress.isBlank() || !settings.showProgressTop)) return
     Box(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.align(Alignment.TopCenter),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            if (settings.showTitle) {
+            if (!focusMode && settings.showTitle) {
                 Text(
                     text = state.title,
                     color = Color(colors.infoText),
@@ -659,7 +690,7 @@ private fun ReaderTopInfo(
                     modifier = Modifier.padding(horizontal = if (onSasayakiToggle != null) 42.dp else 0.dp),
                 )
             }
-            if (settings.showProgressTop && progress.isNotBlank()) {
+            if (!focusMode && settings.showProgressTop && progress.isNotBlank()) {
                 Text(
                     text = progress,
                     color = Color(colors.infoText),
@@ -683,6 +714,42 @@ private fun ReaderTopInfo(
             }
         }
     }
+}
+
+@Composable
+private fun ReaderFocusModeToggleArea(
+    metrics: ReaderBottomChromeMetrics,
+    sasayakiSkipButtons: ReaderSasayakiBottomSkipButtons,
+    focusMode: Boolean,
+    onToggleFocusMode: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val toggleArea = readerFocusModeToggleArea(
+        metrics = metrics,
+        sasayakiSkipButtons = sasayakiSkipButtons,
+        focusMode = focusMode,
+    )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = toggleArea.horizontalPaddingDp.dp)
+            .height((metrics.buttonSizeDp + metrics.bottomPaddingDp + 8).dp)
+            .clickable(onClick = onToggleFocusMode),
+    )
+}
+
+@Composable
+private fun rememberStableStatusBarPadding(): Dp {
+    val density = LocalDensity.current
+    val currentTop = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
+    var stableTop by remember { mutableStateOf(0.dp) }
+    LaunchedEffect(currentTop) {
+        if (currentTop > 0.dp) {
+            stableTop = currentTop
+        }
+    }
+    return if (currentTop > 0.dp) currentTop else stableTop
 }
 
 @Composable
