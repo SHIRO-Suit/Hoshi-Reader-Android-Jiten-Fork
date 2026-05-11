@@ -11,7 +11,7 @@ import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.util.UUID
-import java.util.zip.ZipInputStream
+import java.util.zip.ZipFile
 
 internal class DictionaryImportDataSource(
     private val nativeBridge: DictionaryNativeBridge = HoshiDictionaryNativeBridge,
@@ -24,14 +24,9 @@ internal class DictionaryImportDataSource(
         shouldSkip: (DictionaryIndex) -> Boolean = { false },
     ): Boolean {
         contentResolver.validateImportFile(uri, ImportFileType.DictionaryArchive)
-        contentResolver.openInputStream(uri).use { input ->
-            requireNotNull(input) { "Unable to open dictionary file." }
-            val index = readDictionaryIndex(input)
-            if (shouldSkip(index)) return false
-        }
         return contentResolver.openInputStream(uri).use { input ->
             requireNotNull(input) { "Unable to open dictionary file." }
-            importDictionary(input, typeDirectory)
+            importDictionary(input, typeDirectory, shouldSkip)
         }
     }
 
@@ -48,7 +43,7 @@ internal class DictionaryImportDataSource(
             input.use { source ->
                 tempZip.outputStream().use { output -> source.copyTo(output) }
             }
-            val index = tempZip.inputStream().use(::readDictionaryIndex)
+            val index = readDictionaryIndex(tempZip)
             if (shouldSkip(index)) return false
             stagingRoot.mkdirs()
             val imported = nativeBridge.importDictionary(tempZip.absolutePath, stagingRoot.absolutePath)
@@ -61,17 +56,14 @@ internal class DictionaryImportDataSource(
         }
     }
 
-    fun readDictionaryIndex(input: InputStream): DictionaryIndex {
-        ZipInputStream(input.buffered()).use { zip ->
-            while (true) {
-                val entry = zip.nextEntry ?: break
-                if (entry.name == "index.json") {
-                    return json.decodeFromString<DictionaryIndex>(zip.readBytes().decodeToString())
-                }
-                zip.closeEntry()
+    private fun readDictionaryIndex(zipFile: File): DictionaryIndex {
+        ZipFile(zipFile).use { zip ->
+            val entry = zip.getEntry("index.json")
+                ?: error("Unable to read dictionary index.")
+            zip.getInputStream(entry).use { input ->
+                return json.decodeFromString<DictionaryIndex>(input.readBytes().decodeToString())
             }
         }
-        error("Unable to read dictionary index.")
     }
 
     private fun commitStagedDictionaries(stagingRoot: File, typeDirectory: File) {

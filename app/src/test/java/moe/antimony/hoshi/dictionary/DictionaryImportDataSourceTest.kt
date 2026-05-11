@@ -9,6 +9,7 @@ import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -83,6 +84,21 @@ class DictionaryImportDataSourceTest {
         assertFalse(imported)
         assertEquals(emptyList<String>(), bridge.outputDirs)
         assertFalse(typeDirectory.listFiles().orEmpty().any { it.name.startsWith(".dictionary-import-") })
+    }
+
+    @Test
+    fun importReadsIndexWithoutValidatingUnrelatedDictionaryBankCrc() {
+        val typeDirectory = temporaryFolder.newFolder("crc-Pitch")
+        val bridge = StagingDictionaryBridge("新明解日本語アクセント辞典")
+        val dataSource = DictionaryImportDataSource(bridge)
+        val archive = File("../testdata/pitch-bug.zip")
+        assertTrue("Missing regression fixture: ${archive.absolutePath}", archive.isFile)
+
+        val imported = dataSource.importDictionary(FileInputStream(archive), typeDirectory)
+
+        assertTrue(imported)
+        assertEquals(1, bridge.outputDirs.size)
+        assertTrue(typeDirectory.resolve("新明解日本語アクセント辞典/index.json").isFile)
     }
 
     private fun zipBytes(vararg entries: Pair<String, String>): ByteArray {

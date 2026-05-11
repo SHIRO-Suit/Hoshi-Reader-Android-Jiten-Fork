@@ -65,7 +65,7 @@ Status: `in_progress`
 - Do not reimplement Yomitan import, lookup, media, or style extraction outside `third_party/hoshidicts-kotlin-bridge` unless the bridge gap is documented first.
 - Frequency and pitch dictionaries must stay type-specific; do not treat metadata dictionaries as term fallback dictionaries.
 - Dictionary imports write through hidden staging names inside `Dictionaries/<type>` before renaming into place, so interrupted imports should leave cleanup-visible staging files/folders instead of partial dictionary directories.
-- Duplicate dictionary imports are preflighted from the archive `index.json`; same type and title skip native import. Treat revision-based updates as a separate explicit update flow.
+- Duplicate dictionary imports are preflighted from the archive `index.json` after the SAF stream is copied to a temp ZIP; same type and title skip native import. Keep index reads targeted so valid `index.json` entries do not require CRC-valid dictionary bank entries. Treat revision-based updates as a separate explicit update flow.
 - Batch dictionary imports show the current archive name in a reusable blocking progress overlay; e-ink mode keeps the background visually unchanged while still blocking input.
 
 ### Highlights And Notes

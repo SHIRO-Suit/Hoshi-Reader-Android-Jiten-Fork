@@ -5,6 +5,10 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 ## [Unreleased]
 
+### Fixed
+
+- Let pitch dictionaries whose content banks have bad ZIP CRC metadata import successfully when their `index.json` is readable.
+
 ## [v0.4.0] - 2026-05-11
 
 ### Added
