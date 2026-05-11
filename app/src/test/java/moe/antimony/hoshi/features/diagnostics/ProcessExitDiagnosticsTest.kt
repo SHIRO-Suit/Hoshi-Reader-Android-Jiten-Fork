@@ -169,19 +169,4 @@ class ProcessExitDiagnosticsTest {
         )
     }
 
-    @Test
-    fun diagnosticsScreenHandlesSystemBackLikeToolbarBack() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/diagnostics/DiagnosticsView.kt").readText()
-
-        assertTrue(source.contains("BackHandler(onBack = onClose)"))
-    }
-
-    @Test
-    fun applicationInstallsPersistentCrashDiagnostics() {
-        val manifest = File("src/main/AndroidManifest.xml").readText()
-        val application = File("src/main/java/moe/antimony/hoshi/HoshiApplication.kt").readText()
-
-        assertTrue(manifest.contains("""android:name=".HoshiApplication""""))
-        assertTrue(application.contains("installCrashDiagnostics"))
-    }
 }

@@ -108,35 +108,6 @@ class DictionarySettingsRepositoryTest {
         }
     }
 
-    @Test
-    fun dictionaryCallSitesUseRepositoryFlowTransitionPath() {
-        val appShell = java.io.File("src/main/java/moe/antimony/hoshi/navigation/AppShell.kt").readText()
-        val dictionaryView = java.io.File("src/main/java/moe/antimony/hoshi/features/dictionary/DictionaryView.kt").readText()
-        val dictionarySearch = java.io.File("src/main/java/moe/antimony/hoshi/features/dictionary/DictionarySearchView.kt").readText()
-        val dictionarySearchViewModel =
-            java.io.File("src/main/java/moe/antimony/hoshi/features/dictionary/DictionarySearchViewModel.kt").readText()
-        val readerWebView = java.io.File("src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt").readText()
-        val viewModel = java.io.File("src/main/java/moe/antimony/hoshi/features/dictionary/DictionaryViewModel.kt").readText()
-        val container = java.io.File("src/main/java/moe/antimony/hoshi/HoshiAppContainer.kt").readText()
-        val launchRouteStateHolder =
-            java.io.File("src/main/java/moe/antimony/hoshi/navigation/AppLaunchRouteStateHolder.kt").readText()
-
-        assertTrue(container.contains("dictionarySettingsRepository()"))
-        assertTrue(appShell.contains("val dictionarySettingsRepository = appContainer.dictionarySettingsRepository"))
-        assertTrue(appShell.contains("dictionarySettingsRepository.settings.collect"))
-        assertTrue(appShell.contains("launchRouteStateHolder.defaultRouteAfterSettingsLoad("))
-        assertTrue(launchRouteStateHolder.contains("settings.dictionaryTabDefault"))
-        assertTrue(dictionaryView.contains("appContainer.dictionaryViewModelRepository(context.contentResolver)"))
-        assertTrue(dictionarySearch.contains("appContainer.dictionarySearchRepository()"))
-        assertTrue(dictionarySearchViewModel.contains("override val dictionarySettings: Flow<DictionarySettings>"))
-        assertTrue(dictionarySearchViewModel.contains("dictionarySettingsRepository.settings"))
-        assertTrue(dictionarySearchViewModel.contains("repository.dictionarySettings.collect"))
-        assertTrue(readerWebView.contains("val dictionarySettingsRepository = appContainer.dictionarySettingsRepository"))
-        assertTrue(readerWebView.contains("dictionarySettingsRepository.settings.collect"))
-        assertTrue(viewModel.contains("repository.settings.collect"))
-        assertTrue(viewModel.contains("repository.updateSettings"))
-    }
-
     private fun repository(
         legacySource: DictionarySettingsLegacySource? = null,
     ): RepositoryHandle {

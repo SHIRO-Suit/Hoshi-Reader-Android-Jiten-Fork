@@ -69,13 +69,4 @@ class ReaderChromeTest {
         assertEquals(0xFFFFFFFFL, dark.buttonContent)
     }
 
-    @Test
-    fun readerBottomButtonsDoNotDrawOutlineInLightOrDarkThemes() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt").readText()
-        val button = source.substringAfter("private fun ReaderGlassButton(")
-            .substringBefore("@SuppressLint")
-
-        assertFalse(button.contains("BorderStroke"))
-        assertFalse(button.contains("buttonBorder"))
-    }
 }

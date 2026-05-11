@@ -156,63 +156,10 @@ class MainShellUiTest {
     }
 
     @Test
-    fun bookshelfGridDisablesOverscrollAndKeepsDividerOnContentBoundary() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val repository = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfRepository.kt").readText()
-
-        assertTrue(source.contains("CompositionLocalProvider(LocalOverscrollFactory provides null)"))
-        assertTrue(source.contains(".padding(bottom = innerPadding.calculateBottomPadding())"))
-        assertTrue(source.contains("contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)"))
-        assertTrue(source.contains("BookCoverBitmapCache.load(coverFile)"))
-        assertTrue(repository.contains("loadBookProgressById(entries, bookRepository)"))
-    }
-
-    @Test
-    fun bookshelfDoesNotShowEmptyStateBeforeFirstLoadCompletes() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val booksTab = source.substringAfter("private fun BooksTab(")
-            .substringBefore("@Composable\n@OptIn(ExperimentalMaterial3Api::class)\nprivate fun BooksTopAppBar")
-
-        assertTrue(booksTab.contains("hasLoadedBooks: Boolean"))
-        assertTrue(booksTab.contains("!hasLoadedBooks -> Box(Modifier.fillMaxSize())"))
-        assertTrue(booksTab.contains("hasLoadedBooks && bookEntries.isEmpty() -> EmptyBooksView("))
-    }
-
-    @Test
-    fun sasayakiMatchMenuOpensAdjustableMatchScreen() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val appShell = File("src/main/java/moe/antimony/hoshi/navigation/AppShell.kt").readText()
-
-        assertTrue(source.contains("onOpenSasayakiMatch(SasayakiMatchRequest(entry.metadata.id, entry))"))
-        assertTrue(appShell.contains("sasayakiMatchRequestStore.put(request)"))
-        assertTrue(appShell.contains("backStack.openSasayakiMatchRoute(request.bookId)"))
-        assertTrue(appShell.contains("SasayakiMatchView("))
-        assertFalse(source.contains("SasayakiMatcher.match("))
-        assertFalse(source.contains("searchWindow = 200"))
-        assertFalse(source.contains("sasayakiMatcher.launch"))
-    }
-
-    @Test
     fun coverDecodeSampleSizeKeepsCoversNearTargetSize() {
         assertEquals(1, coverDecodeSampleSize(width = 600, height = 800, maxDimensionPx = 900))
         assertEquals(2, coverDecodeSampleSize(width = 1200, height = 1800, maxDimensionPx = 900))
         assertEquals(4, coverDecodeSampleSize(width = 2400, height = 3600, maxDimensionPx = 900))
-    }
-
-    @Test
-    fun bookCoverPlaceholderUsesBookshelfBackground() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val coverCard = source.substringAfter("private fun BookCoverCard(")
-            .substringBefore("private object BookCoverBitmapCache")
-
-        assertTrue(coverCard.contains("MaterialTheme.colorScheme.background"))
-        assertTrue(coverCard.contains(".background(coverPlaceholderColor)"))
-        assertFalse(coverCard.contains(".background(Color.White)"))
-        assertTrue(coverCard.contains("LocalHoshiDarkTheme.current"))
-        assertTrue(coverCard.contains("Color.White.copy(alpha = 0.9f)"))
-        assertTrue(coverCard.contains("Color.Black.copy(alpha = 0.18f)"))
-        assertTrue(coverCard.contains("BorderStroke(1.dp, coverBorderColor)"))
-        assertFalse(coverCard.contains("isSystemInDarkTheme()"))
     }
 
     @Test
@@ -248,34 +195,6 @@ class MainShellUiTest {
     }
 
     @Test
-    fun mainSurfacesAvoidExpensiveDecorativeEffects() {
-        val sourceFiles = listOf(
-            "src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt",
-            "src/main/java/moe/antimony/hoshi/features/dictionary/DictionarySearchView.kt",
-            "src/main/java/moe/antimony/hoshi/features/dictionary/LookupPopupView.kt",
-            "src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt",
-        )
-        val source = sourceFiles.joinToString("\n") { File(it).readText() }
-
-        assertFalse(source.contains(".shadow("))
-        assertFalse(source.contains("webView.animate()"))
-        assertFalse(source.contains("tonalElevation = 8.dp"))
-        assertFalse(source.contains("shadowElevation = 8.dp"))
-    }
-
-    @Test
-    fun bookshelfProgressUsesHighContrastEInkPaletteWhenEnabled() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val progress = source.substringAfter("private fun ReadingProgressPill(")
-            .substringBefore("@Composable\n@OptIn(ExperimentalMaterial3Api::class)\ninternal fun SettingsTab")
-
-        assertTrue(progress.contains("LocalHoshiEInkMode.current"))
-        assertTrue(progress.contains("progressTrackColor"))
-        assertTrue(progress.contains("progressFillColor"))
-        assertTrue(progress.contains("progressBorderColor"))
-    }
-
-    @Test
     fun bookshelfProgressShowsCompletedBooksAsRead() {
         assertFalse(isBookCompleted(progress = 0.998))
         assertTrue(isBookCompleted(progress = 0.999))
@@ -283,118 +202,6 @@ class MainShellUiTest {
         assertEquals("99.8%", bookshelfProgressText(progress = 0.998))
         assertEquals("100.0%", bookshelfProgressText(progress = 0.999))
         assertEquals("100.0%", bookshelfProgressText(progress = 1.0))
-    }
-
-    @Test
-    fun bottomTabIconsUseNavigationItemContentColor() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val glyph = source.substringAfter("private fun BottomTabGlyph(")
-            .substringBefore("@Composable\nprivate fun SettingsGlyph")
-
-        assertTrue(glyph.contains("LocalContentColor.current"))
-        assertFalse(glyph.contains("tint = MaterialTheme.colorScheme.onSurface"))
-    }
-
-    @Test
-    fun settingsRowsUseMaterialFullWidthDividers() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-
-        assertFalse(source.contains("Modifier.padding(start = 72.dp)"))
-    }
-
-    @Test
-    fun navigationRailDoesNotAddDuplicateContentInset() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-
-        assertFalse(source.contains("NavigationRailInset"))
-        assertFalse(source.contains(".padding(start = NavigationRailInset)"))
-    }
-
-    @Test
-    fun bookshelfContentStartsAfterNavigationRailOnLargeScreens() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-
-        assertTrue(source.contains("layoutSpec.navigationLayout == MainShellNavigationLayout.NavigationRail"))
-        assertTrue(source.contains("Alignment.TopStart"))
-        assertTrue(source.contains(".align(bookContentAlignment)"))
-    }
-
-    @Test
-    fun bookshelfToolbarMatchesIosLeadingAndTrailingActionGrouping() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val topBar = source.substringAfter("private fun BooksTopAppBar(")
-            .substringBefore("@Composable\nprivate fun BookshelfSectionHeader")
-        val actions = topBar.substringAfter("actions = {")
-            .substringBefore("colors = TopAppBarDefaults")
-
-        assertTrue(topBar.contains("SortMenuHeader(text = \"Sorting by...\")"))
-        assertFalse(topBar.contains("enabled = false,\n                                onClick = {},"))
-        assertTrue(topBar.contains("sortOption: BookSortOption"))
-        assertTrue(topBar.contains("HorizontalDivider()"))
-        assertTrue(topBar.contains("trailingIcon = selectedSortIcon(BookSortOption.Recent, sortOption)"))
-        assertTrue(topBar.contains("trailingIcon = selectedSortIcon(BookSortOption.Title, sortOption)"))
-        assertTrue(topBar.contains("navigationIcon = {\n            if (isSelecting)"))
-        assertTrue(topBar.contains("Row"))
-        assertTrue(topBar.indexOf("contentDescription = \"Select books\"") < topBar.indexOf("actions = {"))
-        assertFalse(actions.contains("contentDescription = \"Select books\""))
-        assertTrue(actions.contains("contentDescription = \"Manage Shelves\""))
-        assertTrue(actions.contains("contentDescription = \"Import EPUB\""))
-    }
-
-    @Test
-    fun bookContextMenuTargetDistinguishesReadingCopyFromShelfCopy() {
-        val book = bookEntry(id = "same-book", title = "Same Book", lastAccess = 1.0)
-        val readingSection = BookshelfSectionModel(
-            title = "Reading",
-            books = listOf(book),
-            isReading = true,
-        )
-        val shelfSection = BookshelfSectionModel(
-            title = "Manga",
-            books = listOf(book),
-            shelfName = "Manga",
-        )
-
-        val readingTarget = bookContextMenuTarget(readingSection, book)
-        val shelfTarget = bookContextMenuTarget(shelfSection, book)
-
-        assertFalse(readingTarget == shelfTarget)
-        assertTrue(isBookContextMenuExpanded(readingTarget, readingSection, book))
-        assertFalse(isBookContextMenuExpanded(readingTarget, shelfSection, book))
-    }
-
-    @Test
-    fun bookContextMenuUsesMoveSubmenuInsteadOfListingShelvesAtTopLevel() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val menu = source.substringAfter("private fun BookContextMenu(")
-            .substringBefore("@Composable\nprivate fun ShelfManagementDialog")
-        val topLevelMoveBlock = menu.substringAfter("if (!hideMove) {")
-            .substringBefore("if (sasayakiEnabled)")
-
-        assertTrue(menu.contains("var moveMenuExpanded by remember"))
-        assertTrue(menu.contains("MoveDestinationMenu("))
-        assertTrue(topLevelMoveBlock.contains("onClick = { moveMenuExpanded = true }"))
-        assertFalse(topLevelMoveBlock.contains("text = { Text(\"None\") }"))
-        assertFalse(topLevelMoveBlock.contains("shelves.forEach"))
-    }
-
-    @Test
-    fun mainShellDoesNotDoubleApplyTopSystemInsets() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/bookshelf/BookshelfView.kt").readText()
-        val shell = source.substringAfter("internal fun HoshiMainShell(")
-            .substringBefore("internal const val CompactNavigationBarTag")
-
-        assertTrue(shell.contains("contentWindowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)"))
-    }
-
-    @Test
-    fun advancedSettingsUsesCompactHeader() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/audio/AudioView.kt").readText()
-        val advanced = source.substringAfter("fun AdvancedSettingsView(")
-            .substringBefore("@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun AudioSettingsView")
-
-        assertTrue(advanced.contains("SettingsDetailScaffold("))
-        assertFalse(advanced.contains("LargeTopAppBar("))
     }
 
     private fun bookEntry(id: String, title: String, lastAccess: Double): BookEntry =

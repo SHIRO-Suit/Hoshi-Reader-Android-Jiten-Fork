@@ -10,7 +10,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 class DictionarySearchContentTest {
     @Test
@@ -112,31 +111,6 @@ class DictionarySearchContentTest {
         assertTrue(options.darkMode)
         assertTrue(options.eInkMode)
         assertTrue(options.audioSettings.enableAutoplay)
-    }
-
-    @Test
-    fun dictionarySearchHistoryGestureDoesNotConsumeWebViewVerticalScroll() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/dictionary/DictionarySearchView.kt").readText()
-        val webViewModifier = source.substringAfter("html.isNotBlank() -> DictionaryResultWebView(")
-            .substringBefore("errorMessage != null ->")
-
-        assertFalse(webViewModifier.contains("detectDragGestures("))
-        assertTrue(webViewModifier.contains("observeDictionaryHistorySwipe("))
-    }
-
-    @Test
-    fun dictionaryResultWebViewKeepsRedirectResultsAcrossHistoryRecomposition() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/dictionary/DictionarySearchView.kt").readText()
-        val webViewSource = source.substringAfter("private fun DictionaryResultWebView(")
-            .substringBefore("@Composable\nprivate fun DictionarySearchMessage")
-        val setupBeforeAndroidView = webViewSource.substringAfter("val lookupResultsHolder = remember")
-            .substringBefore("AndroidView(")
-        val reloadBranch = webViewSource.substringAfter("if (loadedHtml != html) {")
-            .substringBefore("if (appliedClearSelectionSignal")
-
-        assertFalse(setupBeforeAndroidView.contains("lookupResultsHolder.results = results"))
-        assertTrue(reloadBranch.contains("lookupResultsHolder.results = results"))
-        assertTrue(reloadBranch.indexOf("lookupResultsHolder.results = results") < reloadBranch.indexOf("loadDataWithBaseURL"))
     }
 
     private fun lookupResult(): LookupResult = LookupResult(

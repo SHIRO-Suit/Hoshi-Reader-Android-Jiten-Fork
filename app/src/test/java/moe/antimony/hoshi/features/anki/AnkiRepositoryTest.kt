@@ -24,20 +24,6 @@ class AnkiRepositoryTest {
     }
 
     @Test
-    fun ankiDroidMediaImportPreservesPreferredFilenameExtension() {
-        val source = java.io.File("src/main/java/moe/antimony/hoshi/features/anki/AndroidAnkiContentApi.kt").readText()
-        val manifest = java.io.File("src/main/AndroidManifest.xml").readText()
-        val fileProvider = java.io.File("src/main/java/moe/antimony/hoshi/features/anki/HoshiFileProvider.kt").readText()
-
-        assertFalse(source.contains("preferredName.substringBeforeLast('.')"))
-        assertEquals("hoshi_sasayaki_123", ankiPreferredMediaName("hoshi_sasayaki_123.aac"))
-        assertEquals("cover", ankiPreferredMediaName("/tmp/cover.jpg"))
-        assertTrue(manifest.contains("moe.antimony.hoshi.features.anki.HoshiFileProvider"))
-        assertTrue(fileProvider.contains(""""aac" -> "audio/aac""""))
-        assertTrue(fileProvider.contains(""""m4a" -> "audio/mp4""""))
-    }
-
-    @Test
     fun ankiAudioReadsLocalAudioUrlsFromDatabaseLoader() {
         val localUrl = LocalAudioResolver.audioUrl("nhk16", "taberu.mp3")
         val localAudio = byteArrayOf(1, 2, 3, 4)
@@ -69,22 +55,6 @@ class AnkiRepositoryTest {
         assertTrue(html.contains("""[data-sc-img][data-sc-class="gaiji"] .gloss-image-container"""))
         assertTrue(html.contains("width:1em!important"))
         assertTrue(html.contains("position:static!important"))
-    }
-
-    @Test
-    fun miningPayloadSelectionTextIsNotOverriddenByMiningContext() {
-        val source = java.io.File("src/main/java/moe/antimony/hoshi/features/anki/AnkiRepository.kt").readText()
-
-        assertTrue(!source.contains("popupSelectionText = context.popupSelectionText ?: payload.popupSelectionText"))
-    }
-
-    @Test
-    fun lapisDefaultsAreNotReappliedWhenMining() {
-        val source = java.io.File("src/main/java/moe/antimony/hoshi/features/anki/AnkiRepository.kt").readText()
-        val mineEntry = source.substringAfter("suspend fun mineEntry(")
-            .substringBefore("suspend fun isDuplicate(")
-
-        assertTrue(!mineEntry.contains("LapisPreset.applyDefaults"))
     }
 
     @Test

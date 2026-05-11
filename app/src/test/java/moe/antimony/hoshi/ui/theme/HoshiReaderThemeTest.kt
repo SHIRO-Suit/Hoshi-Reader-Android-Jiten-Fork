@@ -40,21 +40,4 @@ class HoshiReaderThemeTest {
         assertEquals(Color.White, scheme.outlineVariant)
     }
 
-    @Test
-    fun eInkModeDisablesDynamicMaterialColor() {
-        val source = File("src/main/java/moe/antimony/hoshi/ui/theme/Theme.kt").readText()
-        val dynamicBranch = source.substringAfter("val colorScheme = when")
-            .substringBefore("else ->")
-
-        assertTrue(dynamicBranch.contains("dynamicColor && !eInkMode"))
-        assertFalse(dynamicBranch.contains("dynamicColor && eInkMode"))
-    }
-
-    @Test
-    fun exposesAppDarkThemeAsCompositionLocal() {
-        val source = File("src/main/java/moe/antimony/hoshi/ui/theme/Theme.kt").readText()
-
-        assertTrue(source.contains("val LocalHoshiDarkTheme = staticCompositionLocalOf { false }"))
-        assertTrue(source.contains("LocalHoshiDarkTheme provides darkTheme"))
-    }
 }

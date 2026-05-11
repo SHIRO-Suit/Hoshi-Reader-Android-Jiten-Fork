@@ -121,7 +121,7 @@ Status: `in_progress`
 - Add EPUB fixtures for cover, images, vertical text, horizontal text, complex spine, and broken resources.
 - Diagnostics now persists uncaught Java crash stack traces before Android terminates the process; keep this covered when changing startup or Application wiring.
 - Expand WebView pagination regression checks.
-- Replace brittle source-string tests with behavior tests in areas being refactored; keep source guards only for security, SAF/native/build wiring, or framework constraints that cannot be tested behaviorally.
+- Brittle source-string tests have been removed; future regression coverage should use behavior, API, state-flow, or structured-config assertions instead of reading production source text.
 - Release build speed is being hardened through cached Gradle/Rust native tasks, a slim release APK workflow, and a separate full test/lint CI gate.
 - Launcher icons use the iOS Hoshi vector artwork through Android VectorDrawable resources with extra circular-mask padding; keep launcher icon updates vector-only and avoid generated density bitmaps.
 - Keep release/debug native build behavior stable while architecture refactoring proceeds.

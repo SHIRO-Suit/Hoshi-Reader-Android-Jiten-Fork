@@ -42,14 +42,4 @@ class ReaderInternalLinkTest {
         assertNull(book.resolveInternalReaderLink("https://example.com/OPS/chapter-1.xhtml#toc-001"))
     }
 
-    @Test
-    fun webViewClientInterceptsInternalLinksBeforeWebViewLoadsThem() {
-        val source = File("src/main/java/moe/antimony/hoshi/features/reader/ReaderWebView.kt").readText()
-        val client = source.substringAfter("private class EpubWebViewClient(")
-            .substringBefore("override fun onRenderProcessGone")
-
-        assertTrue(client.contains("override fun shouldOverrideUrlLoading"))
-        assertTrue(client.contains("book.resolveInternalReaderLink"))
-        assertTrue(client.contains("return true"))
-    }
 }

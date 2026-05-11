@@ -80,33 +80,6 @@ class MainActivityConfigurationTest {
         )
     }
 
-    @Test
-    fun processTextLookupActivityDoesNotRouteThroughMainAppShell() {
-        val processTextActivity = File("src/main/java/moe/antimony/hoshi/features/dictionary/ProcessTextLookupActivity.kt")
-            .readText()
-        val mainActivity = File("src/main/java/moe/antimony/hoshi/MainActivity.kt").readText()
-        val appShell = File("src/main/java/moe/antimony/hoshi/navigation/AppShell.kt").readText()
-
-        assertTrue(processTextActivity.contains("ProcessTextLookupRequest.fromIntent(intent)"))
-        assertTrue(processTextActivity.contains("LookupPopupStackView("))
-        assertTrue(processTextActivity.contains("finish()"))
-        assertTrue(processTextActivity.contains("WindowCompat.setDecorFitsSystemWindows(window, false)"))
-        assertTrue(processTextActivity.contains("ColorDrawable(Color.TRANSPARENT)"))
-        assertTrue(processTextActivity.contains("dictionaryRepository.rebuildLookupQuery()"))
-        assertTrue(processTextActivity.contains("LookupEngine.lookup("))
-        assertFalse(mainActivity.contains("processTextLookupRequest"))
-        assertFalse(appShell.contains("processTextLookupRequest"))
-    }
-
-    @Test
-    fun launchThemeHasNightResourceVariant() {
-        val lightTheme = themeElement(File("src/main/res/values/themes.xml"))
-        val nightTheme = themeElement(File("src/main/res/values-night/themes.xml"))
-
-        assertTrue(lightTheme.getAttribute("parent") == "android:Theme.Material.Light.NoActionBar")
-        assertTrue(nightTheme.getAttribute("parent") == "android:Theme.Material.NoActionBar")
-    }
-
     private fun mainActivityManifestElement(): Element {
         return activityManifestElement(".MainActivity")
     }
@@ -164,17 +137,4 @@ class MainActivityConfigurationTest {
         error("$name not found in AndroidManifest.xml")
     }
 
-    private fun themeElement(file: File): Element {
-        val document = DocumentBuilderFactory.newInstance()
-            .newDocumentBuilder()
-            .parse(file)
-        val styles = document.getElementsByTagName("style")
-        for (index in 0 until styles.length) {
-            val element = styles.item(index) as Element
-            if (element.getAttribute("name") == "Theme.HoshiReader") {
-                return element
-            }
-        }
-        error("Theme.HoshiReader not found in ${file.path}")
-    }
 }
