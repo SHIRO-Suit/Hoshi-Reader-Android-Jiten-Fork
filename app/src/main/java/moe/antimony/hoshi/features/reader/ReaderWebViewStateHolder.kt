@@ -61,6 +61,10 @@ internal class ReaderWebViewStateHolder(
         showReaderMenu = true
     }
 
+    fun toggleReaderMenu() {
+        showReaderMenu = !showReaderMenu
+    }
+
     fun dismissReaderMenu() {
         showReaderMenu = false
     }

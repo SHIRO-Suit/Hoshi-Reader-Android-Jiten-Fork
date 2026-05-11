@@ -42,6 +42,24 @@ data class ReaderChromeLayout(
     val showProgressInBottomBar: Boolean,
 )
 
+data class ReaderBottomChromeMetrics(
+    val buttonSizeDp: Int,
+    val primaryIconSizeDp: Int,
+    val secondaryIconSizeDp: Int,
+    val horizontalPaddingDp: Int,
+    val bottomPaddingDp: Int,
+    val trailingButtonSpacingDp: Int,
+    val menuWidthDp: Int,
+    val menuVerticalPaddingDp: Int,
+    val menuItemHorizontalPaddingDp: Int,
+    val menuItemVerticalPaddingDp: Int,
+    val menuItemIconBoxSizeDp: Int,
+    val menuItemSpacingDp: Int,
+) {
+    val webViewBottomPaddingDp: Int = buttonSizeDp + bottomPaddingDp
+    val menuBottomPaddingDp: Int = webViewBottomPaddingDp
+}
+
 fun readerChromeLayout(state: ReaderChromeState, settings: ReaderSettings): ReaderChromeLayout {
     val progress = state.progressText(settings)
     return ReaderChromeLayout(
@@ -58,6 +76,22 @@ fun readerWebViewTopPaddingDp(state: ReaderChromeState, settings: ReaderSettings
     ).count { it }
     return ReaderWebViewTopBasePaddingDp + (visibleRows * ReaderChromeLineHeightDp)
 }
+
+fun readerBottomChromeMetrics(): ReaderBottomChromeMetrics =
+    ReaderBottomChromeMetrics(
+        buttonSizeDp = 44,
+        primaryIconSizeDp = 22,
+        secondaryIconSizeDp = 20,
+        horizontalPaddingDp = 22,
+        bottomPaddingDp = 2,
+        trailingButtonSpacingDp = 8,
+        menuWidthDp = 204,
+        menuVerticalPaddingDp = 4,
+        menuItemHorizontalPaddingDp = 16,
+        menuItemVerticalPaddingDp = 8,
+        menuItemIconBoxSizeDp = 24,
+        menuItemSpacingDp = 12,
+    )
 
 fun readerChromeColors(settings: ReaderSettings, systemDark: Boolean): ReaderChromeColors = when {
     settings.eInkMode && settings.usesDarkInterface(systemDark) -> ReaderChromeColors(

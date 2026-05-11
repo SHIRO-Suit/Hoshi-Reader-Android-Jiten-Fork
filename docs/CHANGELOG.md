@@ -10,6 +10,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Keep the Dictionary tab search cursor visible in dark theme. #54
 - Refresh Dictionary tab results and open reader lookup popups immediately when the app or reader theme changes. #55
 - Keep the reader text area aligned with iOS when hiding the title or moving progress to the bottom, avoiding unused top space and progress text overlapping the book text.
+- Shrink the reader bottom buttons and menu, keeping the reader text area and bottom menu aligned to the compact controls so the bottom progress text is not covered.
 - Apply saved reader text layout settings such as Vertical Padding to already-open reader WebViews instead of leaving the text rendered with stale defaults.
 - Make Continuous reader padding affect each visible viewport: Horizontal Padding in vertical writing and Vertical Padding in horizontal writing. #52
 - Keep the Appearance Layout Mode control wide enough to show the Continuous label without truncation.

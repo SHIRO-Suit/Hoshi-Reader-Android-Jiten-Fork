@@ -441,6 +441,7 @@ fun ReaderWebView(
     }
 
     val chromeLayout = readerChromeLayout(chromeState, effectiveSettings)
+    val bottomChromeMetrics = readerBottomChromeMetrics()
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -451,7 +452,10 @@ fun ReaderWebView(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(top = chromeLayout.topWebViewPaddingDp.dp, bottom = ReaderWebViewBottomPadding),
+                .padding(
+                    top = chromeLayout.topWebViewPaddingDp.dp,
+                    bottom = bottomChromeMetrics.webViewBottomPaddingDp.dp,
+                ),
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val viewportHorizontalPadding = maxWidth * effectiveSettings.continuousViewportHorizontalPaddingRatio.toFloat()
@@ -539,7 +543,7 @@ fun ReaderWebView(
             layout = chromeLayout,
             colors = readerChromeColors(effectiveSettings, systemDarkTheme),
             onClose = ::closeReader,
-            onMenu = stateHolder::showReaderMenu,
+            onMenu = stateHolder::toggleReaderMenu,
             menuExpanded = showReaderMenu,
             onDismissMenu = stateHolder::dismissReaderMenu,
             onChapters = stateHolder::openChaptersFromMenu,
@@ -561,6 +565,7 @@ fun ReaderWebView(
                     })
                 },
             sasayakiPlaying = sasayakiPlayer?.isPlaying == true || sasayakiWasPausedByLookup,
+            metrics = bottomChromeMetrics,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
         webView?.let { _ -> Unit }
@@ -647,6 +652,7 @@ private fun BoxScope.ReaderBottomChrome(
     onSasayaki: (() -> Unit)?,
     onSasayakiToggle: (() -> Unit)?,
     sasayakiPlaying: Boolean,
+    metrics: ReaderBottomChromeMetrics,
     modifier: Modifier = Modifier,
 ) {
     if (menuExpanded) {
@@ -658,20 +664,26 @@ private fun BoxScope.ReaderBottomChrome(
         )
         ReaderMenuCard(
             colors = colors,
+            metrics = metrics,
             onChapters = onChapters,
             onAppearance = onAppearance,
             onSasayaki = onSasayaki,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .navigationBarsPadding()
-                .padding(end = 24.dp, bottom = 58.dp),
+                .padding(end = metrics.horizontalPaddingDp.dp, bottom = metrics.menuBottomPaddingDp.dp),
         )
     }
     Box(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(start = 26.dp, end = 26.dp, top = 8.dp, bottom = 2.dp),
+            .padding(
+                start = metrics.horizontalPaddingDp.dp,
+                end = metrics.horizontalPaddingDp.dp,
+                top = 8.dp,
+                bottom = metrics.bottomPaddingDp.dp,
+            ),
     ) {
         if (layout.showProgressInBottomBar) {
             Text(
@@ -685,31 +697,31 @@ private fun BoxScope.ReaderBottomChrome(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ReaderGlassButton(colors = colors, onClick = onClose) {
+            ReaderGlassButton(colors = colors, metrics = metrics, onClick = onClose) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "Back",
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier.size(metrics.primaryIconSizeDp.dp),
                     tint = Color(colors.buttonContent),
                 )
             }
             Spacer(Modifier.weight(1f))
             if (onSasayakiToggle != null) {
-                ReaderGlassButton(colors = colors, onClick = onSasayakiToggle) {
+                ReaderGlassButton(colors = colors, metrics = metrics, onClick = onSasayakiToggle) {
                     Icon(
                         imageVector = if (sasayakiPlaying) Icons.Rounded.Pause else Icons.Rounded.GraphicEq,
                         contentDescription = if (sasayakiPlaying) "Pause Sasayaki" else "Play Sasayaki",
-                        modifier = Modifier.size(26.dp),
+                        modifier = Modifier.size(metrics.secondaryIconSizeDp.dp),
                         tint = Color(colors.buttonContent),
                     )
                 }
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(metrics.trailingButtonSpacingDp.dp))
             }
-            ReaderGlassButton(colors = colors, onClick = onMenu) {
+            ReaderGlassButton(colors = colors, metrics = metrics, onClick = onMenu) {
                 Icon(
                     imageVector = Icons.Rounded.Tune,
                     contentDescription = "Reader Menu",
-                    modifier = Modifier.size(26.dp),
+                    modifier = Modifier.size(metrics.secondaryIconSizeDp.dp),
                     tint = Color(colors.buttonContent),
                 )
             }
@@ -720,6 +732,7 @@ private fun BoxScope.ReaderBottomChrome(
 @Composable
 private fun ReaderMenuCard(
     colors: ReaderChromeColors,
+    metrics: ReaderBottomChromeMetrics,
     onChapters: () -> Unit,
     onAppearance: () -> Unit,
     onSasayaki: (() -> Unit)?,
@@ -727,7 +740,7 @@ private fun ReaderMenuCard(
 ) {
     Surface(
         modifier = modifier
-            .width(276.dp),
+            .width(metrics.menuWidthDp.dp),
         shape = RoundedCornerShape(28.dp),
         color = Color(colors.menuContainer),
         border = BorderStroke(1.dp, Color(colors.menuBorder)),
@@ -735,7 +748,7 @@ private fun ReaderMenuCard(
         shadowElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(vertical = 10.dp),
+            modifier = Modifier.padding(vertical = metrics.menuVerticalPaddingDp.dp),
         ) {
             ReaderMenuItem(
                 text = "Chapters",
@@ -747,10 +760,11 @@ private fun ReaderMenuCard(
                     )
                 },
                 colors = colors,
+                metrics = metrics,
                 onClick = onChapters,
             )
             HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 22.dp),
+                modifier = Modifier.padding(horizontal = metrics.menuItemHorizontalPaddingDp.dp),
                 color = Color(colors.menuBorder),
             )
             ReaderMenuItem(
@@ -763,11 +777,12 @@ private fun ReaderMenuCard(
                     )
                 },
                 colors = colors,
+                metrics = metrics,
                 onClick = onAppearance,
             )
             if (onSasayaki != null) {
                 HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = 22.dp),
+                    modifier = Modifier.padding(horizontal = metrics.menuItemHorizontalPaddingDp.dp),
                     color = Color(colors.menuBorder),
                 )
                 ReaderMenuItem(
@@ -780,6 +795,7 @@ private fun ReaderMenuCard(
                         )
                     },
                     colors = colors,
+                    metrics = metrics,
                     onClick = onSasayaki,
                 )
             }
@@ -792,18 +808,22 @@ private fun ReaderMenuItem(
     text: String,
     icon: @Composable () -> Unit,
     colors: ReaderChromeColors,
+    metrics: ReaderBottomChromeMetrics,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 22.dp, vertical = 14.dp),
+            .padding(
+                horizontal = metrics.menuItemHorizontalPaddingDp.dp,
+                vertical = metrics.menuItemVerticalPaddingDp.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(metrics.menuItemSpacingDp.dp),
     ) {
         Box(
-            modifier = Modifier.size(30.dp),
+            modifier = Modifier.size(metrics.menuItemIconBoxSizeDp.dp),
             contentAlignment = Alignment.Center,
         ) {
             icon()
@@ -811,7 +831,7 @@ private fun ReaderMenuItem(
         Text(
             text = text,
             color = Color(colors.menuContent),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
         )
     }
 }
@@ -819,12 +839,13 @@ private fun ReaderMenuItem(
 @Composable
 private fun ReaderGlassButton(
     colors: ReaderChromeColors,
+    metrics: ReaderBottomChromeMetrics,
     onClick: () -> Unit,
     content: @Composable RowScope.() -> Unit,
 ) {
     Surface(
         modifier = Modifier
-            .size(54.dp),
+            .size(metrics.buttonSizeDp.dp),
         shape = CircleShape,
         color = Color(colors.buttonContainer),
         tonalElevation = 0.dp,
@@ -1303,7 +1324,6 @@ private var readerPageTurnProgressRequestId = 0L
 private const val MAX_SELECTION_LENGTH = 16
 private const val CONTINUOUS_PROGRESS_THROTTLE_MS = 250L
 private const val PAGE_TURN_PROGRESS_SAVE_DELAY_MS = 1_000L
-private val ReaderWebViewBottomPadding = 56.dp
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this

@@ -73,6 +73,31 @@ class ReaderChromeTest {
     }
 
     @Test
+    fun bottomChromeUsesCompactControlsAndKeepsReaderContentFlushToButtonTop() {
+        val metrics = readerBottomChromeMetrics()
+
+        assertEquals(44, metrics.buttonSizeDp)
+        assertEquals(22, metrics.primaryIconSizeDp)
+        assertEquals(20, metrics.secondaryIconSizeDp)
+        assertEquals(8, metrics.trailingButtonSpacingDp)
+        assertEquals(46, metrics.webViewBottomPaddingDp)
+        assertEquals(metrics.webViewBottomPaddingDp, metrics.menuBottomPaddingDp)
+        assertEquals(metrics.buttonSizeDp + metrics.bottomPaddingDp, metrics.webViewBottomPaddingDp)
+    }
+
+    @Test
+    fun bottomMenuUsesCompactReaderChromeMetrics() {
+        val metrics = readerBottomChromeMetrics()
+
+        assertEquals(204, metrics.menuWidthDp)
+        assertEquals(4, metrics.menuVerticalPaddingDp)
+        assertEquals(16, metrics.menuItemHorizontalPaddingDp)
+        assertEquals(8, metrics.menuItemVerticalPaddingDp)
+        assertEquals(24, metrics.menuItemIconBoxSizeDp)
+        assertEquals(12, metrics.menuItemSpacingDp)
+    }
+
+    @Test
     fun usesThemeMatchedChromeColors() {
         assertEquals(0x40FFFFFFL, readerChromeColors(ReaderSettings(theme = ReaderTheme.Sepia), systemDark = true).buttonContainer)
         assertEquals(0x661A1A1AL, readerChromeColors(ReaderSettings(theme = ReaderTheme.Dark), systemDark = false).buttonContainer)

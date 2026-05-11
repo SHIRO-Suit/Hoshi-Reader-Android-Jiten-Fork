@@ -150,6 +150,17 @@ class ReaderWebViewStateHolderTest {
         assertTrue(holder.showSasayaki)
     }
 
+    @Test
+    fun readerMenuButtonTogglesMenuVisibility() {
+        val holder = stateHolder()
+
+        holder.toggleReaderMenu()
+        assertTrue(holder.showReaderMenu)
+
+        holder.toggleReaderMenu()
+        assertFalse(holder.showReaderMenu)
+    }
+
     private fun stateHolder(
         initialIndex: Int = 0,
         initialProgress: Double = 0.0,
