@@ -5,6 +5,8 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 ## [Unreleased]
 
+## [v0.5.0] - 2026-05-13
+
 ### Added
 
 - Add iOS-compatible reader reading statistics with Advanced settings, reader Statistics sheet, optional session toggle, bottom speed/time display, and per-book `statistics.json` sidecar storage.
