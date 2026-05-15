@@ -12,6 +12,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 ### Fixed
 
 - Keep continuous-mode reader lookup popups aligned with selected text when reader padding is applied.
+- Skip low-confidence short Sasayaki subtitle cues during matching, matching iOS behavior and avoiding poor read-along alignments.
 
 ## [v0.6.2] - 2026-05-14
 
