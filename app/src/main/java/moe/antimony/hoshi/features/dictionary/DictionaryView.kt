@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
@@ -132,6 +133,7 @@ fun DictionaryView(
     var importType by remember { mutableStateOf(DictionaryType.Term) }
     var importMenuExpanded by remember { mutableStateOf(false) }
     var destination by remember { mutableStateOf<DictionaryDestination?>(null) }
+    var showUpdateConfirmation by remember { mutableStateOf(false) }
 
     val importer = rememberLauncherForActivityResult(MultipleFileImportContent()) { uris: List<Uri> ->
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
@@ -160,6 +162,7 @@ fun DictionaryView(
 
     val selectedType = uiState.selectedType
     val currentDictionaries = uiState.currentDictionaries
+    val isBusy = uiState.isImporting || uiState.isUpdating
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val autoScrollEdgeThresholdPx = with(density) { 72.dp.toPx() }
@@ -328,7 +331,7 @@ fun DictionaryView(
     SettingsDetailScaffold(
         title = "Dictionaries",
         onClose = {
-            if (!uiState.isImporting) {
+            if (!isBusy) {
                 onClose()
             }
         },
@@ -338,7 +341,7 @@ fun DictionaryView(
         actions = {
             IconButton(
                 onClick = { destination = DictionaryDestination.CustomCss },
-                enabled = !uiState.isImporting,
+                enabled = !isBusy,
             ) {
                 Icon(
                     imageVector = Icons.Rounded.DataObject,
@@ -348,9 +351,9 @@ fun DictionaryView(
             Box {
                 IconButton(
                     onClick = { importMenuExpanded = true },
-                    enabled = !uiState.isImporting,
+                    enabled = !isBusy,
                 ) {
-                    if (uiState.isImporting) {
+                    if (isBusy) {
                         CircularProgressIndicator(modifier = Modifier.size(24.dp))
                     } else {
                         Icon(
@@ -409,7 +412,7 @@ fun DictionaryView(
                                             onCheckedChange = { checked ->
                                                 dictionaryViewModel.updateSettings { it.copy(dictionaryTabDefault = checked) }
                                             },
-                                            enabled = !uiState.isImporting,
+                                            enabled = !isBusy,
                                             colors = hoshiSwitchColors(),
                                         )
                                     },
@@ -435,8 +438,34 @@ fun DictionaryView(
                                             tint = colorScheme.onSurfaceVariant,
                                         )
                                     },
-                                    modifier = Modifier.clickable(enabled = !uiState.isImporting) {
+                                    modifier = Modifier.clickable(enabled = !isBusy) {
                                         destination = DictionaryDestination.Settings
+                                    },
+                                )
+                            }
+                        }
+                        if (uiState.updatableDictionaries.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(24.dp),
+                                color = colorScheme.surface,
+                                border = BorderStroke(1.dp, colorScheme.outlineVariant),
+                                tonalElevation = 0.dp,
+                            ) {
+                                ListItem(
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    headlineContent = { Text("Update Dictionaries") },
+                                    supportingContent = {
+                                        Text(
+                                            text = uiState.updatableDictionaries
+                                                .joinToString(separator = "\n") { it.dictionary.index.title },
+                                            maxLines = 3,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    },
+                                    modifier = Modifier.clickable(enabled = !isBusy) {
+                                        showUpdateConfirmation = true
                                     },
                                 )
                             }
@@ -449,7 +478,7 @@ fun DictionaryView(
                                 SegmentedButton(
                                     selected = selectedType == type,
                                     onClick = { dictionaryViewModel.selectType(type) },
-                                    enabled = !uiState.isImporting,
+                                    enabled = !isBusy,
                                     shape = SegmentedButtonDefaults.itemShape(
                                         index = index,
                                         count = DictionaryType.entries.size,
@@ -513,8 +542,8 @@ fun DictionaryView(
                                     revealedFileName.takeUnless { it == dictionary.path.name }
                                 }
                             },
-                            enabled = !uiState.isImporting,
-                            swipeEnabled = draggedFileName == null && !isDragSettling && !uiState.isImporting,
+                            enabled = !isBusy,
+                            swipeEnabled = draggedFileName == null && !isDragSettling && !isBusy,
                             modifier = reorderModifier
                                 .zIndex(if (isDragging) 1f else 0f)
                                 .padding(horizontal = 16.dp, vertical = 6.dp),
@@ -550,7 +579,7 @@ fun DictionaryView(
                     }
                 }
             }
-            if (uiState.isImporting) {
+            if (isBusy) {
                 HoshiBlockingProgressOverlay(
                     message = uiState.currentImportMessage ?: "Loading...",
                     modifier = Modifier
@@ -559,6 +588,33 @@ fun DictionaryView(
                 )
             }
         }
+    }
+    if (showUpdateConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showUpdateConfirmation = false },
+            title = { Text("Update Dictionaries") },
+            text = {
+                Text(
+                    "This will check for and install updates for these dictionaries:\n" +
+                        uiState.updatableDictionaries.joinToString(separator = "\n") { it.dictionary.index.title },
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showUpdateConfirmation = false
+                        dictionaryViewModel.updateDictionaries()
+                    },
+                ) {
+                    Text("Update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUpdateConfirmation = false }) {
+                    Text("Cancel")
+                }
+            },
+        )
     }
 }
 

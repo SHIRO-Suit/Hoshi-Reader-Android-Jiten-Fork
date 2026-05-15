@@ -107,6 +107,7 @@ internal class HoshiAppContainer(context: Context) {
             contentResolver = contentResolver,
             dictionaryRepository = dictionaryRepository,
             settingsRepository = dictionarySettingsRepository,
+            ankiSettingsRepository = ankiSettingsRepository,
         )
 
     fun dictionarySearchRepository(): DictionarySearchRepository =

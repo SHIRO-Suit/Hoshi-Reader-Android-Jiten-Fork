@@ -18,6 +18,38 @@ data class DictionaryInfo(
     val order: Int = 0,
 )
 
+data class DictionaryUpdateCandidate(
+    val dictionary: DictionaryInfo,
+    val type: DictionaryType,
+)
+
+enum class DictionaryUpdateStage {
+    Checking,
+    Downloading,
+    Importing,
+}
+
+data class DictionaryUpdateProgress(
+    val stage: DictionaryUpdateStage,
+    val title: String,
+)
+
+data class DictionaryRename(
+    val oldTitle: String,
+    val newTitle: String,
+)
+
+data class DictionaryUpdateSummary(
+    val checkedCount: Int,
+    val updatedCount: Int,
+    val renamedDictionaries: List<DictionaryRename> = emptyList(),
+)
+
+data class ImportedDictionary(
+    val fileName: String,
+    val index: DictionaryIndex,
+)
+
 @Serializable
 data class DictionaryConfig(
     val termDictionaries: List<DictionaryEntry>,
