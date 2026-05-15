@@ -5,6 +5,8 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 ## [Unreleased]
 
+## [v0.6.3] - 2026-05-15
+
 ### Added
 
 - Add a Behavior setting to keep the screen awake while reading books without Sasayaki audio.

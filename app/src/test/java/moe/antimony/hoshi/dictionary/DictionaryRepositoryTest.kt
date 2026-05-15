@@ -79,7 +79,7 @@ class DictionaryRepositoryTest {
         val filesDir = temporaryFolder.newFolder("update-files")
         val storage = DictionaryStorageDataSource(filesDir)
         val bridge = ImportingDictionaryNativeBridge()
-        val installedIndex = testDataDictionaryIndex("testdata/JMdict_english.zip")
+        val installedIndex = updatableTestDictionaryIndex()
         val remoteIndex = installedIndex.copy(
             title = "JMdict [2099-01-01]",
             revision = "JMdict.2099-01-01",
@@ -145,7 +145,7 @@ class DictionaryRepositoryTest {
     fun updateDictionariesSkipsDownloadWhenRemoteRevisionMatchesInstalledRevision() {
         val filesDir = temporaryFolder.newFolder("same-revision-files")
         val storage = DictionaryStorageDataSource(filesDir)
-        val installedIndex = testDataDictionaryIndex("testdata/JMdict_english.zip")
+        val installedIndex = updatableTestDictionaryIndex()
         val remote = FakeDictionaryRemoteDataSource(
             indexes = mapOf(installedIndex.indexUrl to installedIndex),
             archives = emptyMap(),
@@ -287,17 +287,15 @@ class DictionaryRepositoryTest {
         dictionaryDir.resolve("index.json").writeText(dictionaryIndexJson(index))
     }
 
-    private fun testDataDictionaryIndex(path: String): DictionaryIndex =
-        ZipFile(testDataFile(path)).use { zip ->
-            val entry = zip.getEntry("index.json")
-            val json = zip.getInputStream(entry).use { it.readBytes().decodeToString() }
-            kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString<DictionaryIndex>(json)
-        }
-
-    private fun testDataFile(path: String): File =
-        sequenceOf(File(path), File("../$path"), File("../../$path"))
-            .firstOrNull(File::isFile)
-            ?: error("Missing test data file: $path")
+    private fun updatableTestDictionaryIndex(): DictionaryIndex =
+        DictionaryIndex(
+            title = "JMdict [2026-01-01]",
+            format = 3,
+            revision = "JMdict.2026-01-01",
+            isUpdatable = true,
+            indexUrl = "https://example.invalid/JMdict_english.json",
+            downloadUrl = "https://example.invalid/JMdict_english.zip",
+        )
 
     private fun dictionaryArchive(index: DictionaryIndex): ByteArray {
         val output = ByteArrayOutputStream()
