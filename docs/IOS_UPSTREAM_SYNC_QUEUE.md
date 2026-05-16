@@ -4,7 +4,7 @@ This document was rewritten from scratch after checking every iOS upstream commi
 
 - Source: `reference/Hoshi-Reader-iOS`
 - Baseline: `5e01ba4ba9e2fd458536d48efdecaa48c7906cc0`
-- Latest checked: `origin/develop` at `bc531074dc02edd42c2b435f5b527b0f0589e59c`
+- Latest checked: `origin/develop` at `1e2aa8d11d5cd1687e11c6b8735a999e7a8ed16f`
 - Checked on: 2026-05-16
 
 ## Current Queue
@@ -42,9 +42,10 @@ Status: queued
 
 Commits:
 
-- `14cd6f2` - replace popup JS audio/mining buttons with native SwiftUI/UIKit buttons.
-- `6f94682` - prevent horizontal popup scroll while holding buttons.
-- `bc53107` - refresh button frames when dictionary details expand/collapse.
+- `851202d` - replace popup JS audio/mining buttons with native UIKit buttons.
+- `8f0d827` - prevent horizontal popup scroll while holding buttons.
+- `cd8ecf2` - refresh button frames when dictionary details expand/collapse.
+- `1e2aa8d` - move dictionary toggle frame refresh to a document-level listener.
 
 iOS behavior to mirror:
 
@@ -52,7 +53,7 @@ iOS behavior to mirror:
 - JS emits placeholder button frames; native controls are positioned over those slots.
 - Button state still reflects audio error, duplicate check result, disabled mining state, and `allowDupes`.
 - Autoplay invokes the same native audio path.
-- Button frames refresh after resize, zoom, redirect/back/forward restore, and dictionary collapse/expand toggles.
+- Button frames refresh after resize, zoom, redirect/back/forward restore, and any dictionary collapse/expand toggle event that bubbles through the popup document.
 - Holding or tapping the overlay controls must not horizontally scroll the popup content.
 
 Android notes:
@@ -151,11 +152,11 @@ Validation:
 
 ## Covered Or No Android Action
 
-- `746a7ac` / `5e3885a`: iOS adds and renames Sasayaki seek controls to skip controls. Android already has richer Sasayaki skip controls with cue/5s/10s/15s/30s actions shared by reader chrome, Sasayaki sheet controls, and Android media controls. Keep the existing validation entry in `docs/TODO.md`.
+- `746a7ac` / `a7f4750`: iOS adds and renames Sasayaki seek controls to skip controls. Android already has richer Sasayaki skip controls with cue/5s/10s/15s/30s actions shared by reader chrome, Sasayaki sheet controls, and Android media controls. Keep the existing validation entry in `docs/TODO.md`.
 - `9626f84`: iOS removes direct index mutation when closing popups. Android popup stacks are already state-list driven rather than mutating SwiftUI binding indices directly. Re-test nested popup dismissals when touching popup controls.
 - `53c6980`: iOS-specific SwiftUI reader button/glass-effect cleanup. Android reader chrome has its own Material implementation; no direct sync unless a user-visible mismatch is found.
 - `130f6cf`: iOS reader background ignores safe area. Android does not share the same safe-area rendering model; handle any Android status/navigation background issue as a separate platform fix.
-- `6b2c3e8`: iOS build-number bump only. No Android sync.
+- `478f78d`: iOS build-number bump only. No Android sync.
 
 ## Full Commit Inventory
 
@@ -172,11 +173,12 @@ Validation:
 | `130f6cf` | 2026-05-16 | Reader background safe area | No direct Android action |
 | `2f5d71a` | 2026-05-16 | Autodetect dictionary type | Synced |
 | `b3312d9` | 2026-05-16 | Clean collapsed config on delete | Synced |
-| `14cd6f2` | 2026-05-16 | Native popup action buttons | Queued |
-| `6f94682` | 2026-05-16 | Prevent popup horizontal scroll | Queued with popup buttons |
-| `6b2c3e8` | 2026-05-16 | iOS build bump | No Android action |
-| `5e3885a` | 2026-05-16 | Rename seek to skip | Covered |
-| `bc53107` | 2026-05-16 | Refresh popup button frames on toggle | Queued with popup buttons |
+| `851202d` | 2026-05-16 | Native popup action buttons | Queued |
+| `8f0d827` | 2026-05-16 | Prevent popup horizontal scroll | Queued with popup buttons |
+| `478f78d` | 2026-05-16 | iOS build bump | No Android action |
+| `a7f4750` | 2026-05-16 | Rename seek to skip | Covered |
+| `cd8ecf2` | 2026-05-16 | Refresh popup button frames on toggle | Queued with popup buttons |
+| `1e2aa8d` | 2026-05-16 | Move toggle frame refresh listener to document | Queued with popup buttons |
 
 ## Suggested Implementation Order
 
