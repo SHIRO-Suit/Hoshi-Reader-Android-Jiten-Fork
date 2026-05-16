@@ -11,21 +11,14 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Add iOS-style reader jump return controls so chapter, character, highlight, and internal-link jumps can return to the previous reading position.
 - Add iOS-style lookup popup font CSS support and a popup scale setting, including Custom CSS insertion menus for imported reader fonts and dictionary selectors.
 - Add iOS-style book title renaming from the Books long-press menu, including renamed titles in sorting, reader metadata, confirmations, and sync messages.
-- Add JMnedict to recommended dictionary downloads and switch the recommended JMdict package to the no-proper-names edition while keeping Jitendex available.
+- Add JMnedict to recommended dictionary downloads and switch the recommended JMdict package to the no-proper-names edition.
+- Show iOS-aligned deinflection explanation popups when tapping conjugation tags in dictionary lookup results.
+- Detect dictionary archive types during manual import and place term, frequency, and pitch data in their matching tabs without choosing a type first.
 
 ### Fixed
 
-- Shrink the reader highlight color picker so the five color choices appear as compact swatches after tapping Highlight.
-- Align the reader text-selection highlight action with iOS by showing one Highlight action directly in the Android selection toolbar, then replacing the toolbar with a nearby color picker.
-- Prevent native reader text-selection drags from scrolling paginated content to another page while creating highlights.
-- Keep reader text-selection handle drags from being treated as page swipes while extending a selection.
-- Avoid intermittent reader highlight creation failures by keeping the WebView selection alive until the highlight is created.
-- Keep reader long-press text selection available for highlight creation instead of converting the long press into a lookup tap.
-- Show iOS-aligned deinflection explanation popups when tapping conjugation tags in dictionary lookup results.
 - Use the selected EPUB file name as the visible book title when imported metadata has no usable title.
-- Detect dictionary archive types during manual import and place term, frequency, and pitch data in their matching tabs without choosing a type first.
 - Remove deleted dictionaries from the collapsed dictionary configuration.
-- Group highlights from unlabeled EPUB spine entries under the nearest previous visible chapter in the reader Highlights sheet.
 - Keep popup audio and Anki controls aligned after scrolling, zoom, redirects, and dictionary collapse/expand changes by drawing them as native Android controls.
 
 ## [v0.6.3] - 2026-05-15

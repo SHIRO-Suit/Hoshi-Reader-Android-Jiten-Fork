@@ -13,6 +13,7 @@ This file is the short operational handoff for future agents.
 - Keep architecture-refactor slice state out of tracked docs; use the local `.codex/skills/hoshi-refactoring-workflow` skill when available.
 - Put detailed reproduction, verification logs, and investigation notes in the relevant issue, PR, commit message, or a focused doc.
 - When completing a task, update the smallest relevant line here in the same commit.
+- Keep `docs/CHANGELOG.md` `[Unreleased]` free of fixup notes for not-yet-released features; fold them into the original feature entry or omit them until they describe a fix to already shipped user-visible behavior.
 
 ## Open Alignment Work
 

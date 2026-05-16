@@ -16,6 +16,7 @@
 - `docs/TODO.md` 只记录当前状态、下一步、阻塞项和长期有效的验证入口；不要把它当流水账。不要粘贴长 emulator/adb 验证记录、截图观察、发布历史或每次提交的详细复现过程。
 - 用户可见变更写入 `docs/CHANGELOG.md`；架构重构方向保留在 `docs/ARCHITECTURE_REFACTORING.md`，具体执行流程和切片状态不要写入 tracked 文档，优先使用仓库本地 `.codex/skills/hoshi-refactoring-workflow`；详细调查和验证证据优先放在 issue、PR、commit message 或专门文档中。
 - 完成新功能或修复问题时，同步更新 `docs/CHANGELOG.md` 的 `[Unreleased]` section；CHANGELOG 面向普通用户，只记录用户可感知的 App 功能、体验和问题修复，不记录 CI、agent workflow、私有 skill、构建脚本、依赖管理或仅开发者可见的内部改动。
+- `[Unreleased]` 里的未发布功能不要再追加修补说明：如果一个功能还没发布，后续对它的 UI、行为、稳定性或内部实现调整应合并进该功能原本的 Added/Changed 条目，或直接不写；只有已发布版本中用户可遇到的问题被修复时，才写入 Fixed。
 - 如果 commit 修复或实现了某个 GitHub Issue，`docs/CHANGELOG.md` 对应用户可见条目末尾加上 `#123` 形式的 issue 引用，便于 GitHub Release 页面自动生成可跳转链接。
 - 修复问题时，如果用户要求建立 GitHub Issue，先调查问题现象和复现方式，再创建关联 issue；之后再进行实际修复，并在修复完成后的 commit message 中使用 closing keyword（如 `Closes #123`）关联该 issue，便于后续追踪 bug 记录。
 - Commit message 使用 Conventional Commits。
