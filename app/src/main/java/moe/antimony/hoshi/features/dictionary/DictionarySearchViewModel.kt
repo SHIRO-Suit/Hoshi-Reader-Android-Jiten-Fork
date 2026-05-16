@@ -90,6 +90,8 @@ internal class DictionarySearchViewModel(
         darkMode: Boolean = false,
         eInkMode: Boolean = false,
         ankiSettings: AnkiPopupSettings = AnkiPopupSettings(),
+        fontFaceCss: String = "",
+        popupScale: Double = 1.0,
     ) {
         val query = _uiState.value.query
         val dictionarySettings = _uiState.value.dictionarySettings.normalized()
@@ -109,6 +111,8 @@ internal class DictionarySearchViewModel(
                             eInkMode = eInkMode,
                             audioSettings = audioSettings,
                             ankiSettings = ankiSettings,
+                            fontFaceCss = fontFaceCss,
+                            popupScale = popupScale,
                         )
                     } else {
                         repository.rebuildLookupQuery()
@@ -123,6 +127,8 @@ internal class DictionarySearchViewModel(
                             eInkMode = eInkMode,
                             audioSettings = audioSettings,
                             ankiSettings = ankiSettings,
+                            fontFaceCss = fontFaceCss,
+                            popupScale = popupScale,
                         )
                     }
                 }

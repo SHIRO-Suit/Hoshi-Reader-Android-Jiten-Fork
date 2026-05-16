@@ -44,6 +44,8 @@ internal object DictionarySearchContent {
         eInkMode: Boolean = false,
         audioSettings: AudioSettings = AudioSettings(),
         ankiSettings: AnkiPopupSettings = AnkiPopupSettings(),
+        fontFaceCss: String = "",
+        popupScale: Double = 1.0,
     ): DictionarySearchRenderState {
         val trimmed = query.trim()
         if (trimmed.isEmpty()) {
@@ -75,6 +77,8 @@ internal object DictionarySearchContent {
             eInkMode = eInkMode,
             audioSettings = audioSettings,
             ankiSettings = ankiSettings,
+            fontFaceCss = fontFaceCss,
+            popupScale = popupScale,
         )
     }
 
@@ -88,6 +92,8 @@ internal object DictionarySearchContent {
         eInkMode: Boolean = false,
         audioSettings: AudioSettings = AudioSettings(),
         ankiSettings: AnkiPopupSettings = AnkiPopupSettings(),
+        fontFaceCss: String = "",
+        popupScale: Double = 1.0,
     ): DictionarySearchRenderState {
         if (results.isEmpty()) {
             return DictionarySearchRenderState(
@@ -110,6 +116,8 @@ internal object DictionarySearchContent {
                 eInkMode = eInkMode,
                 audioSettings = audioSettings,
                 ankiSettings = ankiSettings,
+                fontFaceCss = fontFaceCss,
+                popupScale = popupScale,
             ),
             results = results,
             hasResults = true,

@@ -52,6 +52,7 @@ class ReaderSettingsRepositoryTest {
             assertTrue(settings.showProgressTop)
             assertEquals(320, settings.popupWidth)
             assertEquals(250, settings.popupHeight)
+            assertEquals(1.0, settings.popupScale, 0.000001)
             assertFalse(settings.popupActionBar)
             assertFalse(settings.popupFullWidth)
             assertTrue(settings.popupSwipeToDismiss)
@@ -134,6 +135,7 @@ class ReaderSettingsRepositoryTest {
                     showProgressTop = false,
                     popupWidth = 420,
                     popupHeight = 300,
+                    popupScale = 1.25,
                     popupActionBar = true,
                     popupFullWidth = true,
                     popupSwipeToDismiss = false,
@@ -174,6 +176,7 @@ class ReaderSettingsRepositoryTest {
             assertFalse(saved.showProgressTop)
             assertEquals(420, saved.popupWidth)
             assertEquals(300, saved.popupHeight)
+            assertEquals(1.25, saved.popupScale, 0.000001)
             assertTrue(saved.popupActionBar)
             assertTrue(saved.popupFullWidth)
             assertFalse(saved.popupSwipeToDismiss)

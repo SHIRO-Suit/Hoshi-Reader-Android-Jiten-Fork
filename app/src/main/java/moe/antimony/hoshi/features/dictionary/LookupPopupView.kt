@@ -64,6 +64,7 @@ import moe.antimony.hoshi.features.audio.LocalAudioRepository
 import moe.antimony.hoshi.features.audio.WordAudioPlayer
 import moe.antimony.hoshi.features.anki.AnkiMiningContext
 import moe.antimony.hoshi.features.anki.AnkiViewModel
+import moe.antimony.hoshi.features.reader.ReaderFontManager
 import moe.antimony.hoshi.features.reader.ReaderSelectionData
 import moe.antimony.hoshi.features.reader.ReaderSelectionRect
 import moe.antimony.hoshi.webview.applyHoshiWebViewSecurityDefaults
@@ -89,6 +90,7 @@ data class LookupPopupState(
     val reducedMotionScrolling: Boolean = false,
     val reducedMotionScrollPercent: Int = 100,
     val reducedMotionSwipeThreshold: Int = 40,
+    val popupScale: Double = 1.0,
     val topInset: Double = 0.0,
     val bottomInset: Double = 0.0,
     val darkMode: Boolean = false,
@@ -135,6 +137,8 @@ fun LookupPopupView(
     )
     val ankiUiState by ankiViewModel.uiState.collectAsState()
     val assets = remember(context) { LookupPopupAssets.load(context) }
+    val fontManager = appContainer.readerFontManager
+    val fontFaceCss = fontManager.popupFontFaceCss()
     val htmlResults = if (warmShell) emptyList() else state.results
     val html = remember(
         htmlResults,
@@ -149,6 +153,7 @@ fun LookupPopupView(
         state.eInkMode,
         state.audioSettings,
         ankiUiState.popupSettings,
+        fontFaceCss,
     ) {
         LookupPopupHtml.render(
             results = htmlResults,
@@ -163,6 +168,8 @@ fun LookupPopupView(
             eInkMode = state.eInkMode,
             audioSettings = state.audioSettings,
             ankiSettings = ankiUiState.popupSettings,
+            fontFaceCss = fontFaceCss,
+            popupScale = state.popupScale,
         )
     }
     val warmContentKey = if (warmShell) contentResetKey else null
@@ -288,7 +295,9 @@ fun LookupPopupView(
                     html = html,
                     results = state.results,
                     assets = assets,
+                    fontManager = fontManager,
                     audioSettings = state.audioSettings,
+                    popupScale = state.popupScale,
                     selectionOffsetX = frameX,
                     selectionOffsetY = frameY + controlsHeight,
                     clearSelectionSignal = clearSelectionSignal,
@@ -531,7 +540,9 @@ private fun LookupPopupWebView(
     html: String,
     results: List<LookupResult>,
     assets: LookupPopupAssets,
+    fontManager: ReaderFontManager,
     audioSettings: AudioSettings,
+    popupScale: Double,
     selectionOffsetX: Double,
     selectionOffsetY: Double,
     clearSelectionSignal: Int,
@@ -554,6 +565,7 @@ private fun LookupPopupWebView(
     var appliedClearSelectionSignal by remember { mutableStateOf(clearSelectionSignal) }
     var appliedBackSignal by remember { mutableStateOf(backSignal) }
     var appliedForwardSignal by remember { mutableStateOf(forwardSignal) }
+    var appliedPopupScale by remember { mutableStateOf(popupScale) }
     var shellReady by remember { mutableStateOf(false) }
     var appliedWarmResults by remember { mutableStateOf<List<LookupResult>?>(null) }
     AndroidView(
@@ -581,7 +593,12 @@ private fun LookupPopupWebView(
                     ),
                     "HoshiPopup",
                 )
-                webViewClient = PopupMessageWebViewClient(callbackHolder, audioRequestHandler, assets)
+                webViewClient = PopupMessageWebViewClient(
+                    callbackHolder = callbackHolder,
+                    audioRequestHandler = audioRequestHandler,
+                    assets = assets,
+                    fontManager = fontManager,
+                )
             }
         },
         update = { webView ->
@@ -600,6 +617,13 @@ private fun LookupPopupWebView(
                     html,
                     "text/html",
                     "UTF-8",
+                    null,
+                )
+            }
+            if (appliedPopupScale != popupScale) {
+                appliedPopupScale = popupScale
+                webView.evaluateJavascript(
+                    "document.documentElement.style.zoom = '${popupScale.coerceIn(0.8, 1.5)}'",
                     null,
                 )
             }

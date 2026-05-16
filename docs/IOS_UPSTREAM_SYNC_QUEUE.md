@@ -11,7 +11,7 @@ This document was rewritten from scratch after checking every iOS upstream commi
 
 ### 1. Popup typography and scaling
 
-Status: queued
+Status: completed on Android.
 
 Commits:
 
@@ -27,8 +27,9 @@ iOS behavior to mirror:
 
 Android notes:
 
-- Android already has reader font import and `https://hoshi.local/fonts/...` resource routing for reader content; reuse that boundary for popup fonts instead of creating a separate storage path.
-- Android currently has Custom CSS editing but no font insertion helper and no popup-scale setting.
+- Android reuses reader font import storage and the `https://hoshi.local/fonts/...` resource boundary for popup fonts.
+- Custom CSS editing now includes Font and Selector menus that insert `font-family: "..." !important;` and `[data-dictionary="..."]` snippets.
+- Popup scale is persisted in reader appearance settings and updates existing popup WebViews through JS instead of reloading the popup HTML.
 
 Validation:
 
@@ -161,8 +162,8 @@ Validation:
 
 | Commit | Date | iOS summary | Android status |
 | --- | --- | --- | --- |
-| `f524178` | 2026-05-14 | Custom fonts in popup | Queued |
-| `a384533` | 2026-05-15 | Popup scale/zoom | Queued |
+| `f524178` | 2026-05-14 | Custom fonts in popup | Completed |
+| `a384533` | 2026-05-15 | Popup scale/zoom | Completed |
 | `96f44d3` | 2026-05-15 | Rename book titles; metadata fallback | Queued |
 | `746a7ac` | 2026-05-15 | Add Sasayaki seek controls | Covered |
 | `53c6980` | 2026-05-15 | Simplify iOS reader buttons | No direct Android action |
@@ -180,10 +181,9 @@ Validation:
 
 ## Suggested Implementation Order
 
-1. Popup typography and scale.
-2. Popup action buttons and frame sync.
-3. Dictionary import/recommendation cleanup.
-4. Bookshelf title rename.
-5. Highlight grouping.
+1. Popup action buttons and frame sync.
+2. Dictionary import/recommendation cleanup.
+3. Bookshelf title rename.
+4. Highlight grouping.
 
 This order keeps the riskiest WebView/popup work together, then moves to dictionary storage/import behavior, then lower-risk model/UI slices.

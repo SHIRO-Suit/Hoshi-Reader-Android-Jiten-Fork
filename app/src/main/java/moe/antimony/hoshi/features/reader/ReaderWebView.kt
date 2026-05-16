@@ -174,6 +174,7 @@ private fun warmRootLookupPopupItem(
         reducedMotionScrolling = settings.popupReducedMotionScrolling,
         reducedMotionScrollPercent = settings.popupReducedMotionScrollPercent,
         reducedMotionSwipeThreshold = settings.popupReducedMotionSwipeThreshold,
+        popupScale = settings.popupScale,
         darkMode = darkMode,
         eInkMode = settings.eInkMode,
         audioSettings = audioSettings,
@@ -274,11 +275,18 @@ fun ReaderWebView(
     var rootSelectionHighlightRects by remember { mutableStateOf<List<ReaderSelectionRect>>(emptyList()) }
     var warmRootLookupPopup by remember { mutableStateOf<LookupPopupItem?>(null) }
     val popupDarkMode = effectiveSettings.usesDarkInterface(systemDarkTheme)
-    val themedLookupPopups = remember(lookupPopups, popupDarkMode, effectiveSettings.eInkMode, audioSettings) {
+    val themedLookupPopups = remember(
+        lookupPopups,
+        popupDarkMode,
+        effectiveSettings.eInkMode,
+        audioSettings,
+        effectiveSettings.popupScale,
+    ) {
         lookupPopups.withLookupPopupVisualOptions(
             darkMode = popupDarkMode,
             eInkMode = effectiveSettings.eInkMode,
             audioSettings = audioSettings,
+            popupScale = effectiveSettings.popupScale,
         )
     }
     val warmRootSeedPopup = remember(effectiveSettings, dictionarySettings, popupDarkMode, audioSettings) {
@@ -307,6 +315,7 @@ fun ReaderWebView(
                 darkMode = popupDarkMode,
                 eInkMode = effectiveSettings.eInkMode,
                 audioSettings = audioSettings,
+                popupScale = effectiveSettings.popupScale,
             ).first(),
         )
     }
@@ -485,6 +494,7 @@ fun ReaderWebView(
                 reducedMotionScrolling = effectiveSettings.popupReducedMotionScrolling,
                 reducedMotionScrollPercent = effectiveSettings.popupReducedMotionScrollPercent,
                 reducedMotionSwipeThreshold = effectiveSettings.popupReducedMotionSwipeThreshold,
+                popupScale = effectiveSettings.popupScale,
                 popupActionBar = effectiveSettings.popupActionBar,
                 dictionarySettings = dictionarySettings,
                 darkMode = popupDarkMode,
@@ -509,6 +519,7 @@ fun ReaderWebView(
                 reducedMotionScrolling = effectiveSettings.popupReducedMotionScrolling,
                 reducedMotionScrollPercent = effectiveSettings.popupReducedMotionScrollPercent,
                 reducedMotionSwipeThreshold = effectiveSettings.popupReducedMotionSwipeThreshold,
+                popupScale = effectiveSettings.popupScale,
                 popupActionBar = effectiveSettings.popupActionBar,
                 dictionarySettings = dictionarySettings,
                 darkMode = popupDarkMode,

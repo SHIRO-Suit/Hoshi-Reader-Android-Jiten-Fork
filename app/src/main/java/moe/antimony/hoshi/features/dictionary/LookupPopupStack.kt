@@ -23,6 +23,7 @@ internal data class LookupPopupOptions(
     val reducedMotionScrolling: Boolean = false,
     val reducedMotionScrollPercent: Int = 100,
     val reducedMotionSwipeThreshold: Int = 40,
+    val popupScale: Double = 1.0,
     val topInset: Double = 0.0,
     val bottomInset: Double = 0.0,
     val dictionarySettings: DictionarySettings = DictionarySettings(),
@@ -71,6 +72,7 @@ internal fun createLookupPopupItem(
             reducedMotionScrolling = options.reducedMotionScrolling,
             reducedMotionScrollPercent = options.reducedMotionScrollPercent,
             reducedMotionSwipeThreshold = options.reducedMotionSwipeThreshold,
+            popupScale = options.popupScale,
             topInset = options.topInset,
             bottomInset = options.bottomInset,
             darkMode = options.darkMode,
@@ -117,6 +119,7 @@ internal fun List<LookupPopupItem>.withLookupPopupVisualOptions(
     darkMode: Boolean,
     eInkMode: Boolean,
     audioSettings: AudioSettings,
+    popupScale: Double = 1.0,
 ): List<LookupPopupItem> =
     map { popup ->
         popup.copy(
@@ -124,6 +127,7 @@ internal fun List<LookupPopupItem>.withLookupPopupVisualOptions(
                 darkMode = darkMode,
                 eInkMode = eInkMode,
                 audioSettings = audioSettings,
+                popupScale = popupScale,
             ),
         )
     }

@@ -67,6 +67,7 @@ import moe.antimony.hoshi.features.audio.LocalAudioRepository
 import moe.antimony.hoshi.features.audio.WordAudioPlayer
 import moe.antimony.hoshi.features.anki.AnkiMiningContext
 import moe.antimony.hoshi.features.anki.AnkiViewModel
+import moe.antimony.hoshi.features.reader.ReaderFontManager
 import moe.antimony.hoshi.features.reader.ReaderSettings
 import moe.antimony.hoshi.webview.applyHoshiWebViewSecurityDefaults
 import kotlin.math.abs
@@ -97,6 +98,7 @@ internal fun dictionarySearchPopupOptions(
     reducedMotionScrolling = readerSettings.popupReducedMotionScrolling,
     reducedMotionScrollPercent = readerSettings.popupReducedMotionScrollPercent,
     reducedMotionSwipeThreshold = readerSettings.popupReducedMotionSwipeThreshold,
+    popupScale = readerSettings.popupScale,
     popupActionBar = false,
     topInset = DictionaryPopupTopInset,
     bottomInset = DictionaryPopupBottomInset,
@@ -135,6 +137,8 @@ fun DictionarySearchView(
     val uiState by searchViewModel.uiState.collectAsState()
     val ankiUiState by ankiViewModel.uiState.collectAsState()
     val localAudioRepository = appContainer.localAudioRepository
+    val fontManager = appContainer.readerFontManager
+    val fontFaceCss = fontManager.popupFontFaceCss()
     val popupDarkMode = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val popupOptions = dictionarySearchPopupOptions(
         readerSettings = readerSettings,
@@ -152,6 +156,7 @@ fun DictionarySearchView(
         uiState.audioSettings,
         ankiUiState.popupSettings,
         assets,
+        fontFaceCss,
     ) {
         DictionarySearchContent.renderExistingResults(
             lastQuery = uiState.lastQuery,
@@ -163,13 +168,22 @@ fun DictionarySearchView(
             eInkMode = readerSettings.eInkMode,
             audioSettings = uiState.audioSettings,
             ankiSettings = ankiUiState.popupSettings,
+            fontFaceCss = fontFaceCss,
+            popupScale = readerSettings.popupScale,
         ).html
     }
-    val themedPopups = remember(uiState.popups, popupDarkMode, readerSettings.eInkMode, uiState.audioSettings) {
+    val themedPopups = remember(
+        uiState.popups,
+        popupDarkMode,
+        readerSettings.eInkMode,
+        uiState.audioSettings,
+        readerSettings.popupScale,
+    ) {
         uiState.popups.withLookupPopupVisualOptions(
             darkMode = popupDarkMode,
             eInkMode = readerSettings.eInkMode,
             audioSettings = uiState.audioSettings,
+            popupScale = readerSettings.popupScale,
         )
     }
     val runLookup = {
@@ -178,6 +192,8 @@ fun DictionarySearchView(
             darkMode = popupDarkMode,
             eInkMode = readerSettings.eInkMode,
             ankiSettings = ankiUiState.popupSettings,
+            fontFaceCss = fontFaceCss,
+            popupScale = readerSettings.popupScale,
         )
     }
     val lookupPopup = { selection: moe.antimony.hoshi.features.reader.ReaderSelectionData ->
@@ -197,7 +213,9 @@ fun DictionarySearchView(
                 html = resultHtml,
                 results = uiState.results,
                 assets = assets,
+                fontManager = fontManager,
                 audioSettings = uiState.audioSettings,
+                popupScale = readerSettings.popupScale,
                 localAudioRepository = localAudioRepository,
                 clearSelectionSignal = uiState.resultClearSelectionSignal,
                 backSignal = uiState.backSignal,
@@ -410,7 +428,9 @@ private fun DictionaryResultWebView(
     html: String,
     results: List<LookupResult>,
     assets: LookupPopupAssets,
+    fontManager: ReaderFontManager,
     audioSettings: AudioSettings,
+    popupScale: Double,
     localAudioRepository: LocalAudioRepository,
     clearSelectionSignal: Int,
     backSignal: Int,
@@ -425,6 +445,7 @@ private fun DictionaryResultWebView(
     var appliedClearSelectionSignal by remember { mutableStateOf(clearSelectionSignal) }
     var appliedBackSignal by remember { mutableStateOf(backSignal) }
     var appliedForwardSignal by remember { mutableStateOf(forwardSignal) }
+    var appliedPopupScale by remember { mutableStateOf(popupScale) }
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { context ->
@@ -443,7 +464,12 @@ private fun DictionaryResultWebView(
                     ),
                     "HoshiPopup",
                 )
-                webViewClient = PopupMessageWebViewClient(callbackHolder, audioRequestHandler, assets)
+                webViewClient = PopupMessageWebViewClient(
+                    callbackHolder = callbackHolder,
+                    audioRequestHandler = audioRequestHandler,
+                    assets = assets,
+                    fontManager = fontManager,
+                )
             }
         },
         update = { webView ->
@@ -454,6 +480,7 @@ private fun DictionaryResultWebView(
                     localAudioRepository,
                 ),
                 assets,
+                fontManager,
             )
             if (loadedHtml != html) {
                 lookupResultsHolder.results = results
@@ -463,6 +490,13 @@ private fun DictionaryResultWebView(
                     html,
                     "text/html",
                     "UTF-8",
+                    null,
+                )
+            }
+            if (appliedPopupScale != popupScale) {
+                appliedPopupScale = popupScale
+                webView.evaluateJavascript(
+                    "document.documentElement.style.zoom = '${popupScale.coerceIn(0.8, 1.5)}'",
                     null,
                 )
             }

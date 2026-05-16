@@ -68,6 +68,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.DataObject
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -85,7 +86,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -102,6 +105,7 @@ import moe.antimony.hoshi.dictionary.DictionaryInfo
 import moe.antimony.hoshi.dictionary.DictionaryType
 import moe.antimony.hoshi.dictionary.RecommendedDictionaries
 import moe.antimony.hoshi.features.settings.SettingsDetailScaffold
+import moe.antimony.hoshi.features.reader.ReaderFontManager
 import moe.antimony.hoshi.importing.ImportFileType
 import moe.antimony.hoshi.importing.MultipleFileImportContent
 import moe.antimony.hoshi.importing.validateImportFile
@@ -318,6 +322,8 @@ fun DictionaryView(
         DictionaryDestination.CustomCss -> {
             DictionaryCustomCssView(
                 settings = uiState.settings,
+                termDictionaries = uiState.dictionaries[DictionaryType.Term].orEmpty(),
+                fontManager = appContainer.readerFontManager,
                 onSettingsChange = dictionaryViewModel::updateSettings,
                 onClose = { destination = null },
                 modifier = modifier,
@@ -1112,12 +1118,41 @@ private fun CollapsedDictionariesView(
 @Composable
 private fun DictionaryCustomCssView(
     settings: DictionarySettings,
+    termDictionaries: List<DictionaryInfo>,
+    fontManager: ReaderFontManager,
     onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onClose)
     val colorScheme = MaterialTheme.colorScheme
+    val fontNames = remember(fontManager) { fontManager.allFontNames() }
+    var fontMenuExpanded by remember { mutableStateOf(false) }
+    var selectorMenuExpanded by remember { mutableStateOf(false) }
+    var cssFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = settings.customCSS,
+                selection = TextRange(settings.customCSS.length),
+            ),
+        )
+    }
+
+    LaunchedEffect(settings.customCSS) {
+        if (settings.customCSS != cssFieldValue.text) {
+            cssFieldValue = TextFieldValue(
+                text = settings.customCSS,
+                selection = TextRange(settings.customCSS.length),
+            )
+        }
+    }
+
+    fun insertCssText(text: String) {
+        val nextValue = insertCustomCssText(cssFieldValue, text)
+        cssFieldValue = nextValue
+        onSettingsChange { it.copy(customCSS = nextValue.text) }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = colorScheme.background,
@@ -1149,19 +1184,120 @@ private fun DictionaryCustomCssView(
             border = BorderStroke(1.dp, colorScheme.outlineVariant),
             tonalElevation = 0.dp,
         ) {
-            BasicTextField(
-                value = settings.customCSS,
-                onValueChange = { value ->
-                    onSettingsChange { it.copy(customCSS = value) }
-                },
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = colorScheme.onSurface),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-            )
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box {
+                        TextButton(onClick = { fontMenuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Rounded.TextFields,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Font")
+                        }
+                        DropdownMenu(
+                            expanded = fontMenuExpanded,
+                            onDismissRequest = { fontMenuExpanded = false },
+                        ) {
+                            fontNames.forEach { fontName ->
+                                DropdownMenuItem(
+                                    text = { Text(fontName) },
+                                    onClick = {
+                                        fontMenuExpanded = false
+                                        insertCssText(
+                                            fontFamilyCssDeclaration(fontManager.cssFontName(fontName)),
+                                        )
+                                    },
+                                )
+                            }
+                        }
+                    }
+                    Box {
+                        TextButton(
+                            onClick = { selectorMenuExpanded = true },
+                            enabled = termDictionaries.isNotEmpty(),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.DataObject,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Selector")
+                        }
+                        DropdownMenu(
+                            expanded = selectorMenuExpanded,
+                            onDismissRequest = { selectorMenuExpanded = false },
+                        ) {
+                            termDictionaries.forEach { dictionary ->
+                                val title = dictionary.index.title
+                                DropdownMenuItem(
+                                    text = { Text(title) },
+                                    onClick = {
+                                        selectorMenuExpanded = false
+                                        insertCssText(dictionarySelectorCssSnippet(title))
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+                HorizontalDivider(color = colorScheme.outlineVariant)
+                BasicTextField(
+                    value = cssFieldValue,
+                    onValueChange = { value ->
+                        cssFieldValue = value
+                        onSettingsChange { it.copy(customCSS = value.text) }
+                    },
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = colorScheme.onSurface),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                )
+            }
         }
     }
 }
+
+internal fun insertCustomCssText(
+    value: TextFieldValue,
+    insertedText: String,
+): TextFieldValue {
+    val start = value.selection.min.coerceIn(0, value.text.length)
+    val end = value.selection.max.coerceIn(start, value.text.length)
+    val nextText = buildString {
+        append(value.text.substring(0, start))
+        append(insertedText)
+        append(value.text.substring(end))
+    }
+    return TextFieldValue(nextText, selection = TextRange(start + insertedText.length))
+}
+
+internal fun dictionarySelectorCssSnippet(dictionaryTitle: String): String =
+    "[data-dictionary=\"${dictionaryTitle.cssDoubleQuotedContent()}\"] {\n    \n}\n"
+
+internal fun fontFamilyCssDeclaration(fontFamily: String): String =
+    """font-family: "${fontFamily.cssDoubleQuotedContent()}" !important;"""
+
+private fun String.cssDoubleQuotedContent(): String =
+    buildString(length) {
+        this@cssDoubleQuotedContent.forEach { ch ->
+            when (ch) {
+                '\\' -> append("\\\\")
+                '"' -> append("\\\"")
+                '\n' -> append("\\a ")
+                '\r' -> Unit
+                else -> append(ch)
+            }
+        }
+    }
 
 @Composable
 private fun SectionLabel(text: String) {

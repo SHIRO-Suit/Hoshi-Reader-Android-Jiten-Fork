@@ -452,6 +452,17 @@ private fun ReaderAppearanceContent(
                         },
                     )
                     AppearanceDivider(palette)
+                    SliderRow(
+                        label = "Scale",
+                        value = String.format(Locale.US, "%.2f", settings.popupScale),
+                        sliderValue = settings.popupScale.toFloat(),
+                        valueRange = 0.8f..1.5f,
+                        steps = 13,
+                        onValueChange = { value ->
+                            onSettingsChange(settings.copy(popupScale = (round(value / 0.05f) * 0.05f).toDouble()))
+                        },
+                    )
+                    AppearanceDivider(palette)
                     SwitchRow(
                         label = "Reduced Motion Scrolling",
                         checked = settings.popupReducedMotionScrolling,

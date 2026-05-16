@@ -61,6 +61,29 @@ class LookupPopupHtmlTest {
     }
 
     @Test
+    fun popupHtmlInjectsFontFacesAndInitialScaleLikeIosPopupWebView() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "to eat")),
+            assets = LookupPopupAssets(
+                popupJs = "window.renderPopup = function() {};",
+                popupCss = ".entry-header {}",
+                selectionJs = "window.hoshiSelection = { selectText: function() {} };",
+            ),
+            fontFaceCss = """
+                @font-face {
+                    font-family: "Klee One";
+                    src: url("https://hoshi.local/fonts/Klee%20One.ttf");
+                }
+            """.trimIndent(),
+            popupScale = 1.25,
+        )
+
+        assertTrue(html.contains("""font-family: "Klee One";"""))
+        assertTrue(html.contains("""src: url("https://hoshi.local/fonts/Klee%20One.ttf");"""))
+        assertTrue(html.contains("html { zoom: 1.25; }"))
+    }
+
+    @Test
     fun deinflectionTraceIncludesBridgeDescriptionsForPopupOverlay() {
         val html = LookupPopupHtml.render(
             listOf(

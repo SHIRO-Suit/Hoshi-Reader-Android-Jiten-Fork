@@ -10,6 +10,7 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import moe.antimony.hoshi.features.audio.AudioSettings
 import moe.antimony.hoshi.features.anki.AnkiPopupSettings
+import java.util.Locale
 
 internal data class LookupPopupAssets(
     val popupJs: String,
@@ -55,6 +56,8 @@ internal object LookupPopupHtml {
         eInkMode: Boolean = false,
         audioSettings: AudioSettings = AudioSettings(),
         ankiSettings: AnkiPopupSettings = AnkiPopupSettings(),
+        fontFaceCss: String = "",
+        popupScale: Double = 1.0,
     ): String {
         val entryCount = results.size
         val entries = if (assets == null) {
@@ -71,6 +74,12 @@ internal object LookupPopupHtml {
         val colorScheme = if (darkMode) "dark" else "light"
         val popupCss = assets?.let { """<style>${it.popupCss}</style>""" }
             ?: """<link rel="stylesheet" href="$PopupAssetBaseUrl/popup.css">"""
+        val popupTypographyCss = """
+            <style>
+                ${fontFaceCss.trim()}
+                html { zoom: ${popupCssNumber(popupScale.coerceIn(0.8, 1.5))}; }
+            </style>
+        """.trimIndent()
         val eInkCss = if (eInkMode) """<style>$eInkPopupCss</style>""" else ""
         val selectionJs = assets?.let { """<script>${it.selectionJs}</script>""" }
             ?: """<script src="$PopupAssetBaseUrl/selection.js"></script>"""
@@ -93,6 +102,7 @@ internal object LookupPopupHtml {
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 $popupCss
                 <style>$androidColorSchemeCss</style>
+                $popupTypographyCss
                 $eInkCss
                 $selectionJs
                 $popupJs
@@ -324,6 +334,11 @@ internal object LookupPopupHtml {
         buildJsonArray {
             settings.enabledAudioSourceUrls.forEach { add(JsonPrimitive(it)) }
         }.toString()
+
+    private fun popupCssNumber(value: Double): String {
+        val formatted = String.format(Locale.US, "%.2f", value).trimEnd('0')
+        return if (formatted.endsWith('.')) "${formatted}0" else formatted
+    }
 
     private fun LookupResult.toEntryJson(): JsonObject = buildJsonObject {
         put("expression", term.expression)

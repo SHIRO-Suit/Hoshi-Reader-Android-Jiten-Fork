@@ -15,9 +15,11 @@ import de.manhhao.hoshi.LookupResult
 import moe.antimony.hoshi.dictionary.LookupEngine
 import moe.antimony.hoshi.features.audio.AudioPlaybackMode
 import moe.antimony.hoshi.features.audio.AudioRequestHandler
+import moe.antimony.hoshi.features.reader.ReaderFontManager
 import moe.antimony.hoshi.features.reader.ReaderSelectionData
 import moe.antimony.hoshi.features.reader.ReaderSelectionRect
 import moe.antimony.hoshi.features.reader.ReaderSelectionBridgePayload
+import moe.antimony.hoshi.features.reader.mediaType
 import org.json.JSONObject
 
 internal class PopupWebViewCallbacks(
@@ -79,6 +81,7 @@ internal class PopupMessageWebViewClient(
     private val callbackHolder: PopupWebViewCallbackHolder,
     private val audioRequestHandler: AudioRequestHandler? = null,
     private val assets: LookupPopupAssets? = null,
+    private val fontManager: ReaderFontManager? = null,
     private val imageRequestHandler: DictionaryImageRequestHandler = DictionaryImageRequestHandler(),
 ) : WebViewClient() {
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
@@ -90,6 +93,7 @@ internal class PopupMessageWebViewClient(
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
         handleAssetRequest(request.url)
+            ?: handleFontRequest(request.url)
             ?: imageRequestHandler.handleImageRequest(request.url)
             ?: audioRequestHandler?.handleAudioRequest(request.url.toString())
 
@@ -97,6 +101,7 @@ internal class PopupMessageWebViewClient(
     override fun shouldInterceptRequest(view: WebView, url: String): WebResourceResponse? =
         Uri.parse(url).let { uri ->
             handleAssetRequest(uri)
+                ?: handleFontRequest(uri)
                 ?: imageRequestHandler.handleImageRequest(uri)
                 ?: audioRequestHandler?.handleAudioRequest(url)
         }
@@ -118,6 +123,18 @@ internal class PopupMessageWebViewClient(
             mimeType,
             "UTF-8",
             ByteArrayInputStream(content.toByteArray(Charsets.UTF_8)),
+        )
+    }
+
+    private fun handleFontRequest(uri: Uri): WebResourceResponse? {
+        val fontManager = fontManager ?: return null
+        if (uri.scheme != "https" || uri.host != "hoshi.local") return null
+        val fileName = uri.lastPathSegment?.takeIf { uri.path.orEmpty().startsWith("/fonts/") } ?: return null
+        val fontFile = fontManager.fontFileForRequest(fileName) ?: return null
+        return WebResourceResponse(
+            fontFile.mediaType(),
+            null,
+            fontFile.inputStream(),
         )
     }
 
