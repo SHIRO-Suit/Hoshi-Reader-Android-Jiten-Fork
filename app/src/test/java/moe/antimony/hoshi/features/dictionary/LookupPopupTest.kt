@@ -3,6 +3,7 @@ package moe.antimony.hoshi.features.dictionary
 import moe.antimony.hoshi.features.reader.ReaderSelectionData
 import moe.antimony.hoshi.features.reader.ReaderSelectionRect
 import moe.antimony.hoshi.features.audio.AudioSettings
+import android.view.MotionEvent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -238,88 +239,41 @@ class LookupPopupTest {
     }
 
     @Test
-    fun hiddenWarmRootPopupDoesNotReceiveInput() {
-        assertTrue(
-            lookupPopupReceivesInput(
-                isPopupActive = true,
-                isContentVisible = true,
-                contentReady = true,
+    fun popupSelectionOffsetTracksHistoryControls() {
+        assertEquals(
+            50.0,
+            popupSelectionOffsetY(
+                frameTopDp = 50.0,
+                popupActionBar = false,
+                backCount = 0,
+                forwardCount = 0,
+                hasSasayakiCue = false,
             ),
+            0.0,
         )
-        assertFalse(
-            lookupPopupReceivesInput(
-                isPopupActive = true,
-                isContentVisible = false,
-                contentReady = true,
+        assertEquals(
+            87.0,
+            popupSelectionOffsetY(
+                frameTopDp = 50.0,
+                popupActionBar = false,
+                backCount = 1,
+                forwardCount = 0,
+                hasSasayakiCue = false,
             ),
-        )
-        assertFalse(
-            lookupPopupReceivesInput(
-                isPopupActive = true,
-                isContentVisible = true,
-                contentReady = false,
-            ),
-        )
-        assertFalse(
-            lookupPopupReceivesInput(
-                isPopupActive = false,
-                isContentVisible = true,
-                contentReady = true,
-            ),
+            0.0,
         )
     }
 
     @Test
-    fun activePopupKeepsRenderSurfaceBeforeItReceivesInput() {
-        assertTrue(
-            lookupPopupRendersSurface(
-                isPopupActive = true,
-            ),
-        )
-        assertFalse(
-            lookupPopupReceivesInput(
-                isPopupActive = true,
-                isContentVisible = false,
-                contentReady = false,
-            ),
-        )
-        assertFalse(
-            lookupPopupRendersSurface(
-                isPopupActive = false,
-            ),
-        )
-    }
+    fun popupTouchStreamContinuesAfterMovingOutsideInitialHost() {
+        val tracker = PopupTouchStreamTracker()
 
-    @Test
-    fun activePopupKeepsOnscreenFrameBeforeItReceivesInput() {
-        assertTrue(
-            lookupPopupUsesOnscreenFrame(
-                isPopupActive = true,
-                isContentVisible = false,
-                contentReady = false,
-            ),
-        )
-        assertTrue(
-            lookupPopupUsesOnscreenFrame(
-                isPopupActive = true,
-                isContentVisible = true,
-                contentReady = false,
-            ),
-        )
-        assertTrue(
-            lookupPopupUsesOnscreenFrame(
-                isPopupActive = true,
-                isContentVisible = true,
-                contentReady = true,
-            ),
-        )
-        assertFalse(
-            lookupPopupUsesOnscreenFrame(
-                isPopupActive = false,
-                isContentVisible = false,
-                contentReady = false,
-            ),
-        )
+        assertTrue(tracker.shouldDispatch(MotionEvent.ACTION_DOWN, hitPopup = true))
+        tracker.onDispatchResult(MotionEvent.ACTION_DOWN, handled = true)
+        assertTrue(tracker.shouldDispatch(MotionEvent.ACTION_MOVE, hitPopup = false))
+        assertTrue(tracker.shouldDispatch(MotionEvent.ACTION_UP, hitPopup = false))
+        tracker.onDispatchResult(MotionEvent.ACTION_UP, handled = true)
+        assertFalse(tracker.shouldDispatch(MotionEvent.ACTION_MOVE, hitPopup = false))
     }
 
 }
