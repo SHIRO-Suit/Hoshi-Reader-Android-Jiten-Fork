@@ -913,6 +913,16 @@ fun ReaderWebView(
         hasAudio = sasayakiPlayer?.hasAudio == true,
         metrics = bottomChromeMetrics,
     )
+    val sasayakiBottomSkipButtonActions = readerSasayakiBottomSkipButtonActions(
+        verticalWriting = effectiveSettings.verticalWriting,
+        reverseVerticalReaderSkipButtons = sasayakiSettings.reverseVerticalReaderSkipButtons,
+    )
+    fun performSasayakiBottomSkipAction(action: ReaderSasayakiBottomSkipButtonAction) {
+        when (action) {
+            ReaderSasayakiBottomSkipButtonAction.Backward -> sasayakiPlayer?.previousCue()
+            ReaderSasayakiBottomSkipButtonAction.Forward -> sasayakiPlayer?.nextCue()
+        }
+    }
     val showSasayakiTopToggle = sasayakiSettings.enabled &&
         sasayakiSettings.showReaderToggle &&
         sasayakiMatchData != null &&
@@ -1101,8 +1111,8 @@ fun ReaderWebView(
                 null
             },
             sasayakiSkipButtons = sasayakiBottomSkipButtons,
-            onSasayakiSkipBackward = { sasayakiPlayer?.previousCue() },
-            onSasayakiSkipForward = { sasayakiPlayer?.nextCue() },
+            onSasayakiSkipBackward = { performSasayakiBottomSkipAction(sasayakiBottomSkipButtonActions.left) },
+            onSasayakiSkipForward = { performSasayakiBottomSkipAction(sasayakiBottomSkipButtonActions.right) },
             metrics = bottomChromeMetrics,
             modifier = Modifier.align(Alignment.BottomCenter),
         )

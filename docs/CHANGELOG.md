@@ -5,6 +5,10 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 ## [Unreleased]
 
+### Added
+
+- Add a Sasayaki setting to reverse only the reader bottom skip button actions in vertical writing mode.
+
 ### Fixed
 
 - Keep editable text-field cursors visible in dark and E-ink themes, and keep single-line fields horizontally scrolling with cursor movement when editing long text.

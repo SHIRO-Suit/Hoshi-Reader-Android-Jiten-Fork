@@ -76,6 +76,16 @@ data class ReaderSasayakiBottomSkipButtons(
     val adjacentSpacingDp: Int,
 )
 
+enum class ReaderSasayakiBottomSkipButtonAction {
+    Backward,
+    Forward,
+}
+
+data class ReaderSasayakiBottomSkipButtonActions(
+    val left: ReaderSasayakiBottomSkipButtonAction,
+    val right: ReaderSasayakiBottomSkipButtonAction,
+)
+
 data class ReaderFocusModeToggleArea(
     val horizontalPaddingDp: Int,
 )
@@ -184,6 +194,22 @@ fun readerSasayakiBottomSkipButtons(
         iconSizeDp = metrics.secondaryIconSizeDp,
         adjacentSpacingDp = metrics.trailingButtonSpacingDp,
     )
+
+fun readerSasayakiBottomSkipButtonActions(
+    verticalWriting: Boolean,
+    reverseVerticalReaderSkipButtons: Boolean,
+): ReaderSasayakiBottomSkipButtonActions =
+    if (verticalWriting && reverseVerticalReaderSkipButtons) {
+        ReaderSasayakiBottomSkipButtonActions(
+            left = ReaderSasayakiBottomSkipButtonAction.Forward,
+            right = ReaderSasayakiBottomSkipButtonAction.Backward,
+        )
+    } else {
+        ReaderSasayakiBottomSkipButtonActions(
+            left = ReaderSasayakiBottomSkipButtonAction.Backward,
+            right = ReaderSasayakiBottomSkipButtonAction.Forward,
+        )
+    }
 
 fun readerFocusModeToggleArea(
     metrics: ReaderBottomChromeMetrics,

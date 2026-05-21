@@ -142,6 +142,22 @@ fun SasayakiSettingsView(
                                 )
                             },
                         )
+                        if (loadedSettings.showReaderSkipButtons) {
+                            SettingsDivider()
+                            ListItem(
+                                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                headlineContent = { Text(stringResource(R.string.sasayaki_reverse_vertical_skip_buttons)) },
+                                supportingContent = { Text(stringResource(R.string.sasayaki_reverse_vertical_skip_buttons_help)) },
+                                trailingContent = {
+                                    Switch(
+                                        checked = loadedSettings.reverseVerticalReaderSkipButtons,
+                                        onCheckedChange = {
+                                            save(loadedSettings.copy(reverseVerticalReaderSkipButtons = it))
+                                        },
+                                    )
+                                },
+                            )
+                        }
                         SettingsDivider()
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),

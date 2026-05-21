@@ -352,6 +352,50 @@ class ReaderChromeTest {
     }
 
     @Test
+    fun sasayakiBottomSkipActionsOnlyReverseInVerticalWritingWhenEnabled() {
+        assertEquals(
+            ReaderSasayakiBottomSkipButtonActions(
+                left = ReaderSasayakiBottomSkipButtonAction.Backward,
+                right = ReaderSasayakiBottomSkipButtonAction.Forward,
+            ),
+            readerSasayakiBottomSkipButtonActions(
+                verticalWriting = false,
+                reverseVerticalReaderSkipButtons = false,
+            ),
+        )
+        assertEquals(
+            ReaderSasayakiBottomSkipButtonActions(
+                left = ReaderSasayakiBottomSkipButtonAction.Backward,
+                right = ReaderSasayakiBottomSkipButtonAction.Forward,
+            ),
+            readerSasayakiBottomSkipButtonActions(
+                verticalWriting = false,
+                reverseVerticalReaderSkipButtons = true,
+            ),
+        )
+        assertEquals(
+            ReaderSasayakiBottomSkipButtonActions(
+                left = ReaderSasayakiBottomSkipButtonAction.Backward,
+                right = ReaderSasayakiBottomSkipButtonAction.Forward,
+            ),
+            readerSasayakiBottomSkipButtonActions(
+                verticalWriting = true,
+                reverseVerticalReaderSkipButtons = false,
+            ),
+        )
+        assertEquals(
+            ReaderSasayakiBottomSkipButtonActions(
+                left = ReaderSasayakiBottomSkipButtonAction.Forward,
+                right = ReaderSasayakiBottomSkipButtonAction.Backward,
+            ),
+            readerSasayakiBottomSkipButtonActions(
+                verticalWriting = true,
+                reverseVerticalReaderSkipButtons = true,
+            ),
+        )
+    }
+
+    @Test
     fun bottomMenuUsesCompactReaderChromeMetrics() {
         val metrics = readerBottomChromeMetrics()
 

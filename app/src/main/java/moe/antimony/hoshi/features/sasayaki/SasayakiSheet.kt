@@ -221,6 +221,13 @@ fun SasayakiSheet(
                     checked = settings.showReaderSkipButtons,
                     onCheckedChange = { onSettingsChange(settings.copy(showReaderSkipButtons = it)) },
                 )
+                if (settings.showReaderSkipButtons) {
+                    SasayakiSettingsSwitchRow(
+                        label = stringResource(R.string.sasayaki_reverse_vertical_skip_buttons),
+                        checked = settings.reverseVerticalReaderSkipButtons,
+                        onCheckedChange = { onSettingsChange(settings.copy(reverseVerticalReaderSkipButtons = it)) },
+                    )
+                }
                 SasayakiSettingsActionRow(
                     label = stringResource(R.string.sasayaki_skip_action),
                     selected = settings.readerSkipButtonAction,

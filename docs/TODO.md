@@ -121,7 +121,7 @@ For Sasayaki settings regressions, verify fresh installs default Sasayaki, Show 
 
 For Sasayaki matching regressions, verify short low-confidence `＊` subtitle cues are skipped while longer `＊` cues still match and advance playback alignment.
 
-For Sasayaki skip-control regressions, verify the reader bottom skip buttons flank the existing Back/Menu buttons, and the same cue/5s/10s/15s/30s action applies from reader chrome, Sasayaki sheet controls, and Android system media controls.
+For Sasayaki skip-control regressions, verify the reader bottom skip buttons flank the existing Back/Menu buttons, the same cue/5s/10s/15s/30s action applies from reader chrome, Sasayaki sheet controls, and Android system media controls, and Reverse Vertical Bottom Buttons only swaps the visible bottom reader buttons in vertical writing.
 
 For Sasayaki volume-key regressions, verify volume-key seek with loaded audiobook audio, fallback without loaded audio, priority over Volume Keys Turn Pages, and Reverse Volume Key Direction affecting both seek and page-turn controls.
 
