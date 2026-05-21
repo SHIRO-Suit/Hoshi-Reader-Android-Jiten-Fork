@@ -334,7 +334,11 @@ internal object LookupPopupHtml {
 
     private fun audioSourcesJson(settings: AudioSettings): String =
         buildJsonArray {
-            settings.enabledAudioSourceUrls.forEach { add(JsonPrimitive(it)) }
+            settings.audioSources
+                .filter { it.isEnabled }
+                .forEach { source ->
+                    add(JsonPrimitive(if (source == AudioSettings.LocalAudioSource) AudioSettings.InternalLocalAudioUrl else source.url))
+                }
         }.toString()
 
     private fun popupCssNumber(value: Double): String {

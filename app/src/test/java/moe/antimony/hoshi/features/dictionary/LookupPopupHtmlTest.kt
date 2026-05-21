@@ -102,6 +102,50 @@ class LookupPopupHtmlTest {
     }
 
     @Test
+    fun popupHtmlRewritesOnlyBuiltInLocalAudioSourceToInternalEndpoint() {
+        val ankiconnectAndroidSource = AudioSource(
+            name = "Ankiconnect Android",
+            url = AudioSettings.LocalAudioUrl,
+        )
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "to eat")),
+            assets = LookupPopupAssets(
+                popupJs = "window.renderPopup = function() {};",
+                popupCss = ".entry-header {}",
+                selectionJs = "window.hoshiSelection = { selectText: function() {} };",
+            ),
+            audioSettings = AudioSettings(
+                audioSources = listOf(AudioSettings.LocalAudioSource, ankiconnectAndroidSource),
+                enableLocalAudio = true,
+            ),
+        )
+
+        assertTrue(html.contains("hoshi-local-audio-source://get/?term={term}&reading={reading}"))
+        assertTrue(html.contains(AudioSettings.LocalAudioUrl))
+    }
+
+    @Test
+    fun popupHtmlKeepsAnkiconnectAndroidLocalAudioSourceExternalWhenBuiltInLocalAudioIsOff() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "to eat")),
+            assets = LookupPopupAssets(
+                popupJs = "window.renderPopup = function() {};",
+                popupCss = ".entry-header {}",
+                selectionJs = "window.hoshiSelection = { selectText: function() {} };",
+            ),
+            audioSettings = AudioSettings().addSource(
+                AudioSource(
+                    name = "Ankiconnect Android",
+                    url = AudioSettings.LocalAudioUrl,
+                ),
+            ),
+        )
+
+        assertTrue(html.contains(AudioSettings.LocalAudioUrl))
+        assertFalse(html.contains("hoshi-local-audio-source://get/?term={term}&reading={reading}"))
+    }
+
+    @Test
     fun popupHtmlExposesNativeButtonFrameBridge() {
         val html = LookupPopupHtml.render(
             listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "to eat")),

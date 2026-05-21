@@ -9,6 +9,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 
 - Keep editable text-field cursors visible in dark and E-ink themes, and keep single-line fields horizontally scrolling with cursor movement when editing long text.
 - Keep continuous reader backward chapter turns landing at the previous chapter end after jumping to a mid-book chapter.
+- Allow AnkiconnectAndroid's Local Audio URL to be added as an external reusable audio source without being swallowed by Hoshi's built-in Local Audio source.
 
 ## [v1.0.0] - 2026-05-21
 

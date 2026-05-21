@@ -105,7 +105,7 @@ For bookshelf tab-switch regressions, use real-device screen recording to confir
 
 For bookshelf-to-reader regressions, use real-device continuous screenshots or screen recording to confirm no Bookshelf loading spinner or dark-mode white loading frame appears between tapping a book and showing the Reader.
 
-For reader/dictionary/audio user flows, perform targeted emulator or device validation using the test data listed in `AGENTS.md`; for dictionary external-link regressions, use the `pixivで読む` definition link case.
+For reader/dictionary/audio user flows, perform targeted emulator or device validation using the test data listed in `AGENTS.md`; include external AnkiconnectAndroid Local Audio URL add behavior and built-in Local Audio enable behavior when touching audio sources, and use the `pixivで読む` definition link case for dictionary external-link regressions.
 
 For reader/dictionary theme regressions, verify open Dictionary tab results, the Dictionary search cursor, open reader lookup popups, and System theme's Use Sepia as Light Theme toggle update immediately when switching between Light, Dark, System, and E-ink appearance modes.
 

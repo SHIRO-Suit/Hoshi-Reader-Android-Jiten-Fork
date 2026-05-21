@@ -285,7 +285,7 @@ fun AudioSettingsView(
                         loadedSettings.audioSources.forEachIndexed { index, source ->
                             AudioSourceRow(
                                 source = source,
-                                canDelete = !source.isDefault && source.url != AudioSettings.LocalAudioSource.url,
+                                canDelete = !source.isDefault && source != AudioSettings.LocalAudioSource,
                                 canMoveUp = index > 0,
                                 canMoveDown = index < loadedSettings.audioSources.lastIndex,
                                 onEnabledChange = { enabled ->
@@ -492,7 +492,7 @@ private fun AudioSourceRow(
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         headlineContent = { Text(source.name, maxLines = 1) },
         supportingContent = {
-            if (!source.isDefault && source.url != AudioSettings.LocalAudioSource.url) {
+            if (!source.isDefault && source != AudioSettings.LocalAudioSource) {
                 Text(source.url, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
