@@ -578,11 +578,7 @@ internal fun bookContextMenuTarget(
     entry: BookEntry,
 ): BookContextMenuTarget =
     BookContextMenuTarget(
-        sectionKey = when {
-            section.isReading -> "reading"
-            section.shelfName != null -> "shelf:${section.shelfName}"
-            else -> "unshelved"
-        },
+        sectionKey = section.layoutKey,
         bookId = entry.metadata.id,
     )
 
@@ -710,7 +706,7 @@ private fun BooksTab(
                                 collapseKey?.let { key -> shelfExpansionState[key] ?: section.isReading } ?: true
                             }
                             item(
-                                key = "header:${section.title}",
+                                key = "header:${section.layoutKey}",
                                 span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) },
                             ) {
                                 BookshelfSectionHeader(
@@ -729,7 +725,7 @@ private fun BooksTab(
                             if (isExpanded) {
                                 items(
                                     items = section.books,
-                                    key = { "${section.title}:${it.metadata.id}" },
+                                    key = { "${section.layoutKey}:${it.metadata.id}" },
                                 ) { entry ->
                                     Box {
                                         BookGridCell(
@@ -768,7 +764,7 @@ private fun BooksTab(
                                 }
                             } else {
                                 item(
-                                    key = "preview:${section.title}",
+                                    key = "preview:${section.layoutKey}",
                                     span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) },
                                 ) {
                                     Row(

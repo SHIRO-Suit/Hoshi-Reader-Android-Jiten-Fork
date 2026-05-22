@@ -98,6 +98,26 @@ class MainShellUiTest {
     }
 
     @Test
+    fun virtualReadingShelfAndUserReadingShelfHaveDistinctLayoutKeys() {
+        val reading = bookEntry(id = "reading", title = "Reading", lastAccess = 2.0)
+        val shelved = bookEntry(id = "shelved", title = "Shelved", lastAccess = 1.0)
+
+        val sections = bookshelfSections(
+            entries = listOf(reading, shelved),
+            shelves = listOf(BookShelf(name = "Reading", bookIds = listOf("shelved"))),
+            progressById = mapOf("reading" to 0.5),
+            showReading = true,
+            sortOption = BookSortOption.Recent,
+        )
+
+        assertEquals(listOf("Reading", "Reading", "Unshelved"), sections.map { it.title })
+        assertEquals(sections.size, sections.map { it.layoutKey }.toSet().size)
+        assertEquals("__reading__", sections[0].layoutKey)
+        assertEquals("shelf:Reading", sections[1].layoutKey)
+        assertEquals("unshelved", sections[2].layoutKey)
+    }
+
+    @Test
     fun bookshelfSectionsSortEachSectionByTitleWhenRequested() {
         val z = bookEntry(id = "z", title = "Zeta", lastAccess = 2.0)
         val a = bookEntry(id = "a", title = "Alpha", lastAccess = 1.0)
