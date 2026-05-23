@@ -300,4 +300,59 @@ class LookupPopupTest {
         assertEquals(View.VISIBLE, lookupPopupOverlayVisibility(hasPopups = true))
     }
 
+    @Test
+    fun stylusOutsidePopupDownConsumesStreamAndRequestsDismiss() {
+        val shouldDismiss = shouldDismissForOutsideStylusTouch(
+            actionMasked = MotionEvent.ACTION_DOWN,
+            toolType = MotionEvent.TOOL_TYPE_STYLUS,
+            hitPopup = false,
+        )
+
+        assertTrue(shouldDismiss)
+    }
+
+    @Test
+    fun fingerOutsidePopupStillFallsThroughToReaderPath() {
+        val shouldDismiss = shouldDismissForOutsideStylusTouch(
+            actionMasked = MotionEvent.ACTION_DOWN,
+            toolType = MotionEvent.TOOL_TYPE_FINGER,
+            hitPopup = false,
+        )
+
+        assertFalse(shouldDismiss)
+    }
+
+    @Test
+    fun stylusInsidePopupStillUsesPopupDispatchPath() {
+        val shouldDismiss = shouldDismissForOutsideStylusTouch(
+            actionMasked = MotionEvent.ACTION_DOWN,
+            toolType = MotionEvent.TOOL_TYPE_STYLUS,
+            hitPopup = true,
+        )
+
+        assertFalse(shouldDismiss)
+    }
+
+    @Test
+    fun eraserOutsidePopupDownAlsoRequestsDismiss() {
+        val shouldDismiss = shouldDismissForOutsideStylusTouch(
+            actionMasked = MotionEvent.ACTION_DOWN,
+            toolType = MotionEvent.TOOL_TYPE_ERASER,
+            hitPopup = false,
+        )
+
+        assertTrue(shouldDismiss)
+    }
+
+    @Test
+    fun stylusOutsidePopupMoveDoesNotStartDismissWithoutDown() {
+        val shouldDismiss = shouldDismissForOutsideStylusTouch(
+            actionMasked = MotionEvent.ACTION_MOVE,
+            toolType = MotionEvent.TOOL_TYPE_STYLUS,
+            hitPopup = false,
+        )
+
+        assertFalse(shouldDismiss)
+    }
+
 }

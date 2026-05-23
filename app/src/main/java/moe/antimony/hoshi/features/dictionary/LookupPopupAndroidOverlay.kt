@@ -200,6 +200,7 @@ private class LookupPopupOverlayController(
 
     init {
         view.onOverlaySizeChanged = { lastUpdate?.let(::applyUpdate) }
+        view.onOutsideStylusTouch = ::dismissFromOverlay
         view.addView(
             rootHighlightView,
             FrameLayout.LayoutParams(
@@ -208,6 +209,14 @@ private class LookupPopupOverlayController(
             ),
         )
         rootHost?.let { host -> view.addView(host) }
+    }
+
+    private fun dismissFromOverlay() {
+        val update = lastUpdate ?: return
+        if (update.popups.isEmpty()) return
+        if (!update.onRootPopupDismissed()) {
+            update.onPopupsChange(emptyList())
+        }
     }
 
     fun update(
@@ -381,6 +390,7 @@ private data class OverlayUpdate(
 
 private class LookupPopupOverlayLayout(context: Context) : FrameLayout(context) {
     var onOverlaySizeChanged: () -> Unit = {}
+    var onOutsideStylusTouch: () -> Unit = {}
     private val touchStreamTracker = PopupTouchStreamTracker()
 
     override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
@@ -390,6 +400,15 @@ private class LookupPopupOverlayLayout(context: Context) : FrameLayout(context) 
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         val hitPopup = hitPopup(event)
+        if (shouldDismissForOutsideStylusTouch(
+            actionMasked = event.actionMasked,
+            toolType = event.getToolType(0),
+            hitPopup = hitPopup,
+        )) {
+            onOutsideStylusTouch()
+            return true
+        }
+
         val shouldDispatch = touchStreamTracker.shouldDispatch(event.actionMasked, hitPopup)
         if (!shouldDispatch) return false
         val handled = super.dispatchTouchEvent(event)
@@ -408,6 +427,16 @@ private class LookupPopupOverlayLayout(context: Context) : FrameLayout(context) 
         return false
     }
 }
+
+internal fun shouldDismissForOutsideStylusTouch(
+    actionMasked: Int,
+    toolType: Int,
+    hitPopup: Boolean,
+): Boolean =
+    actionMasked == MotionEvent.ACTION_DOWN && !hitPopup && isStylusTool(toolType)
+
+private fun isStylusTool(toolType: Int): Boolean =
+    toolType == MotionEvent.TOOL_TYPE_STYLUS || toolType == MotionEvent.TOOL_TYPE_ERASER
 
 internal class PopupTouchStreamTracker {
     private var activePopupStream = false
