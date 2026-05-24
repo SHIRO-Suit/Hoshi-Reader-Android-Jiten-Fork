@@ -84,6 +84,21 @@ class LookupPopupHtmlTest {
     }
 
     @Test
+    fun popupHtmlExposesConfiguredScanLengthToRecursiveSelectionJavascript() {
+        val html = LookupPopupHtml.render(
+            listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "to eat")),
+            assets = LookupPopupAssets(
+                popupJs = "window.renderPopup = function() {};",
+                popupCss = ".entry-header {}",
+                selectionJs = "window.hoshiSelection = { selectText: function() {} };",
+            ),
+            settings = DictionarySettings(scanLength = 33),
+        )
+
+        assertTrue(html.contains("window.scanLength = 33;"))
+    }
+
+    @Test
     fun popupHtmlExposesActiveAnkiConnectBackendToPopupJavascript() {
         val html = LookupPopupHtml.render(
             listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "to eat")),

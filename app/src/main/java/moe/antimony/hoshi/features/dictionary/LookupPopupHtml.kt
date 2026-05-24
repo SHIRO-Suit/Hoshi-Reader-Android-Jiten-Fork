@@ -171,6 +171,7 @@ internal object LookupPopupHtml {
                         }
                     };
                     window.scanNonJapaneseText = ${normalizedSettings.scanNonJapaneseText};
+                    window.scanLength = ${normalizedSettings.scanLength};
                     window.collapseMode = "${normalizedSettings.collapseMode.rawValue}";
                     window.expandFirstDictionary = ${normalizedSettings.expandFirstDictionary};
                     window.collapsedDictionaries = $collapsedDictionaries;

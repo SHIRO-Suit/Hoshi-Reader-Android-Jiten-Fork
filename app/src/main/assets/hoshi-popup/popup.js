@@ -1240,16 +1240,30 @@ function playWordAudio(audioUrl) {
 let buttonFrameSyncScheduled = false;
 let visualStateButtonFrameSyncScheduled = false;
 
+function getButtonRectScale() {
+    const zoom = Number.parseFloat(getComputedStyle(document.documentElement).zoom);
+    if (zoom === 1) {
+        return 1;
+    }
+
+    const probe = el('div', { style: 'position:absolute;width:100px;visibility:hidden;' });
+    document.body.appendChild(probe);
+    const width = probe.getBoundingClientRect().width;
+    probe.remove();
+    return 100 * zoom / width;
+}
+
 function collectButtonFrames() {
+    const scale = getButtonRectScale();
     return [...document.querySelectorAll('.button-slot')].map(slot => {
         const rect = slot.getBoundingClientRect();
         return {
             kind: slot.dataset.kind,
             entryIndex: Number(slot.dataset.entryIndex),
-            x: rect.left + window.scrollX,
-            y: rect.top + window.scrollY,
-            width: rect.width,
-            height: rect.height,
+            x: (rect.left + window.scrollX) * scale,
+            y: (rect.top + window.scrollY) * scale,
+            width: rect.width * scale,
+            height: rect.height * scale,
             state: slot.dataset.state || 'default',
             enabled: slot.dataset.enabled !== 'false'
         };
@@ -1727,7 +1741,10 @@ window.renderPopup = function() {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;
         }
-        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, 16);
+        const scale = getButtonRectScale();
+        const rectX = (e.clientX + window.scrollX) / scale - window.scrollX;
+        const rectY = (e.clientY + window.scrollY) / scale - window.scrollY;
+        const selected = window.hoshiSelection?.selectText(e.clientX, e.clientY, window.scanLength, rectX, rectY);
         if (!selected) {
             webkit.messageHandlers.tapOutside.postMessage(null);
             return;

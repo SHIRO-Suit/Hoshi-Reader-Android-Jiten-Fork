@@ -144,7 +144,7 @@ Validation:
 
 ### 5. Popup recursive selection scan length and zoom coordinates
 
-Status: pending Android audit; may be partially covered.
+Status: completed on Android.
 
 Commits:
 
@@ -159,15 +159,12 @@ iOS behavior to mirror:
 - Popup WebViews receive the configured `scanLength` and pass it to `window.hoshiSelection.selectText()` instead of hardcoding `16`.
 - On older iOS WebKit versions, recursive popup selection uses the touch point for hit testing and the popup-relative rect point for selection-rect calculation, fixing coordinate drift under popup zoom.
 
-Android current gap:
+Android result:
 
-- Android dictionary lookup and popup redirects already use `DictionarySettings.scanLength` for lookup results.
-- Android needs an explicit check that popup-in-popup text selection inside scaled popup WebViews uses the configured scan length and reports child popup anchors correctly at popup scale `0.8`, `1.0`, and `1.5`.
-
-Suggested slice:
-
-- Audit `LookupPopupHtml`, `PopupWebViewMessages`, `LookupPopupAndroidOverlay`, and shared `selection.js` to confirm scan length is passed into recursive popup selection, not just lookup.
-- Add a behavior/API test where possible; otherwise device-validate with scaled popups and long selectable text.
+- Popup HTML now exposes the normalized `DictionarySettings.scanLength` to popup JavaScript, so popup-in-popup text selection no longer hardcodes `16`.
+- Popup recursive selection now mirrors iOS by accepting a separate rect point for selection rects and child popup anchors. On current Android WebView this is expected to be a no-op when `getBoundingClientRect()` already reports zoom-adjusted coordinates, so the pre-fix coordinate drift was not reproduced on Android.
+- Popup action-button frame reporting uses the same coordinate helper so native overlay buttons and selection anchors share one coordinate model across WebView zoom implementations.
+- Covered by a focused JVM regression test for scan length injection plus popup JavaScript syntax checks.
 
 Validation:
 
