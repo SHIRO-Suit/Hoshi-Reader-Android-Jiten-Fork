@@ -316,22 +316,38 @@ fun ReaderWebView(
     val popupAssets = remember(context) { LookupPopupAssets.load(context) }
     val readerPopupBridgeHolder = remember { ReaderLookupPopupBridgeCallbackHolder() }
     val popupDarkMode = effectiveSettings.usesDarkInterface(systemDarkTheme)
-    val readerPopupIframeDocument = LookupPopupHtml.renderIframeDocument(
-        assets = null,
-        dictionaryStyles = dictionaryStyles,
-        settings = dictionarySettings,
-        swipeToDismiss = effectiveSettings.popupSwipeToDismiss,
-        swipeThreshold = effectiveSettings.popupSwipeThreshold,
-        reducedMotionScrolling = effectiveSettings.popupReducedMotionScrolling,
-        reducedMotionScrollPercent = effectiveSettings.popupReducedMotionScrollPercent,
-        reducedMotionSwipeThreshold = effectiveSettings.popupReducedMotionSwipeThreshold,
-        darkMode = popupDarkMode,
-        eInkMode = effectiveSettings.eInkMode,
-        audioSettings = audioSettings,
-        ankiSettings = ankiUiState.popupSettings,
-        fontFaceCss = fontManager.popupFontFaceCss(),
-        popupScale = effectiveSettings.popupScale,
-    )
+    val readerPopupIframeDocument = remember(
+        dictionaryStyles,
+        dictionarySettings,
+        effectiveSettings.popupSwipeToDismiss,
+        effectiveSettings.popupSwipeThreshold,
+        effectiveSettings.popupReducedMotionScrolling,
+        effectiveSettings.popupReducedMotionScrollPercent,
+        effectiveSettings.popupReducedMotionSwipeThreshold,
+        popupDarkMode,
+        effectiveSettings.eInkMode,
+        audioSettings,
+        ankiUiState.popupSettings,
+        fontManager,
+        effectiveSettings.popupScale,
+    ) {
+        LookupPopupHtml.renderIframeDocument(
+            assets = null,
+            dictionaryStyles = dictionaryStyles,
+            settings = dictionarySettings,
+            swipeToDismiss = effectiveSettings.popupSwipeToDismiss,
+            swipeThreshold = effectiveSettings.popupSwipeThreshold,
+            reducedMotionScrolling = effectiveSettings.popupReducedMotionScrolling,
+            reducedMotionScrollPercent = effectiveSettings.popupReducedMotionScrollPercent,
+            reducedMotionSwipeThreshold = effectiveSettings.popupReducedMotionSwipeThreshold,
+            darkMode = popupDarkMode,
+            eInkMode = effectiveSettings.eInkMode,
+            audioSettings = audioSettings,
+            ankiSettings = ankiUiState.popupSettings,
+            fontFaceCss = fontManager.popupFontFaceCss(),
+            popupScale = effectiveSettings.popupScale,
+        )
+    }
     val currentReaderPopupIframeDocument = rememberUpdatedState(readerPopupIframeDocument)
     val readerPopupIframeUrl = remember(readerPopupIframeDocument) {
         readerLookupPopupIframeUrl(readerPopupIframeDocument.hashCode())
@@ -1265,10 +1281,8 @@ fun ReaderWebView(
                 val viewportHorizontalPadding = maxWidth * effectiveSettings.continuousViewportHorizontalPaddingRatio.toFloat()
                 val viewportVerticalPadding = maxHeight * effectiveSettings.continuousViewportVerticalPaddingRatio.toFloat()
                 val readerLookupPopupViewport = ReaderLookupPopupViewport(
-                    width = maxWidth.value.toDouble(),
-                    height = maxHeight.value.toDouble(),
-                    rootSelectionOffsetX = viewportHorizontalPadding.value.toDouble(),
-                    rootSelectionOffsetY = viewportVerticalPadding.value.toDouble(),
+                    width = (maxWidth.value - viewportHorizontalPadding.value * 2f).coerceAtLeast(0f).toDouble(),
+                    height = (maxHeight.value - viewportVerticalPadding.value * 2f).coerceAtLeast(0f).toDouble(),
                 )
                 val readerRootSelectionHighlightPayload = remember(
                     rootSelectionHighlight,
@@ -1293,12 +1307,17 @@ fun ReaderWebView(
                     sasayakiWasPausedByLookup,
                     sasayakiPlayer?.isPlaying == true,
                     readerIframePopupSupported,
+                    readerPopupIframeUrl,
+                    rootSelectionHighlight,
                 ) {
                     if (!readerIframePopupSupported) {
                         emptyList()
                     } else {
                         themedLookupPopups.mapIndexed { index, popup ->
                             val history = readerPopupHistories[popup.id] ?: ReaderPopupHistoryCounts()
+                            val isRootFrameOnlyUpdate = index == 0 &&
+                                rootSelectionHighlight?.popupId == popup.id &&
+                                rootSelectionHighlight?.rects != null
                             ReaderLookupPopupFramePayload.fromPopup(
                                 popup = popup,
                                 popupIndex = index,
@@ -1308,6 +1327,7 @@ fun ReaderWebView(
                                 sasayakiWasPaused = sasayakiWasPausedByLookup,
                                 sasayakiIsPlaying = sasayakiPlayer?.isPlaying == true,
                                 iframeUrl = readerPopupIframeUrl,
+                                includeInitialEntryJson = !isRootFrameOnlyUpdate,
                             )
                         }
                     }

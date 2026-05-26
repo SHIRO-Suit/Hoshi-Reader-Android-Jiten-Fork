@@ -30,8 +30,6 @@ import java.io.File
 internal data class ReaderLookupPopupViewport(
     val width: Double,
     val height: Double,
-    val rootSelectionOffsetX: Double = 0.0,
-    val rootSelectionOffsetY: Double = 0.0,
 )
 
 @Serializable
@@ -118,17 +116,10 @@ internal data class ReaderLookupPopupFramePayload(
             sasayakiWasPaused: Boolean = false,
             sasayakiIsPlaying: Boolean = false,
             iframeUrl: String = readerLookupPopupIframeUrl(),
+            includeInitialEntryJson: Boolean = true,
         ): ReaderLookupPopupFramePayload {
             val state = popup.state
-            val baseRect = state.selection.rect
-            val selectionRect = if (popupIndex == 0) {
-                baseRect.copy(
-                    x = baseRect.x + viewport.rootSelectionOffsetX,
-                    y = baseRect.y + viewport.rootSelectionOffsetY,
-                )
-            } else {
-                baseRect
-            }
+            val selectionRect = state.selection.rect
             val frame = LookupPopupLayout(
                 selectionRect = selectionRect,
                 screenWidth = viewport.width,
@@ -153,7 +144,7 @@ internal data class ReaderLookupPopupFramePayload(
                 ),
                 entriesCount = entriesCount,
                 initialEntryJson = popup.state.results.firstOrNull()
-                    ?.takeIf { entriesCount > 0 }
+                    ?.takeIf { includeInitialEntryJson && entriesCount > 0 }
                     ?.let(LookupPopupHtml::entryJsonString),
                 popupActionBar = state.popupActionBar,
                 actionBarVisible = actionBarVisible,

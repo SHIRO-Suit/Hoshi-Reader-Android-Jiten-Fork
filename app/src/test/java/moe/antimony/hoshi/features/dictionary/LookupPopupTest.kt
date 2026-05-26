@@ -149,7 +149,7 @@ class LookupPopupTest {
     }
 
     @Test
-    fun readerIframeFramePayloadUsesIosAlignedLayoutAndRootPaddingOffset() {
+    fun readerIframeFramePayloadUsesWebViewViewportCoordinatesWithoutRootPaddingOffset() {
         val popup = LookupPopupItem(
             id = "root",
             state = LookupPopupState(
@@ -173,8 +173,6 @@ class LookupPopupTest {
             viewport = ReaderLookupPopupViewport(
                 width = 500.0,
                 height = 800.0,
-                rootSelectionOffsetX = 20.0,
-                rootSelectionOffsetY = 30.0,
             ),
             entriesCount = 3,
             backCount = 1,
@@ -182,11 +180,11 @@ class LookupPopupTest {
         )
 
         assertEquals("root", payload.id)
-        assertEquals(120.0, payload.frame.left, 0.0)
-        assertEquals(164.0, payload.frame.top, 0.0)
+        assertEquals(100.0, payload.frame.left, 0.0)
+        assertEquals(134.0, payload.frame.top, 0.0)
         assertEquals(320.0, payload.frame.width, 0.0)
         assertEquals(250.0, payload.frame.height, 0.0)
-        assertEquals(201.0, payload.selectionOffsetY, 0.0)
+        assertEquals(171.0, payload.selectionOffsetY, 0.0)
         assertTrue(payload.popupActionBar)
         assertEquals(3, payload.entriesCount)
         assertEquals("https://hoshi.local/popup/iframe.html", payload.iframeUrl)
@@ -222,6 +220,37 @@ class LookupPopupTest {
 
         assertTrue(payload.initialEntryJson?.contains(""""expression":"食べる"""") == true)
         assertFalse(payload.initialEntryJson?.contains(""""expression":"読む"""") == true)
+    }
+
+    @Test
+    fun readerIframeFramePayloadCanOmitInitialEntryForFrameOnlyUpdates() {
+        val popup = LookupPopupItem(
+            id = "root",
+            state = LookupPopupState(
+                selection = ReaderSelectionData(
+                    text = "root",
+                    sentence = "root",
+                    rect = ReaderSelectionRect(x = 100.0, y = 100.0, width = 20.0, height = 30.0),
+                    normalizedOffset = null,
+                ),
+                results = listOf(
+                    lookupResult(expression = "食べる", reading = "たべる", glossary = "to eat"),
+                ),
+                isVertical = false,
+                width = 320,
+                height = 250,
+            ),
+        )
+
+        val payload = ReaderLookupPopupFramePayload.fromPopup(
+            popup = popup,
+            popupIndex = 0,
+            viewport = ReaderLookupPopupViewport(width = 500.0, height = 800.0),
+            includeInitialEntryJson = false,
+        )
+
+        assertEquals(1, payload.entriesCount)
+        assertEquals(null, payload.initialEntryJson)
     }
 
     @Test

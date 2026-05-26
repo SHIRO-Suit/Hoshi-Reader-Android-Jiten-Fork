@@ -225,6 +225,9 @@
         record.iframe.style.height = `calc(100% - ${frameContentTop(payload)}px)`;
         syncRootReveal();
         if (record.iframe.src !== payload.iframeUrl) {
+            setContentReady(record, false);
+            setRevealReady(record, false);
+            resetIframe(record);
             record.loaded = false;
             record.iframe.src = payload.iframeUrl;
         } else if (needsRender && record.loaded) {
