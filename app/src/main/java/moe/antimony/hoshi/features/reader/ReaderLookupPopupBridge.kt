@@ -134,6 +134,19 @@ internal data class ReaderLookupPopupStackPayload(
     fun toJson(): String = readerPopupJson.encodeToString(this)
 }
 
+internal fun readerLookupPopupTouchBlocksReaderGesture(
+    popups: List<ReaderLookupPopupFramePayload>,
+    x: Double,
+    y: Double,
+): Boolean =
+    popups.any { popup ->
+        val frame = popup.frame
+        x >= frame.left &&
+            x <= frame.left + frame.width &&
+            y >= frame.top &&
+            y <= frame.top + frame.height
+    }
+
 internal sealed class ReaderLookupPopupBridgeMessage {
     abstract val popupId: String
     abstract val messageId: String?

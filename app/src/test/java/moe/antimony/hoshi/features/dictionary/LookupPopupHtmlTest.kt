@@ -84,6 +84,19 @@ class LookupPopupHtmlTest {
     }
 
     @Test
+    fun iframePopupShellInstallsSwipeDismissGesture() {
+        val html = LookupPopupHtml.renderIframeDocument(
+            swipeToDismiss = true,
+            swipeThreshold = 35,
+        )
+
+        assertTrue(html.contains("window.swipeThreshold = 35;"))
+        assertTrue(html.contains("document.addEventListener('touchstart', function(e)"))
+        assertTrue(html.contains("document.addEventListener('touchend', function(e)"))
+        assertTrue(html.contains("webkit.messageHandlers.swipeDismiss.postMessage(null);"))
+    }
+
+    @Test
     fun popupHtmlInjectsFontFacesAndInitialScaleLikeIosPopupWebView() {
         val html = LookupPopupHtml.render(
             listOf(lookupResult(expression = "食べる", reading = "たべる", glossary = "to eat")),

@@ -4,6 +4,7 @@ import moe.antimony.hoshi.features.reader.ReaderSelectionData
 import moe.antimony.hoshi.features.reader.ReaderSelectionRect
 import moe.antimony.hoshi.features.reader.ReaderLookupPopupFramePayload
 import moe.antimony.hoshi.features.reader.ReaderLookupPopupViewport
+import moe.antimony.hoshi.features.reader.readerLookupPopupTouchBlocksReaderGesture
 import moe.antimony.hoshi.features.audio.AudioSettings
 import android.view.MotionEvent
 import android.view.View
@@ -177,6 +178,34 @@ class LookupPopupTest {
         assertTrue(payload.popupActionBar)
         assertEquals(3, payload.entriesCount)
         assertEquals("https://hoshi.local/popup/iframe.html?popupId=root", payload.iframeUrl)
+    }
+
+    @Test
+    fun readerIframePopupFramesBlockReaderGesturesOnlyInsidePopupBounds() {
+        val popup = LookupPopupItem(
+            id = "root",
+            state = LookupPopupState(
+                selection = ReaderSelectionData(
+                    text = "root",
+                    sentence = "root",
+                    rect = ReaderSelectionRect(x = 100.0, y = 100.0, width = 20.0, height = 30.0),
+                    normalizedOffset = null,
+                ),
+                results = emptyList(),
+                isVertical = false,
+                width = 320,
+                height = 250,
+            ),
+        )
+        val payload = ReaderLookupPopupFramePayload.fromPopup(
+            popup = popup,
+            popupIndex = 0,
+            viewport = ReaderLookupPopupViewport(width = 500.0, height = 800.0),
+        )
+
+        assertTrue(readerLookupPopupTouchBlocksReaderGesture(listOf(payload), x = 130.0, y = 150.0))
+        assertFalse(readerLookupPopupTouchBlocksReaderGesture(listOf(payload), x = 40.0, y = 150.0))
+        assertFalse(readerLookupPopupTouchBlocksReaderGesture(emptyList(), x = 130.0, y = 150.0))
     }
 
     @Test

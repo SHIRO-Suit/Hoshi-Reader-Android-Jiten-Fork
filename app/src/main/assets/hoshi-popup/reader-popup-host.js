@@ -16,7 +16,10 @@
             'inset:0',
             'z-index:2147483640',
             'pointer-events:none',
-            'contain:layout style paint'
+            'contain:layout style paint',
+            'writing-mode:horizontal-tb',
+            'direction:ltr',
+            'text-orientation:mixed'
         ].join(';');
         document.documentElement.appendChild(layer);
         return layer;
@@ -201,8 +204,12 @@
     style.textContent = `
         #${LAYER_ID} .hoshi-reader-popup-shell {
             position: fixed;
+            box-sizing: border-box;
             overflow: hidden;
             pointer-events: auto;
+            writing-mode: horizontal-tb;
+            direction: ltr;
+            text-orientation: mixed;
             background: #fff;
             border: 1px solid rgba(120, 120, 128, 0.36);
             border-radius: 10px;
@@ -223,12 +230,17 @@
         }
         #${LAYER_ID} .hoshi-reader-popup-iframe {
             position: absolute;
+            box-sizing: border-box;
             left: 0;
             width: 100%;
             border: 0;
             background: transparent;
         }
         #${LAYER_ID} .hoshi-reader-popup-bar {
+            box-sizing: border-box;
+            width: 100%;
+            writing-mode: horizontal-tb;
+            direction: ltr;
             height: ${ACTION_BAR_HEIGHT}px;
             display: flex;
             align-items: center;

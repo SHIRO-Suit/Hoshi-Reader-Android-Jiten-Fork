@@ -1201,6 +1201,37 @@ fun ReaderWebView(
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val viewportHorizontalPadding = maxWidth * effectiveSettings.continuousViewportHorizontalPaddingRatio.toFloat()
                 val viewportVerticalPadding = maxHeight * effectiveSettings.continuousViewportVerticalPaddingRatio.toFloat()
+                val readerLookupPopupViewport = ReaderLookupPopupViewport(
+                    width = maxWidth.value.toDouble(),
+                    height = maxHeight.value.toDouble(),
+                    rootSelectionOffsetX = viewportHorizontalPadding.value.toDouble(),
+                    rootSelectionOffsetY = viewportVerticalPadding.value.toDouble(),
+                )
+                val readerLookupPopupPayloads = remember(
+                    themedLookupPopups,
+                    readerPopupHistories,
+                    readerLookupPopupViewport,
+                    sasayakiWasPausedByLookup,
+                    sasayakiPlayer?.isPlaying == true,
+                    readerIframePopupSupported,
+                ) {
+                    if (!readerIframePopupSupported) {
+                        emptyList()
+                    } else {
+                        themedLookupPopups.mapIndexed { index, popup ->
+                            val history = readerPopupHistories[popup.id] ?: ReaderPopupHistoryCounts()
+                            ReaderLookupPopupFramePayload.fromPopup(
+                                popup = popup,
+                                popupIndex = index,
+                                viewport = readerLookupPopupViewport,
+                                backCount = history.backCount,
+                                forwardCount = history.forwardCount,
+                                sasayakiWasPaused = sasayakiWasPausedByLookup,
+                                sasayakiIsPlaying = sasayakiPlayer?.isPlaying == true,
+                            )
+                        }
+                    }
+                }
                 highlights?.let { loadedHighlights ->
                     ChapterWebView(
                         book = book,
@@ -1253,6 +1284,7 @@ fun ReaderWebView(
                         readerPopupBridgeHolder = readerPopupBridgeHolder,
                         readerPopupResourceHandler = readerPopupResourceHandler,
                         readerIframePopupSupported = readerIframePopupSupported,
+                        readerPopupFrames = readerLookupPopupPayloads,
                         fontManager = fontManager,
                         systemDark = systemDarkTheme,
                         modifier = Modifier
@@ -1266,16 +1298,7 @@ fun ReaderWebView(
                 if (readerIframePopupSupported) {
                     ReaderLookupPopupIframeSync(
                         webView = webView,
-                        popups = themedLookupPopups,
-                        histories = readerPopupHistories,
-                        viewport = ReaderLookupPopupViewport(
-                            width = maxWidth.value.toDouble(),
-                            height = maxHeight.value.toDouble(),
-                            rootSelectionOffsetX = viewportHorizontalPadding.value.toDouble(),
-                            rootSelectionOffsetY = viewportVerticalPadding.value.toDouble(),
-                        ),
-                        sasayakiWasPaused = sasayakiWasPausedByLookup,
-                        sasayakiIsPlaying = sasayakiPlayer?.isPlaying == true,
+                        payloads = readerLookupPopupPayloads,
                     )
                 } else {
                     LookupPopupAndroidStack(
@@ -1550,26 +1573,11 @@ private fun ReaderFullscreenRasterImage(
 @Composable
 private fun ReaderLookupPopupIframeSync(
     webView: WebView?,
-    popups: List<LookupPopupItem>,
-    histories: Map<String, ReaderPopupHistoryCounts>,
-    viewport: ReaderLookupPopupViewport,
-    sasayakiWasPaused: Boolean,
-    sasayakiIsPlaying: Boolean,
+    payloads: List<ReaderLookupPopupFramePayload>,
 ) {
-    val payloadJson = remember(popups, histories, viewport, sasayakiWasPaused, sasayakiIsPlaying) {
+    val payloadJson = remember(payloads) {
         ReaderLookupPopupStackPayload(
-            popups = popups.mapIndexed { index, popup ->
-                val history = histories[popup.id] ?: ReaderPopupHistoryCounts()
-                ReaderLookupPopupFramePayload.fromPopup(
-                    popup = popup,
-                    popupIndex = index,
-                    viewport = viewport,
-                    backCount = history.backCount,
-                    forwardCount = history.forwardCount,
-                    sasayakiWasPaused = sasayakiWasPaused,
-                    sasayakiIsPlaying = sasayakiIsPlaying,
-                )
-            },
+            popups = payloads,
         ).toJson()
     }
     LaunchedEffect(webView, payloadJson) {
@@ -2525,6 +2533,7 @@ private fun ChapterWebView(
     readerPopupBridgeHolder: ReaderLookupPopupBridgeCallbackHolder,
     readerPopupResourceHandler: ReaderLookupPopupResourceHandler,
     readerIframePopupSupported: Boolean,
+    readerPopupFrames: List<ReaderLookupPopupFramePayload>,
     fontManager: ReaderFontManager,
     systemDark: Boolean,
     modifier: Modifier = Modifier,
@@ -2540,6 +2549,7 @@ private fun ChapterWebView(
     val currentOnImageTapped = rememberUpdatedState(onImageTapped)
     val currentOnHighlightCreated = rememberUpdatedState(onHighlightCreated)
     val currentReaderPopupResourceHandler = rememberUpdatedState(readerPopupResourceHandler)
+    val currentReaderPopupFrames = rememberUpdatedState(readerPopupFrames)
     val currentOnNextChapter = rememberUpdatedState(onNextChapter)
     val currentOnPreviousChapter = rememberUpdatedState(onPreviousChapter)
     val currentIsWebViewRestoring = rememberUpdatedState(isWebViewRestoring)
@@ -2683,13 +2693,22 @@ private fun ChapterWebView(
                     }
                 }
             }
+            fun shouldIgnoreReaderGestureEvent(event: MotionEvent): Boolean {
+                if (currentIsWebViewRestoring.value || webView.isNativeSelectionActionModeActive()) {
+                    return true
+                }
+                val density = webView.resources.displayMetrics.density
+                return readerLookupPopupTouchBlocksReaderGesture(
+                    popups = currentReaderPopupFrames.value,
+                    x = androidPixelsToCssPixels(event.x, density).toDouble(),
+                    y = androidPixelsToCssPixels(event.y, density).toDouble(),
+                )
+            }
             if (readerSettings.continuousMode) {
                 webView.setOnTouchListener(
                     ContinuousScrollTouchListener(
                         settings = readerSettings,
-                        shouldIgnoreReaderGesture = {
-                            currentIsWebViewRestoring.value || webView.isNativeSelectionActionModeActive()
-                        },
+                        shouldIgnoreReaderGesture = ::shouldIgnoreReaderGestureEvent,
                         onTap = ::selectAt,
                         onScrollGesture = currentOnReaderInteraction.value,
                         onNextChapter = {
@@ -2751,8 +2770,8 @@ private fun ChapterWebView(
                 readerPendingProgressSaveCallbacks.remove(webView)?.let(webView::removeCallbacks)
                 webView.setOnScrollChangeListener(null)
                 webView.setOnTouchListener(object : SwipePageTouchListener() {
-                    override fun shouldIgnoreReaderGesture(): Boolean =
-                        currentIsWebViewRestoring.value || webView.isNativeSelectionActionModeActive()
+                    override fun shouldIgnoreReaderGesture(event: MotionEvent): Boolean =
+                        shouldIgnoreReaderGestureEvent(event)
 
                     override fun onTap(x: Float, y: Float) {
                         selectAt(x, y)
@@ -3255,7 +3274,7 @@ private fun WebView.flushPendingProgressSave() {
 
 private class ContinuousScrollTouchListener(
     private val settings: ReaderSettings,
-    private val shouldIgnoreReaderGesture: () -> Boolean,
+    private val shouldIgnoreReaderGesture: (MotionEvent) -> Boolean,
     private val onTap: (Float, Float) -> Unit,
     private val onScrollGesture: () -> Unit,
     private val onNextChapter: () -> Boolean,
@@ -3269,7 +3288,7 @@ private class ContinuousScrollTouchListener(
 
     override fun onTouch(view: View, event: MotionEvent): Boolean {
         val webView = view as? WebView ?: return false
-        if (shouldIgnoreReaderGesture()) {
+        if (shouldIgnoreReaderGesture(event)) {
             currentGestureIgnored = true
             return false
         }
