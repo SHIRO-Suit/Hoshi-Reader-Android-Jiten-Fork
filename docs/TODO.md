@@ -1,6 +1,6 @@
 # Hoshi Android Agent TODO
 
-Last updated: 2026-05-28
+Last updated: 2026-05-29
 
 This file is the short operational handoff for future agents.
 
@@ -27,6 +27,7 @@ This file is the short operational handoff for future agents.
 
 ### Bookshelf, Import, And Backup
 
+- Device-validate bookshelf multi-select markers in E-ink mode, confirming unselected books show an empty circle and selected books show a check mark.
 - Device-validate shelf-name entry, including user shelves named Reading alongside the virtual Reading Shelf, and multi-EPUB DocumentsUI import in a session where text input and picker interaction can be driven reliably.
 - Device-validate editable text fields in dark and E-ink themes, confirming visible cursors and cursor-driven horizontal scrolling for long search, Audio source, Sync, Anki, shelf, and book-title values.
 - Cross-validate Android-created `Books` and `Dictionaries` `.hoshi` archives restored by iOS.

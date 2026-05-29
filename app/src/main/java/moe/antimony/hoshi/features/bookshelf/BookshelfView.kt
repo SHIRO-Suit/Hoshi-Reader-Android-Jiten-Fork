@@ -56,6 +56,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.ReportProblem
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Translate
@@ -1042,7 +1043,11 @@ private fun BookGridCell(
             BookCoverCard(entry = entry, bookRepository = bookRepository)
             if (isSelecting) {
                 Icon(
-                    imageVector = Icons.Rounded.CheckCircle,
+                    imageVector = if (isSelected) {
+                        Icons.Rounded.CheckCircle
+                    } else {
+                        Icons.Rounded.RadioButtonUnchecked
+                    },
                     contentDescription = if (isSelected) {
                         stringResource(R.string.bookshelf_selected)
                     } else {
