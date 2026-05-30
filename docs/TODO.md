@@ -1,6 +1,6 @@
 # Hoshi Android Agent TODO
 
-Last updated: 2026-05-29
+Last updated: 2026-05-31
 
 This file is the short operational handoff for future agents.
 
@@ -116,7 +116,7 @@ For bookshelf tab-switch regressions, use real-device screen recording to confir
 
 For bookshelf-to-reader regressions, use real-device continuous screenshots or screen recording to confirm no Bookshelf loading spinner or dark-mode white loading frame appears between tapping a book and showing the Reader.
 
-For reader/dictionary/audio user flows, perform targeted emulator or device validation using the test data listed in `AGENTS.md`; include external AnkiconnectAndroid Local Audio URL add behavior and built-in Local Audio enable behavior when touching audio sources, and use the `pixivで読む` definition link case for dictionary external-link regressions.
+For reader/dictionary/audio user flows, perform targeted emulator or device validation using the test data listed in `AGENTS.md`; include external AnkiconnectAndroid Local Audio URL add behavior, built-in Local Audio enable behavior, MP3 and Opus `android.db` playback, and use the `pixivで読む` definition link case for dictionary external-link regressions.
 
 For reader/dictionary theme regressions, verify open Dictionary tab results, the Dictionary search cursor, reader lookup taps and open reader lookup popups, system status/navigation icon contrast in Light, Sepia Light, Dark, and Sepia Dark under Android system dark mode, reader theme-family switches update colors without WebView reload, and System theme's Use Sepia as Light Theme toggle update immediately when switching between Light, Dark, System, and E-ink appearance modes.
 

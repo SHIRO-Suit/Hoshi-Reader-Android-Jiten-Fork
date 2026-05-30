@@ -226,9 +226,10 @@ class AnkiRepository(
                 readRemoteAudio = { remoteUrl -> URL(remoteUrl).openStream().use { it.readBytes() } },
             )
                 ?: return null
-            val file = mediaCacheFile("hoshi_audio_${data.contentHashCode()}.mp3")
+            val media = ankiAudioMediaFile(url, data)
+            val file = mediaCacheFile(media.preferredName)
             file.writeBytes(data)
-            addMediaFile(file.absolutePath, file.name, "audio/mpeg", activeBackend, backendKind)
+            addMediaFile(file.absolutePath, file.name, media.mimeType, activeBackend, backendKind)
         }.getOrNull()
 
     private fun addDictionaryMedia(media: DictionaryMedia, activeBackend: AnkiBackend, backendKind: AnkiBackendKind): String? =
@@ -289,6 +290,37 @@ internal fun readAnkiAudioBytes(
         readRemoteAudio(url)
     }
 }
+
+internal data class AnkiAudioMediaFile(
+    val preferredName: String,
+    val mimeType: String,
+)
+
+internal fun ankiAudioMediaFile(url: String, data: ByteArray): AnkiAudioMediaFile {
+    val extension = ankiAudioExtension(url)
+    val preferredName = "hoshi_audio_${data.contentHashCode()}.$extension"
+    return AnkiAudioMediaFile(
+        preferredName = preferredName,
+        mimeType = mimeTypeForPath(preferredName),
+    )
+}
+
+private fun ankiAudioExtension(url: String): String {
+    LocalAudioResolver.parseAudioUrl(url)?.file?.let { localFile ->
+        LocalAudioResolver.audioExtension(localFile)
+            .takeIf(::isSupportedAnkiAudioExtension)
+            ?.let { return it }
+    }
+    return runCatching { URL(url).path }
+        .getOrDefault(url.substringBefore('?'))
+        .substringAfterLast('.', missingDelimiterValue = "")
+        .lowercase()
+        .takeIf(::isSupportedAnkiAudioExtension)
+        ?: "mp3"
+}
+
+private fun isSupportedAnkiAudioExtension(extension: String): Boolean =
+    extension in setOf("mp3", "opus", "ogg", "aac", "m4a", "wav")
 
 private const val TAG = "AnkiRepository"
 
@@ -352,6 +384,7 @@ sealed interface AnkiConnectConnectionResult {
 fun mimeTypeForPath(path: String): String =
     when (path.substringAfterLast('.', missingDelimiterValue = "").lowercase()) {
         "mp3" -> "audio/mpeg"
+        "opus" -> "audio/ogg"
         "aac" -> "audio/aac"
         "m4a" -> "audio/mp4"
         "wav" -> "audio/wav"

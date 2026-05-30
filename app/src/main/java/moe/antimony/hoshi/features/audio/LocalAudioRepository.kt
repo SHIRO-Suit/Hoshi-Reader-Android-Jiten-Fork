@@ -56,10 +56,10 @@ class LocalAudioRepository(private val filesDir: File) {
             val args: Array<String>
             val selection: String
             if (normalizedReading.isBlank()) {
-                selection = "expression = ? AND file LIKE '%.mp3'"
+                selection = "expression = ?"
                 args = arrayOf(term)
             } else {
-                selection = "(expression = ? OR reading = ?) AND file LIKE '%.mp3'"
+                selection = "(expression = ? OR reading = ?)"
                 args = arrayOf(term, normalizedReading)
             }
             val rows = mutableListOf<LocalAudioEntry>()

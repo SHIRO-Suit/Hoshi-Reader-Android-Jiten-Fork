@@ -28,6 +28,32 @@ class AudioRequestHandlerTest {
         )
     }
 
+    @Test
+    fun builtInLocalAudioResponseCanReturnOpusUrl() {
+        val filesDir = Files.createTempDirectory("hoshi-audio-request").toFile()
+        val handler = AudioRequestHandler(
+            localAudioRepository = LocalAudioRepository(filesDir),
+            findLocalAudio = { term, reading ->
+                assertEquals("食べる", term)
+                assertEquals("たべる", reading)
+                LocalAudioEntry(
+                    source = "nhk16",
+                    expression = "食べる",
+                    reading = "たべる",
+                    file = "audio/20170823122755.opus",
+                )
+            },
+        )
+        val target = "hoshi-local-audio-source://get/?term=%E9%A3%9F%E3%81%B9%E3%82%8B&reading=%E3%81%9F%E3%81%B9%E3%82%8B"
+
+        val body = handler.handleAudioRequestBody("https://hoshi.local/audio?url=${target.urlEncodeForQuery()}")
+
+        assertEquals(
+            """{"type":"audioSourceList","audioSources":[{"name":"nhk16","url":"hoshi-local-audio://nhk16/audio%2F20170823122755.opus"}]}""",
+            body?.toString(Charsets.UTF_8),
+        )
+    }
+
     private fun String.urlEncodeForQuery(): String =
         URLEncoder.encode(this, Charsets.UTF_8.name())
 }

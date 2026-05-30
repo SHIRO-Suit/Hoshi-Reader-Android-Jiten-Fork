@@ -24,6 +24,7 @@ object AudioSourceResolver {
 }
 
 object LocalAudioResolver {
+    private val supportedAudioExtensions = setOf("mp3", "opus", "ogg")
     private val defaultSources = listOf(
         "nhk16",
         "daijisen",
@@ -42,7 +43,7 @@ object LocalAudioResolver {
         return rows
             .asSequence()
             .filter { it.expression == term || (!it.reading.isNullOrBlank() && it.reading == normalizedReading) }
-            .filter { it.file.endsWith(".mp3", ignoreCase = true) }
+            .filter { isSupportedAudioFile(it.file) }
             .sortedWith(
                 compareBy<LocalAudioEntry> {
                     if (normalizedReading.isNotBlank() && it.reading == normalizedReading) 0 else 1
@@ -67,6 +68,19 @@ object LocalAudioResolver {
             file = tail.substring(slash + 1).urlDecode(),
         )
     }
+
+    fun isSupportedAudioFile(file: String): Boolean =
+        audioExtension(file) in supportedAudioExtensions
+
+    fun audioExtension(file: String): String =
+        file.substringAfterLast('.', missingDelimiterValue = "").lowercase()
+
+    fun mimeType(file: String): String =
+        when (audioExtension(file)) {
+            "mp3" -> "audio/mpeg"
+            "opus", "ogg" -> "audio/ogg"
+            else -> "application/octet-stream"
+        }
 
     fun katakanaToHiragana(text: String): String {
         val builder = StringBuilder()

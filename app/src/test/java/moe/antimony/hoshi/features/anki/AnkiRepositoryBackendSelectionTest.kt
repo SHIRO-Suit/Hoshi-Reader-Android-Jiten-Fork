@@ -375,6 +375,44 @@ class AnkiRepositoryBackendSelectionTest {
         assertTrue(ankiConnect.lastFields.getValue("Media").contains(sasayaki.fileName.toString()))
     }
 
+    @Test
+    fun mineEntryStoresOpusAudioMediaWithOpusNameAndMimeType() = runBlocking {
+        val deck = AnkiDeck(10L, "Mining")
+        val noteType = AnkiNoteType(20L, "Basic", listOf("Media"))
+        val ankiConnect = RecordingBackend(decks = listOf(deck), noteTypes = listOf(noteType))
+        val wordAudio = Files.createTempFile("hoshi-word", ".opus").also { Files.write(it, byteArrayOf(3, 4, 5)) }
+        val repository = repository(
+            settingsRepository = InMemoryAnkiSettingsRepository(
+                AnkiSettings(
+                    backendKind = AnkiBackendKind.AnkiConnect,
+                    ankiConnectUrl = "https://anki.example.com",
+                    selectedDeckId = deck.id,
+                    selectedDeckName = deck.name,
+                    selectedNoteTypeId = noteType.id,
+                    selectedNoteTypeName = noteType.name,
+                    availableDecks = listOf(deck),
+                    availableNoteTypes = listOf(noteType),
+                    fieldMappings = mapOf("Media" to "{audio}"),
+                ),
+            ),
+            ankiConnectBackendFactory = { ankiConnect },
+        )
+
+        assertTrue(
+            repository.mineEntry(
+                rawPayload = """{"expression":"食べる","audio":"${wordAudio.toUri()}"}""",
+                context = AnkiMiningContext(sentence = "パンを食べる。"),
+                decks = emptyList(),
+                noteTypes = emptyList(),
+            ),
+        )
+
+        assertEquals(1, ankiConnect.addMediaFromBytesCalls)
+        assertTrue(ankiConnect.lastMediaName.endsWith(".opus"))
+        assertEquals("audio/ogg", ankiConnect.lastMediaMimeType)
+        assertTrue(ankiConnect.lastFields.getValue("Media").contains(".opus"))
+    }
+
     private fun repository(
         backend: AnkiBackend = RecordingBackend(),
         settingsRepository: InMemoryAnkiSettingsRepository = InMemoryAnkiSettingsRepository(),
@@ -425,6 +463,10 @@ class AnkiRepositoryBackendSelectionTest {
             private set
         var lastMediaBytes: ByteArray = byteArrayOf()
             private set
+        var lastMediaName: String = ""
+            private set
+        var lastMediaMimeType: String = ""
+            private set
         var lastFields: Map<String, String> = emptyMap()
             private set
 
@@ -467,6 +509,8 @@ class AnkiRepositoryBackendSelectionTest {
         override fun addMediaFromBytes(bytes: ByteArray, preferredName: String, mimeType: String): String? {
             addMediaFromBytesCalls += 1
             lastMediaBytes = bytes
+            lastMediaName = preferredName
+            lastMediaMimeType = mimeType
             return if (mimeType.startsWith("image/")) {
                 """<img src="$preferredName">"""
             } else {
