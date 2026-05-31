@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
@@ -805,6 +806,14 @@ private fun DictionaryRow(
                 Column(
                     modifier = Modifier
                         .weight(1f)
+                        .combinedClickable(
+                            enabled = enabled &&
+                                DictionaryRowInteraction.canRevealDeleteOnLongPress(
+                                    DictionaryRowInteraction.Area.Content,
+                                ),
+                            onClick = {},
+                            onLongClick = { onRevealChange(true) },
+                        )
                         .padding(start = 10.dp, end = 12.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {

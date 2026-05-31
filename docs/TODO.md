@@ -65,6 +65,7 @@ This file is the short operational handoff for future agents.
 
 - Device-validate recommended dictionary downloads from the Dictionaries screen, covering JMdict, JMnedict, Jiten, and Jitendex individual downloads and confirming each imported dictionary remains updatable.
 - Device-validate manual multi-dictionary import with one invalid archive, confirming later archives still import and the failed file list is reported at the end.
+- Device-validate Dictionaries row long-press deletion, confirming the title area reveals the delete button while the left reorder handle still only drags.
 - Device-validate Low Memory Usage Mode with a large Yomitan archive, confirming the setting defaults off, persists, reduces peak memory when enabled, and keeps imported term/frequency/pitch dictionaries usable.
 - Device-validate settings segmented controls in Dictionaries, Dictionary Settings, and Advanced Audio, confirming selected labels no longer shift.
 - Device-validate local audio database source ordering with imported MP3 and Opus `android.db` files, confirming default order generation, up/down moves, lookup playback, and Anki audio export.
