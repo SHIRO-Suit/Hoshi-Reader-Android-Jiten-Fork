@@ -20,7 +20,7 @@ This file is the short operational handoff for future agents.
 ### Architecture And Hardening
 
 - Make screen-level Compose Flow collection lifecycle-aware with `collectAsStateWithLifecycle()` where the UI lifecycle is the right owner.
-- Continue Reader state/WebView bridge extraction in behavior-protected slices from `docs/ARCHITECTURE_REFACTORING.md`; keep `ReaderWebView` focused on composition and wiring.
+- Continue Reader state/WebView bridge extraction in behavior-protected slices from `docs/ARCHITECTURE_REFACTORING.md`; `ReaderWebView` is now split into focused WebView host, chrome, popup layer, and fullscreen image modules.
 - Replace remaining brittle source-string tests in touched areas with behavior, API, state-flow, or structured-config coverage where possible.
 - Add EPUB/WebView regression fixtures for cover pages, multi-image pages, vertical text, horizontal text, complex spines, and broken resources.
 - Add repeatable benchmark or baseline-profile entry points for cold start, EPUB import/open reader, reader page turn, dictionary search, and lookup popup open.
