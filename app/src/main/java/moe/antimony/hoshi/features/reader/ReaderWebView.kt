@@ -685,13 +685,15 @@ fun ReaderWebView(
             }
             is ReaderLookupPopupBridgeMessage.MineEntry -> {
                 val popup = popupById(message.popupId) ?: return
+                val messageId = message.messageId ?: return
                 val ankiContext = popup.sasayakiCue?.takeIf { ankiUiState.popupSettings.needsSasayakiAudio }?.let { cue ->
                     popup.state.ankiContext.copy(
                         sasayakiAudioPath = sasayakiPlayer?.exportCueAudio(cue, popup.state.selection.sentence)?.absolutePath,
                     )
                 } ?: popup.state.ankiContext
-                val mined = runCatching { ankiViewModel.mineEntry(message.payloadJson, ankiContext) }.getOrDefault(false)
-                replyReaderPopupMessage(message.popupId, message.messageId ?: return, mined.toString())
+                ankiViewModel.mineEntryAsync(message.payloadJson, ankiContext) { mined ->
+                    replyReaderPopupMessage(message.popupId, messageId, mined.toString())
+                }
             }
             is ReaderLookupPopupBridgeMessage.DuplicateCheck -> {
                 ankiViewModel.duplicateCheckAsync(message.expression) { isDuplicate ->

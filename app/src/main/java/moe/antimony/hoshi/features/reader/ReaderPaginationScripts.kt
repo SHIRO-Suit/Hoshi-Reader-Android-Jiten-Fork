@@ -51,6 +51,11 @@ internal object ReaderPaginationScripts {
         val initialRestoreScript = initialFragment?.let { fragment ->
             "window.hoshiReader.jumpToFragment(${fragment.javaScriptStringLiteral()});"
         } ?: "window.hoshiReader.restoreProgress($initialProgress);"
+        val restoreScripts = readerRestoreScripts(
+            sasayakiCuesJson = sasayakiCuesJson,
+            highlightsJson = highlightsJson,
+            initialRestoreScript = initialRestoreScript,
+        )
         val generatedLayout = ReaderGeneratedLayout.from(settings)
         return """
         <script>
@@ -721,9 +726,7 @@ internal object ReaderPaginationScripts {
             return new Promise(function(resolve) { setTimeout(resolve, 50); });
           }).then(function() {
             window.hoshiReader.buildNodeOffsets();
-            ${sasayakiCuesJson?.let { "window.hoshiReader.applySasayakiCues($it);" }.orEmpty()}
-            ${highlightsJson?.let { "window.hoshiHighlights.applyHighlights($it);" }.orEmpty()}
-            $initialRestoreScript
+            $restoreScripts
           });
         };
         window.addEventListener('load', function() {
@@ -746,6 +749,11 @@ internal object ReaderPaginationScripts {
         val initialRestoreScript = initialFragment?.let { fragment ->
             "window.hoshiReader.jumpToFragment(${fragment.javaScriptStringLiteral()});"
         } ?: "window.hoshiReader.restoreProgress($initialProgress);"
+        val restoreScripts = readerRestoreScripts(
+            sasayakiCuesJson = sasayakiCuesJson,
+            highlightsJson = highlightsJson,
+            initialRestoreScript = initialRestoreScript,
+        )
         val generatedLayout = ReaderGeneratedLayout.from(settings)
         return """
         <script>
@@ -1195,9 +1203,7 @@ internal object ReaderPaginationScripts {
             return new Promise(function(resolve) { setTimeout(resolve, 50); });
           }).then(function() {
             window.hoshiReader.buildNodeOffsets();
-            ${sasayakiCuesJson?.let { "window.hoshiReader.applySasayakiCues($it);" }.orEmpty()}
-            ${highlightsJson?.let { "window.hoshiHighlights.applyHighlights($it);" }.orEmpty()}
-            $initialRestoreScript
+            $restoreScripts
           });
         };
         window.addEventListener('load', function() {
@@ -1352,6 +1358,16 @@ private fun readerHighlightsScript(): String = """
       }
     };
 """.trimIndent()
+
+private fun readerRestoreScripts(
+    sasayakiCuesJson: String?,
+    highlightsJson: String?,
+    initialRestoreScript: String,
+): String = listOfNotNull(
+    sasayakiCuesJson?.let { "window.hoshiReader.applySasayakiCues($it);" },
+    highlightsJson?.let { "window.hoshiHighlights.applyHighlights($it);" },
+    initialRestoreScript,
+).joinToString(separator = "\n")
 
 private fun String.javaScriptStringLiteral(): String =
     buildString(length + 2) {
