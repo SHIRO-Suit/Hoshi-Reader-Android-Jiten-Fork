@@ -1,6 +1,6 @@
 # Hoshi Android Agent TODO
 
-Last updated: 2026-06-03
+Last updated: 2026-06-05
 
 This file is the short operational handoff for future agents.
 
@@ -28,6 +28,7 @@ This file is the short operational handoff for future agents.
 ### Bookshelf, Import, And Backup
 
 - Bookshelf covers now publish stable cover sources with shelf state, decode iOS-sized 768px thumbnails, reuse cached bitmaps when returning to Books, and fill the cover frame without letterboxing.
+- Keep `testdata/test5.epub` in EPUB import/parser regression coverage for stored ZIP entries that use data descriptors.
 - Device-validate bookshelf multi-select markers in E-ink mode, confirming unselected books show an empty circle and selected books show a check mark.
 - Device-validate shelf-name entry, including user shelves named Reading alongside the virtual Reading Shelf, multi-EPUB DocumentsUI import, and recursive EPUB folder import in a session where text input and picker interaction can be driven reliably.
 - Device-validate editable text fields in dark and E-ink themes, confirming visible cursors and cursor-driven horizontal scrolling for long search, Audio source, Sync, Anki, shelf, and book-title values.

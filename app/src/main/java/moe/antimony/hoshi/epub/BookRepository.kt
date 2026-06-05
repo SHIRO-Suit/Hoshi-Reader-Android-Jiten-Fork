@@ -15,7 +15,7 @@ import moe.antimony.hoshi.importing.validateImportFile
 import java.io.File
 import java.time.Instant
 import java.util.UUID
-import java.util.zip.ZipInputStream
+import java.util.zip.ZipFile
 
 class BookRepository(
     filesDir: File,
@@ -308,6 +308,7 @@ class BookImportDataSource(
     private val filesDir: File,
     private val fileDataSource: BookFileDataSource,
     private val parser: EpubBookParser = EpubBookParser(),
+    private val archiveExtractor: EpubArchiveExtractor = EpubArchiveExtractor(),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     suspend fun importBook(contentResolver: ContentResolver, uri: Uri): File = withContext(ioDispatcher) {
@@ -315,45 +316,60 @@ class BookImportDataSource(
         val fallbackTitle = displayName
             .substringBeforeLast('.', missingDelimiterValue = displayName)
             .takeIf { it.isNotBlank() }
-        val tempRoot = File(filesDir, "ImportTemp/${UUID.randomUUID()}").canonicalFile
+        val importRoot = File(filesDir, "ImportTemp/${UUID.randomUUID()}").canonicalFile
+        val archiveFile = importRoot.resolve("source.epub").canonicalFile
+        val extractedRoot = importRoot.resolve("extracted").canonicalFile
         contentResolver.openInputStream(uri).use { input ->
             requireNotNull(input) { "Unable to open selected EPUB" }
             runCatching {
-                tempRoot.mkdirs()
-                ZipInputStream(input).use { zip ->
-                    var entry = zip.nextEntry
-                    while (entry != null) {
-                        val output = tempRoot.resolve(entry.name).canonicalFile
-                        val root = tempRoot.canonicalFile
-                        require(output.path == root.path || output.path.startsWith(root.path + File.separator)) {
-                            "Unsafe EPUB entry: ${entry.name}"
-                        }
-                        if (entry.isDirectory) {
-                            output.mkdirs()
-                        } else {
-                            output.parentFile?.mkdirs()
-                            output.outputStream().use { zip.copyTo(it) }
-                        }
-                        zip.closeEntry()
-                        entry = zip.nextEntry
-                    }
-                }
+                importRoot.mkdirs()
+                archiveFile.outputStream().use { output -> input.copyTo(output) }
+                archiveExtractor.extract(archiveFile, extractedRoot)
             }.onFailure {
-                tempRoot.deleteRecursively()
+                importRoot.deleteRecursively()
                 throw it
             }
         }
-        val parsedBook = runCatching { parser.parse(tempRoot, fallbackTitle = fallbackTitle) }
-            .onFailure { tempRoot.deleteRecursively() }
+        val parsedBook = runCatching { parser.parse(extractedRoot, fallbackTitle = fallbackTitle) }
+            .onFailure { importRoot.deleteRecursively() }
             .getOrThrow()
         val targetRoot = fileDataSource.createBookDirectoryForImportedTitle(parsedBook.title)
         if (targetRoot.listFiles()?.isNotEmpty() == true) {
-            tempRoot.deleteRecursively()
+            importRoot.deleteRecursively()
             targetRoot
         } else {
             targetRoot.deleteRecursively()
-            check(tempRoot.renameTo(targetRoot)) { "Unable to move imported EPUB into Books/${targetRoot.name}" }
-            targetRoot
+            try {
+                check(extractedRoot.renameTo(targetRoot)) { "Unable to move imported EPUB into Books/${targetRoot.name}" }
+                targetRoot
+            } finally {
+                importRoot.deleteRecursively()
+            }
+        }
+    }
+}
+
+class EpubArchiveExtractor {
+    fun extract(epubFile: File, destinationRoot: File) {
+        val root = destinationRoot.canonicalFile
+        root.mkdirs()
+        ZipFile(epubFile).use { archive ->
+            val entries = archive.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                val output = root.resolve(entry.name).canonicalFile
+                require(output.path == root.path || output.path.startsWith(root.path + File.separator)) {
+                    "Unsafe EPUB entry: ${entry.name}"
+                }
+                if (entry.isDirectory) {
+                    output.mkdirs()
+                } else {
+                    output.parentFile?.mkdirs()
+                    archive.getInputStream(entry).use { input ->
+                        output.outputStream().use { outputStream -> input.copyTo(outputStream) }
+                    }
+                }
+            }
         }
     }
 }

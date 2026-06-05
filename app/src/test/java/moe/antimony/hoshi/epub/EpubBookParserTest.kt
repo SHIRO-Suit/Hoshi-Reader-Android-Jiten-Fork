@@ -2,10 +2,13 @@ package moe.antimony.hoshi.epub
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class EpubBookParserTest {
     @get:Rule
@@ -115,6 +118,34 @@ class EpubBookParserTest {
         val book = EpubBookParser().parse(root, fallbackTitle = "Source File")
 
         assertEquals("Source File", book.title)
+    }
+
+    @Test
+    fun parsesKadokawaEpubWithSpineItemProperties() {
+        val root = tempFolder.newFolder("kadokawa-test5")
+        EpubArchiveExtractor().extract(File("../testdata/test5.epub"), root)
+
+        val book = EpubBookParser().parse(root)
+
+        assertEquals("他校の氷姫を助けたら、お友達から始める事になりました", book.title)
+        assertEquals(16, book.chapters.size)
+        assertEquals("item/xhtml/p-cover.xhtml", book.chapters.first().href)
+        assertEquals("item/image/cover.jpg", book.coverHref)
+    }
+
+    @Test
+    fun epubArchiveExtractorRejectsEntriesOutsideDestination() {
+        val archive = tempFolder.newFile("unsafe.epub")
+        ZipOutputStream(archive.outputStream()).use { zip ->
+            zip.putNextEntry(ZipEntry("../outside.txt"))
+            zip.write("outside".toByteArray())
+            zip.closeEntry()
+        }
+        val root = tempFolder.newFolder("unsafe-root")
+
+        assertThrows(IllegalArgumentException::class.java) {
+            EpubArchiveExtractor().extract(archive, root)
+        }
     }
 
     private fun writeExtractedEpub(
