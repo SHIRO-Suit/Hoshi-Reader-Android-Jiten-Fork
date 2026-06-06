@@ -30,8 +30,38 @@ function loadSelection(text) {
 
     const document = {
         body: paragraph,
+        pointElement: null,
+        createdRanges: [],
         createTreeWalker() {
             return treeWalker([textNode]);
+        },
+        createRange() {
+            const range = {
+                startContainer: null,
+                startOffset: 0,
+                endContainer: null,
+                endOffset: 0,
+                setStart(node, offset) {
+                    this.startContainer = node;
+                    this.startOffset = offset;
+                },
+                setEnd(node, offset) {
+                    this.endContainer = node;
+                    this.endOffset = offset;
+                },
+                collapse() {},
+                getClientRects() {
+                    return [];
+                },
+                getBoundingClientRect() {
+                    return { x: 0, y: 0, width: 0, height: 0 };
+                },
+            };
+            this.createdRanges.push(range);
+            return range;
+        },
+        elementFromPoint() {
+            return this.pointElement;
         },
         addEventListener() {},
     };
@@ -53,9 +83,19 @@ function loadSelection(text) {
     });
 
     return {
+        document,
         selection: window.hoshiSelection,
         textNode,
         window,
+    };
+}
+
+function hitElement(matches) {
+    return {
+        closest(selector) {
+            const selectors = selector.split(',').map((item) => item.trim());
+            return matches.some((match) => selectors.includes(match)) ? this : null;
+        },
     };
 }
 
@@ -146,6 +186,43 @@ test('shared selection can preserve reader link and image tap tokens', () => {
 
     assert.equal(selection.linkTapResult(), 'link');
     assert.equal(selection.imageTapResult(), 'image');
+});
+
+test('shared selection treats svg containers as reader taps while preserving svg image hits', () => {
+    const { document, selection } = loadSelection('猫');
+    let clearCount = 0;
+    selection.configure({ imageTapResult: 'image' });
+    selection.getCharacterAtPoint = () => null;
+    selection.clearSelection = () => {
+        clearCount += 1;
+    };
+
+    document.pointElement = hitElement(['svg']);
+    assert.equal(selection.selectText(1, 1, 10), null);
+
+    document.pointElement = hitElement(['image']);
+    assert.equal(selection.selectText(1, 1, 10), 'image');
+
+    document.pointElement = hitElement(['.blur-wrapper']);
+    assert.equal(selection.selectText(1, 1, 10), 'image');
+    assert.equal(clearCount, 1);
+});
+
+test('shared selection exposes one highlight range per selected character', () => {
+    const { document, selection, textNode } = loadSelection('𠮟猫犬');
+    selection.selection = {
+        ranges: [{ node: textNode, start: 0, end: textNode.textContent.length }],
+        text: textNode.textContent,
+    };
+
+    const ranges = selection.selectionCharacterRanges(3);
+
+    assert.equal(ranges.length, 3);
+    assert.equal(
+        JSON.stringify(ranges.map((range) => [range.startOffset, range.endOffset])),
+        JSON.stringify([[0, 2], [2, 3], [3, 4]]),
+    );
+    assert.equal(document.createdRanges.length, 3);
 });
 
 test('shared ruby geometry exposes merged inline rects for reader Sasayaki overlay', () => {

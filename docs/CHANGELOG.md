@@ -11,6 +11,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Show the update prompt during the same app session when the startup update check finds a new APK, instead of waiting until the next launch.
 - Import EPUB archives that use stored ZIP entries with data descriptors, matching iOS for books that previously failed during import.
 - Prevent vertical reader text in paginated and continuous modes from prematurely wrapping after furigana, and keep ruby-aware lookup highlights from expanding into adjacent kanji.
+- Keep bottom safe-area reader taps dismissing lookup popups or toggling Focus Mode, prevent blurred vertical images from disappearing at zero horizontal padding, and keep ruby lookup stable when EPUB ruby markup contains whitespace.
 - Trim unmatched quotation brackets from reader lookup sentences before Anki mining, matching iOS for quoted multi-sentence passages. #98
 
 ## [v1.1.3] - 2026-06-04

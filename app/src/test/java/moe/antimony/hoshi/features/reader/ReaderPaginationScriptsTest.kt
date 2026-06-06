@@ -62,6 +62,25 @@ class ReaderPaginationScriptsTest {
     }
 
     @Test
+    fun verticalImageBoundsSubtractOnePixelGuardLikeIosWebViewWorkaround() {
+        val paginatedVertical = ReaderPaginationScripts.shellScript(
+            settings = ReaderSettings(verticalWriting = true),
+        )
+        val paginatedHorizontal = ReaderPaginationScripts.shellScript(
+            settings = ReaderSettings(verticalWriting = false),
+        )
+        val continuousVertical = ReaderPaginationScripts.shellScript(
+            settings = ReaderSettings(continuousMode = true, verticalWriting = true),
+        )
+
+        assertTrue(paginatedVertical.contains("Math.max(1, Math.floor(pageWidth * 0.95) - 1)"))
+        assertTrue(paginatedHorizontal.contains("Math.max(1, Math.floor(pageWidth * 0.95) - 0)"))
+        assertTrue(continuousVertical.contains("Math.max(1, Math.floor(window.innerWidth * 1.0) - 1)"))
+        assertFalse(paginatedVertical.contains("__HOSHI_IMAGE_WIDTH_REDUCTION_PX__"))
+        assertFalse(continuousVertical.contains("__HOSHI_IMAGE_WIDTH_REDUCTION_PX__"))
+    }
+
+    @Test
     fun exportsVerticalPaddingPxVariablesForAndroidWebView() {
         val script = ReaderPaginationScripts.shellScript(
             settings = ReaderSettings(verticalPadding = 22),

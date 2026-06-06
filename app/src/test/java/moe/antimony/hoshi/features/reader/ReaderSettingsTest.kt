@@ -224,6 +224,18 @@ class ReaderSettingsTest {
     }
 
     @Test
+    fun verticalLayoutsUseOnePixelImageWidthGuard() {
+        assertEquals(
+            1,
+            ReaderGeneratedLayout.from(ReaderSettings(verticalWriting = true)).imageWidthReductionPx,
+        )
+        assertEquals(
+            0,
+            ReaderGeneratedLayout.from(ReaderSettings(verticalWriting = false)).imageWidthReductionPx,
+        )
+    }
+
+    @Test
     fun horizontalContinuousLayoutMovesVerticalPaddingToViewportOnly() {
         val layout = ReaderGeneratedLayout.from(
             ReaderSettings(

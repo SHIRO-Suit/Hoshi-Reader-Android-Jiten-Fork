@@ -854,7 +854,12 @@ fun ReaderWebView(
         }
     }
     fun handleReaderTapOutside() {
-        if (!stateHolder.toggleFocusModeFromReaderTap(hasVisiblePopups = stateHolder.lookupPopups.isNotEmpty())) {
+        if (stateHolder.lookupPopups.isEmpty()) {
+            rootSelectionHighlight = null
+            clearReaderSelection {
+                stateHolder.toggleFocusModeFromReaderTap(hasVisiblePopups = false)
+            }
+        } else {
             closeLookupPopupsAndSelection()
         }
     }
@@ -1366,6 +1371,7 @@ fun ReaderWebView(
             focusMode = focusMode,
             sasayakiPlaybackControls = sasayakiBottomPlaybackControls,
             sasayakiPlaying = sasayakiPlayer?.isPlaying == true,
+            onTapSafeArea = ::handleReaderTapOutside,
             onSasayakiSkipBackward = { performSasayakiBottomSkipAction(sasayakiBottomSkipButtonActions.left) },
             onSasayakiTogglePlayback = { sasayakiPlayer?.togglePlayback() },
             onSasayakiSkipForward = { performSasayakiBottomSkipAction(sasayakiBottomSkipButtonActions.right) },

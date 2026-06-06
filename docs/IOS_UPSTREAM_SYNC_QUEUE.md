@@ -9,49 +9,7 @@ This document tracks open Android work after checking iOS upstream `develop`.
 
 ## Current Queue
 
-### 1. Reader layout, image hit testing, ruby lookup, and selection follow-up
-
-Status: pending Android sync.
-
-Commits:
-
-- `b1509d9` - allow reader UI to be toggled on SVG image pages.
-- `a7a8380` - allow bottom safe area to toggle focus mode and dismiss popups.
-- `55a32cd` - prevent images with blur from being hidden with 0 horizontal padding in vertical.
-- `2b8a599` - prevent random margins from being highlighted and not cleared.
-- `98b6534` - strip whitespace text nodes inside ruby nodes so lookup can hit ruby base text.
-
-Why this comes first:
-
-- These are localized reader WebView/JS/CSS behaviors with direct reading-flow impact, and they are independent of the larger dictionary, Anki, and sync slices.
-
-iOS behavior to mirror:
-
-- Taps on SVG image pages can still toggle reader UI; SVG `<image>` media taps remain image taps, but the SVG container itself is no longer treated as a blocked image hit target.
-- The bottom safe area is tappable: it clears selection, closes popups if present, or toggles focus mode if no popup is open.
-- Blurred images in vertical writing use a one-pixel width reduction so zero horizontal padding does not hide them.
-- Text selection highlights each scanned character range separately, avoiding accidental margin highlight blocks that are not cleared.
-- Ruby elements are normalized so whitespace-only text nodes inside `<ruby>` are removed before lookup/highlight processing.
-
-Android current gap:
-
-- Android already exposes an Always Show Progress setting, persists `readerAlwaysShowProgress`, suppresses the normal top/bottom progress bubbles, and renders progress in the bottom safe-area band.
-- Android bottom safe-area tap behavior and popup/selection dismissal order need a focused comparison against `a7a8380`.
-- Android reader image sizing and selection highlight range generation need comparison against the one-pixel blurred-image width fix and per-character highlight fix.
-- Android `hoshi-web/reader/reader-paginated.js` and `reader-continuous.js` have `normalizeReaderText()` and vertical ruby-adjacent stabilization, but they do not currently remove whitespace-only text nodes inside `<ruby>` the way iOS now does before lookup.
-
-Suggested slice:
-
-- Audit Android reader chrome and reader JS against the five commits, then implement only confirmed mismatches.
-- Keep Android-specific immersive navigation behavior, but align tappable safe-area semantics and popup/selection dismissal order.
-- Add a focused JS unit test with a `<ruby>` containing whitespace text nodes around base text and `<rt>`, verifying lookup text offsets and highlighting are stable.
-
-Validation:
-
-- SVG-only image pages, SVG containers with inner `<image>` media, blurred vertical image pages with zero horizontal padding, blank margin taps, and ruby text with whitespace around base nodes.
-- Focus-mode toggling from the bottom safe-area band with no popup, with a root popup, and with recursive child popups.
-
-### 2. Dictionary search pull-to-clear reset
+### 1. Dictionary search pull-to-clear reset
 
 Status: pending Android sync.
 
@@ -86,7 +44,7 @@ Validation:
 - With an empty query, pull below threshold and confirm keyboard appears.
 - Confirm normal result scrolling and nested popup lookup still work.
 
-### 3. Dictionary automatic updates
+### 2. Dictionary automatic updates
 
 Status: pending Android sync.
 
@@ -126,7 +84,7 @@ Validation:
 - Simulate one failure and one success; confirm success is applied, manual failure is surfaced, and last-update advances only after success.
 - Confirm failed imports leave installed dictionaries intact.
 
-### 4. Dictionary lookup normalization and query rebuild threading
+### 3. Dictionary lookup normalization and query rebuild threading
 
 Status: pending Android sync.
 
@@ -163,7 +121,7 @@ Validation:
 - Import, enable/disable, reorder, delete, update, and backup-restore dictionaries while search/reader lookup is active; confirm the UI remains responsive and stale rebuilds do not replace newer dictionaries.
 - `./gradlew test` and `./gradlew assembleDebug` on a clean native build after submodule updates.
 
-### 5. Anki field templates, dictionary IPA display, and glossary handlebars
+### 4. Anki field templates, dictionary IPA display, and glossary handlebars
 
 Status: pending Android sync; native frequency-sort dependency already present, newer normalization dependency tracked separately above.
 
@@ -209,7 +167,7 @@ Validation:
 - Fetch/select Lapis, Kiku, and Senren models through AnkiDroid and AnkiConnect; confirm only empty model mappings are autofilled and custom mappings persist.
 - Mine Anki notes through AnkiDroid and AnkiConnect with each new handlebar variant, including dictionary media embedding and selected-dictionary fallback.
 
-### 6. TTU/Google Drive book data sync, backup import/export, and remote bookshelf
+### 5. TTU/Google Drive book data sync, backup import/export, and remote bookshelf
 
 Status: pending Android sync; replaces the earlier book-storage deferral with a concrete TTU bookdata queue.
 
@@ -281,6 +239,7 @@ Validation:
 - `691baa2`, `323449c`: Android already localizes the Reading shelf title through `BookshelfSectionModel.titleRes = R.string.bookshelf_section_reading`, `BookshelfSectionHeader`, and paired English/Simplified Chinese resources.
 - `078d59f`: Android already overrides publisher column counts in paginated mode through `ReaderContentStyles` with `body * { column-count: auto !important; -webkit-column-count: auto !important; }`.
 - `1fcf287`: iOS SwiftUI file-importer placement fix. Android backup restore uses dedicated `rememberLauncherForActivityResult(FileImportContent())` launchers for `.hoshi` imports; TTU zip backup import/export remains part of the open TTU slice.
+- `b1509d9`, `a7a8380`, `55a32cd`, `2b8a599`, `98b6534`: Android reader now matches this slice. `selection.js` keeps SVG containers outside image-hit blocking while preserving SVG `<image>` hits and emits per-character highlight ranges; `ReaderBottomSafeProgress` handles bottom safe-area taps for focus/popup dismissal; `ReaderGeneratedLayout` applies the vertical one-pixel image-width guard; paginated and continuous reader JS remove whitespace-only ruby text nodes and wrap ruby base text before lookup offsets are built.
 
 ## Open Commit Inventory
 
@@ -289,10 +248,6 @@ Validation:
 | `73a9e62` | 2026-05-18 | Dictionary pull-to-clear/show-keyboard gesture | Pending |
 | `94d0c41` | 2026-05-19 | Automatic dictionary updates | Pending |
 | `8ef25f4` | 2026-05-24 | New Anki glossary brief/fallback handlebars | Pending |
-| `b1509d9` | 2026-05-25 | Reader UI toggles on SVG image pages | Pending |
-| `a7a8380` | 2026-05-25 | Bottom safe area toggles focus/dismisses popups | Pending |
-| `55a32cd` | 2026-05-25 | Blurred vertical images remain visible with zero horizontal padding | Pending |
-| `2b8a599` | 2026-05-25 | Selection highlights scanned characters separately | Pending |
 | `67bdbb9` | 2026-05-25 | Export stored EPUB from book menu | Pending |
 | `36be339` | 2026-05-25 | IPA/transcription pitch dictionary display | Pending bridge/UI sync |
 | `1aaee97` | 2026-05-27 | Autosync no-network guard | Pending |
@@ -300,15 +255,13 @@ Validation:
 | `5cbdaa8` | 2026-05-29 | Glossary no-dictionary handlebars and regex stripping | Pending |
 | `32d76d2` | 2026-05-29 | TTU bookdata edge cases | Pending with TTU slice |
 | `8ffca61` | 2026-06-02 | Autofill Lapis, Kiku, and Senren Anki field mappings | Pending |
-| `98b6534` | 2026-06-02 | Strip ruby whitespace nodes before reader lookup | Pending |
 | `0d6c072` | 2026-06-04 | hoshidicts normalization processor bump | Pending bridge/native sync |
 | `cfc1e50` | 2026-06-04 | Build lookup query off main thread | Pending |
 
 ## Suggested Implementation Order
 
-1. Reader layout, image hit testing, ruby lookup, and selection follow-up fixes.
-2. Dictionary pull-to-clear.
-3. Dictionary automatic updates.
-4. Dictionary lookup normalization and query rebuild threading.
-5. Anki field templates, dictionary IPA display, and glossary handlebars.
-6. TTU/Google Drive bookdata sync, EPUB export, and backup import/export in smaller sub-slices.
+1. Dictionary pull-to-clear.
+2. Dictionary automatic updates.
+3. Dictionary lookup normalization and query rebuild threading.
+4. Anki field templates, dictionary IPA display, and glossary handlebars.
+5. TTU/Google Drive bookdata sync, EPUB export, and backup import/export in smaller sub-slices.

@@ -130,6 +130,11 @@ class TestElement extends TestNode {
         return null;
     }
 
+    querySelectorAll(selector) {
+        if (selector !== 'ruby') return [];
+        return queryRuby(this);
+    }
+
     get textContent() {
         return this.childNodes.map((child) => child.textContent).join('');
     }
@@ -167,6 +172,9 @@ function loadReader(body, sourceUrl = readerPaginatedUrl) {
         },
         createTextNode(text) {
             return new TestText(text);
+        },
+        createElement(tagName) {
+            return new TestElement(tagName);
         },
         querySelectorAll(selector) {
             return selector === 'ruby' ? queryRuby(body) : [];
@@ -206,6 +214,13 @@ function rubyParagraph() {
     return { paragraph, ruby };
 }
 
+function rubyParagraphWithWhitespaceTextNodes() {
+    const { paragraph, ruby } = rubyParagraph();
+    ruby.insertBefore(new TestText('\n  '), ruby.firstChild);
+    ruby.appendChild(new TestText(' \n'));
+    return { paragraph, ruby };
+}
+
 function textRunAfter(node) {
     const values = [];
     let next = node.nextSibling;
@@ -214,6 +229,21 @@ function textRunAfter(node) {
         next = next.nextSibling;
     }
     return values;
+}
+
+function assertRubyTextNodesAreNormalized(sourceUrl) {
+    const { paragraph, ruby } = rubyParagraphWithWhitespaceTextNodes();
+    const reader = loadReader(paragraph, sourceUrl);
+
+    assert.equal(typeof reader.normalizeReaderText, 'function');
+    reader.normalizeReaderText(paragraph);
+
+    assert.deepEqual(
+        ruby.childNodes.map((node) => node.nodeType === 3 ? `text:${node.nodeValue}` : node.tagName),
+        ['SPAN', 'RT'],
+    );
+    assert.equal(ruby.childNodes[0].textContent, '歩');
+    assert.equal(ruby.textContent, '歩あゆむ');
 }
 
 test('paginated reader re-stabilizes ruby-adjacent text after unwrap normalizes siblings', () => {
@@ -239,6 +269,10 @@ test('paginated reader-specific text normalization keeps ruby-adjacent text stab
     assert.deepEqual(textRunAfter(ruby).slice(0, 3), ['。', 'そ', 'れ']);
 });
 
+test('paginated reader removes ruby whitespace text nodes and wraps base text nodes', () => {
+    assertRubyTextNodesAreNormalized(readerPaginatedUrl);
+});
+
 test('continuous reader stabilizes vertical ruby-adjacent text like paginated reader', () => {
     const { paragraph, ruby } = rubyParagraph();
     paragraph.normalize();
@@ -259,6 +293,10 @@ test('continuous reader-specific text normalization keeps ruby-adjacent text sta
     reader.normalizeReaderText(paragraph);
 
     assert.deepEqual(textRunAfter(ruby).slice(0, 3), ['。', 'そ', 'れ']);
+});
+
+test('continuous reader removes ruby whitespace text nodes and wraps base text nodes', () => {
+    assertRubyTextNodesAreNormalized(readerContinuousUrl);
 });
 
 test('continuous reader re-stabilizes ruby-adjacent text after unwrap normalizes siblings', () => {

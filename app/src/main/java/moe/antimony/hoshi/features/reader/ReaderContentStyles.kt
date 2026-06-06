@@ -27,6 +27,7 @@ internal data class ReaderGeneratedLayout(
     val continuousBodyBottomPaddingCss: String,
     val paginatedColumnWidthCss: String,
     val imageWidthViewportRatio: Double,
+    val imageWidthReductionPx: Int,
 ) {
     companion object {
         fun from(settings: ReaderSettings): ReaderGeneratedLayout {
@@ -58,6 +59,7 @@ internal data class ReaderGeneratedLayout(
                 continuousBodyBottomPaddingCss = continuousBottomPadding,
                 paginatedColumnWidthCss = columnWidth,
                 imageWidthViewportRatio = imageRatio,
+                imageWidthReductionPx = if (settings.verticalWriting) 1 else 0,
             )
         }
     }

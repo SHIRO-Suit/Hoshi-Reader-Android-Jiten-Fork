@@ -512,18 +512,23 @@ internal fun ReaderBottomSafeProgress(
     focusMode: Boolean,
     sasayakiPlaybackControls: ReaderSasayakiBottomPlaybackControls,
     sasayakiPlaying: Boolean,
+    onTapSafeArea: () -> Unit,
     onSasayakiSkipBackward: () -> Unit,
     onSasayakiTogglePlayback: () -> Unit,
     onSasayakiSkipForward: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val progress = readerBottomSafeProgressText(state, settings, focusMode)
-    if (progress.isBlank() && !sasayakiPlaybackControls.visible) return
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(metrics.bottomSafeAreaDp.dp),
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(onClick = onTapSafeArea),
+        )
         if (sasayakiPlaybackControls.visible) {
             Row(
                 modifier = Modifier

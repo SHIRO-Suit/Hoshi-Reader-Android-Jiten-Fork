@@ -537,8 +537,31 @@ window.hoshiReader = {
   },
   normalizeReaderText: function(parent) {
     if (!parent) return;
+    this.normalizeRubyTextNodes(parent);
     parent.normalize();
     this.stabilizeRubyAdjacentTextNodes(parent);
+  },
+  normalizeRubyTextNodes: function(root) {
+    var rubyNodes = new Set();
+    if (root && root.nodeType === Node.ELEMENT_NODE && String(root.tagName).toLowerCase() === 'ruby') {
+      rubyNodes.add(root);
+    }
+    var scope = root && root.querySelectorAll ? root : document;
+    Array.from(scope.querySelectorAll('ruby')).forEach(function(ruby) {
+      rubyNodes.add(ruby);
+    });
+    rubyNodes.forEach(function(ruby) {
+      Array.from(ruby.childNodes).forEach(function(node) {
+        if (node.nodeType !== Node.TEXT_NODE) return;
+        if (!node.nodeValue.trim()) {
+          ruby.removeChild(node);
+          return;
+        }
+        var wrapper = document.createElement('span');
+        ruby.insertBefore(wrapper, node);
+        wrapper.appendChild(node);
+      });
+    });
   },
   isJapaneseBreakCharacter: function(text) {
     var code = (text || '').codePointAt(0);
@@ -938,7 +961,7 @@ window.hoshiReader.initialize = function() {
   document.documentElement.style.setProperty('--hoshi-vertical-padding-gap', (window.innerHeight * __HOSHI_VERTICAL_PADDING_GAP_RATIO__) + 'px');
   document.documentElement.style.setProperty('--page-height', pageHeight + 'px');
   document.documentElement.style.setProperty('--page-width', pageWidth + 'px');
-  document.documentElement.style.setProperty('--hoshi-image-max-width', Math.max(1, Math.floor(pageWidth * __HOSHI_IMAGE_WIDTH_VIEWPORT_RATIO__)) + 'px');
+  document.documentElement.style.setProperty('--hoshi-image-max-width', Math.max(1, Math.floor(pageWidth * __HOSHI_IMAGE_WIDTH_VIEWPORT_RATIO__) - __HOSHI_IMAGE_WIDTH_REDUCTION_PX__) + 'px');
   document.documentElement.style.setProperty('--hoshi-image-max-height', Math.max(1, pageHeight - __HOSHI_BOTTOM_OVERLAP_PX__) + 'px');
   window.hoshiReader.pageHeight = pageHeight;
   window.hoshiReader.pageWidth = pageWidth;
@@ -1001,6 +1024,7 @@ window.hoshiReader.initialize = function() {
   spacer.style.display = 'block';
   spacer.style.breakInside = 'avoid';
   document.body.appendChild(spacer);
+  window.hoshiReader.normalizeRubyTextNodes();
   window.hoshiReader.stabilizeRubyAdjacentTextNodes();
   Promise.all(imagePromises).then(function() {
     if (!images.length) return;
