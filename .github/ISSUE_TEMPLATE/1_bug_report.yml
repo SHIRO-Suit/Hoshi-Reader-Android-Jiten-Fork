@@ -22,7 +22,7 @@ body:
         you can.
     validations:
       required: true
-  - type: upload
+  - type: textarea
     id: attachments
     attributes:
       label: EPUB sample archive or attachments
@@ -32,19 +32,19 @@ body:
         and legally. You can also attach screenshots or screen recordings. If
         you cannot share the book publicly, say so in the description and send
         it by Discord DM or email it to HuangAntimony@gmail.com.
+      placeholder: Drag and drop the .zip archive, screenshots, or screen recordings here.
     validations:
       required: false
-      accept: ".zip,.gz,.tar.gz,.png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm"
-  - type: upload
+  - type: textarea
     id: diagnostic-log
     attributes:
       label: Diagnostic log
       description: >-
         If the app crashed, open Hoshi Reader Android's Settings page, go to
         Diagnostics, download the diagnostic log, and upload the .txt file here.
+      placeholder: Drag and drop the .txt diagnostic log here.
     validations:
       required: false
-      accept: ".txt"
   - type: input
     id: app-version
     attributes:
