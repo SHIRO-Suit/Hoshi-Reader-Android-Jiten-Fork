@@ -55,12 +55,12 @@ window.hoshiReader = {
     }
     return fallbackOffset;
   },
-   notifyRestoreComplete: function() {
-     if (window.HoshiReaderRestore && window.HoshiReaderRestore.postMessage) {
-       window.HoshiReaderRestore.postMessage(__HOSHI_RESTORE_TOKEN_LITERAL__);
-     }
-     this.warmPaginationMetrics();
-   },
+  notifyRestoreComplete: function() {
+    if (window.HoshiReaderRestore && window.HoshiReaderRestore.postMessage) {
+      window.HoshiReaderRestore.postMessage(__HOSHI_RESTORE_TOKEN_LITERAL__);
+    }
+    this.warmPaginationMetrics();
+  },
   createWalker: function(rootNode) {
     var root = rootNode || document.body;
     return document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
@@ -807,8 +807,8 @@ window.hoshiReader = {
     }
 
     var minScroll = firstContentEdge === null ? 0 : Math.min(maxAlignedScroll, this.alignContentStartToPage(context, firstContentEdge));
-    var lastContentScroll = lastContentEdge <= 0 ? 0 : Math.floor(Math.max(0, lastContentEdge - 1) / context.pageSize) * context.pageSize;
-    var maxScroll = Math.min(maxAlignedScroll, lastContentScroll);
+    var lastContentScroll = lastContentEdge <= 0 ? 0 : this.alignToPage(context, lastContentEdge - 1);
+    var maxScroll = Math.min(context.maxScroll, lastContentScroll);
     progressStops.sort(function(a, b) { return a.scroll - b.scroll; });
     var metrics = {
       minScroll: minScroll,
@@ -835,10 +835,14 @@ window.hoshiReader = {
   restoreProgress: async function(progress) {
     await document.fonts.ready;
     var context = this.getScrollContext();
-    if (context.pageSize <= 0 || progress <= 0) {
-      var firstPage = this.contentFirstPageScroll(context);
-      this.setPagePosition(context, firstPage);
-      this.registerSnapScroll(firstPage);
+    if (context.pageSize <= 0) {
+      this.registerSnapScroll(0);
+      this.notifyRestoreComplete();
+      return;
+    }
+    if (progress <= 0) {
+      this.setPagePosition(context, 0);
+      this.registerSnapScroll(0);
       this.notifyRestoreComplete();
       return;
     }
@@ -926,17 +930,19 @@ window.hoshiReader = {
     var currentScroll = this.getPagePosition(context);
     var metrics = this.paginationMetrics || this.buildPaginationMetrics();
     var minAlignedScroll = metrics.minScroll;
-    var maxAlignedScroll = metrics.maxScroll;
+    var maxPageScroll = metrics.maxScroll;
     if (direction === "forward") {
-      if ((currentScroll + context.pageSize) <= (maxAlignedScroll + 1)) {
+      if (currentScroll < (maxPageScroll - 1)) {
         var targetForward = Math.round((currentScroll + context.pageSize) / context.pageSize) * context.pageSize;
+        targetForward = Math.min(targetForward, maxPageScroll);
+        if (targetForward <= (currentScroll + 1)) return "limit";
         this.setPagePosition(context, targetForward);
         return "scrolled";
       }
       return "limit";
     } else {
       if (currentScroll > (minAlignedScroll + 1)) {
-        var targetBack = Math.round((currentScroll - context.pageSize) / context.pageSize) * context.pageSize;
+        var targetBack = Math.floor((currentScroll - 1) / context.pageSize) * context.pageSize;
         targetBack = Math.max(minAlignedScroll, targetBack);
         this.setPagePosition(context, targetBack);
         return "scrolled";

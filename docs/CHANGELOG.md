@@ -8,6 +8,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 ### Added
 
 - Show the Android WebView implementation package and version at the top of Settings -> Diagnostics reports.
+- Add iOS-compatible Books backup storage, EPUB export from Books, TTU bookdata backup import/export that reports empty archives as failed imports, Google Drive Upload Books sync with iOS-aligned sidecar behavior, and a remote-only Google Drive bookshelf section for importing or trashing TTU books with iOS-like refresh and title ordering.
 
 ### Fixed
 
@@ -20,6 +21,9 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Keep Dictionary search results tight below a Material-style top search field, allow new searches to replace the current results, add a guarded pull-to-clear/show-keyboard gesture that ignores recursive popup scrolling, and refocus with all search text selected when tapping the active Dictionary tab.
 - Keep iframe lookup popups ready for the next word tap immediately after closing a recursive popup, and let blank parent popup areas dismiss child popups.
 - Keep Dictionary search and Process Text lookup popups on the same iframe popup path as Reader, preserving recursive lookup, dismissal, audio, Anki, and dictionary media behavior without the legacy native popup overlay.
+- Keep TTU bookdata imports rendering in Reader when converted XHTML has leading whitespace before the XML declaration or EPUB resources use parent-directory relative paths.
+- Keep Reader opens fast for TTU-origin books and lookup popups that reference missing local resources, avoiding WebView network fallbacks while using Android's reserved appassets origin for local content.
+- Keep paginated Reader final partial pages visible while still avoiding blank trailing pages from spacer or CSS overflow.
 
 ## [v1.1.3] - 2026-06-04
 

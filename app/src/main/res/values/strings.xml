@@ -41,6 +41,7 @@
     <string name="import_select_audio_database">Select a .db audio database file.</string>
     <string name="import_select_dictionary_archive">Select a .zip dictionary archive file.</string>
     <string name="import_select_hoshi_backup">Select a .hoshi Hoshi backup file.</string>
+    <string name="import_select_ttu_bookdata_backup">Select a .zip TTU bookdata backup file.</string>
     <string name="import_select_font">Select a .ttf, .otf, .woff, or .woff2 font file.</string>
     <string name="main_tab_books" comment="Main navigation tab label, intentionally matching the backup Books section.">Books</string>
     <string name="main_tab_dictionary">Dictionary</string>
@@ -67,18 +68,28 @@
     <string name="bookshelf_scanning_folder">Scanning folder...</string>
     <string name="bookshelf_no_epub_files_found">No EPUB files found.</string>
     <string name="bookshelf_importing_epub">Importing EPUB...</string>
+    <string name="bookshelf_exporting_epub">Exporting EPUB...</string>
+    <string name="bookshelf_export_failed">Failed to export EPUB.</string>
+    <string name="bookshelf_exported_epub_format">Exported %1$s.</string>
     <string name="bookshelf_importing_named_format">Importing %1$s...</string>
     <string name="bookshelf_importing_progress_format">Importing %1$d / %2$d...</string>
     <string name="bookshelf_sync_failed">Sync failed.</string>
+    <string name="bookshelf_remote_books_load_failed">Failed to fetch books from Google Drive.</string>
+    <string name="bookshelf_remote_book_import_failed">Failed to import book from Google Drive.</string>
+    <string name="bookshelf_remote_book_delete_failed">Failed to delete book from Google Drive.</string>
     <string name="bookshelf_syncing">Syncing...</string>
     <string name="bookshelf_synced_to_ttu_format">Synced %1$s to ッツ\n%2$d characters</string>
     <string name="bookshelf_synced_from_ttu_format">Synced %1$s from ッツ\n%2$d characters</string>
     <string name="bookshelf_already_synced_format">%1$s is already synced</string>
     <string name="bookshelf_delete_book_title_format" comment="Delete confirmation, intentionally matching the imported-font delete confirmation format.">Delete \"%1$s\"?</string>
+    <string name="bookshelf_delete_remote_book">Delete from Google Drive</string>
+    <string name="bookshelf_delete_remote_book_title_format">Delete \"%1$s\" from Google Drive?</string>
+    <string name="bookshelf_delete_remote_book_confirmation">This moves the remote Google Drive folder to trash. Local books are not deleted.</string>
     <string name="bookshelf_mark_read_title_format">Mark \"%1$s\" as read?</string>
     <string name="bookshelf_title_label" comment="Text-field label for renaming a book, distinct from the sort option.">Title</string>
     <string name="bookshelf_section_reading">Reading</string>
     <string name="bookshelf_section_unshelved">Unshelved</string>
+    <string name="bookshelf_section_google_drive" comment="Bookshelf remote section label, intentionally matching the Google Drive sync provider name.">Google Drive</string>
     <string name="bookshelf_selected_count_format">%1$d Selected</string>
     <string name="bookshelf_sort_books">Sort books</string>
     <string name="bookshelf_sorting_by">Sorting by...</string>
@@ -94,6 +105,7 @@
     <string name="bookshelf_move">Move</string>
     <string name="bookshelf_match_sasayaki">Match Sasayaki</string>
     <string name="bookshelf_mark_read">Mark Read</string>
+    <string name="bookshelf_export_epub">Export EPUB</string>
     <string name="bookshelf_reading_shelf">Reading Shelf</string>
     <string name="bookshelf_reading_shelf_description">Shows books you\'ve started but not finished.</string>
     <string name="bookshelf_shelves">Shelves</string>
@@ -149,7 +161,7 @@
     <string name="dictionary_collapse_mode_custom" comment="Dictionary collapse mode option, distinct from reader appearance custom theme.">Custom</string>
     <string name="dictionary_mode" comment="Dictionary setting label, intentionally matching reader appearance mode.">Mode</string>
     <string name="dictionary_expand_first">Expand First Dictionary</string>
-    <string name="dictionary_settings_behaviour">Behaviour</string>
+    <string name="dictionary_settings_behaviour" comment="Settings group label, intentionally shared with Sync settings.">Behaviour</string>
     <string name="dictionary_compact_glossaries" comment="Dictionary setting label, intentionally matching Anki compact glossaries.">Compact Glossaries</string>
     <string name="dictionary_show_expression_tags">Show Expression Tags</string>
     <string name="dictionary_harmonic_frequency">Harmonic Frequency</string>
@@ -237,7 +249,7 @@
     <string name="reader_appearance_font" comment="Reader font setting, intentionally matching dictionary custom CSS font.">Font</string>
     <string name="reader_appearance_font_file" comment="Fallback filename label, intentionally matching font setting labels.">font</string>
     <string name="reader_appearance_import_font">Import Font</string>
-    <string name="reader_appearance_importing">Importing...</string>
+    <string name="reader_appearance_importing" comment="Generic import progress label, intentionally shared with TTU backup import.">Importing...</string>
     <string name="reader_appearance_font_size">Font Size</string>
     <string name="reader_appearance_hide_furigana">Hide Furigana</string>
     <string name="reader_appearance_mode" comment="Reader appearance setting label, intentionally matching dictionary mode.">Mode</string>
@@ -278,11 +290,23 @@
     <string name="action_enable">Enable</string>
     <string name="sync_ttu_sync">ッツ Sync</string>
     <string name="sync_title">Syncing</string>
+    <string name="sync_section_behaviour" comment="Sync settings group label, intentionally matching other settings group labels.">Behaviour</string>
+    <string name="sync_section_data">Data</string>
     <string name="sync_direction">Direction</string>
     <string name="sync_auto_sync">Auto Sync</string>
+    <string name="sync_upload_books">Upload Books</string>
+    <string name="sync_upload_books_description">Upload TTU bookdata to Google Drive when a synced book folder is missing bookdata.</string>
+    <string name="sync_stats">Sync Stats</string>
+    <string name="sync_audiobook_progress">Sync Audiobook Progress</string>
+    <string name="sync_clear_cache">Clear Google Drive cache</string>
+    <string name="sync_cache_cleared">Google Drive cache cleared.</string>
+    <string name="sync_clear_cache_title">Clear Google Drive cache?</string>
+    <string name="sync_clear_cache_confirmation">Hoshi will clear cached Google Drive folder IDs and remote cover thumbnails. Local books are not deleted.</string>
+    <string name="sync_sign_out_title">Sign out of Google Drive?</string>
+    <string name="sync_sign_out_confirmation">Hoshi will disconnect Google Drive and clear cached Drive folders. Local books are not deleted.</string>
     <string name="sync_mode_auto">Auto</string>
     <string name="sync_mode_manual">Manual</string>
-    <string name="sync_google_drive">Google Drive</string>
+    <string name="sync_google_drive" comment="Sync provider label, intentionally matching the bookshelf remote Google Drive section.">Google Drive</string>
     <string name="sync_device_client_id">Device client ID</string>
     <string name="sync_device_client_secret">Device client secret</string>
     <string name="sync_authorize_google_drive">Authorize Google Drive</string>
@@ -314,19 +338,27 @@
     <string name="update_available_message_format">Hoshi Reader %1$s is available.</string>
     <string name="backup_books" comment="Backup section label, intentionally matching the Books tab label.">Books</string>
     <string name="backup_dictionaries" comment="Backup section label, intentionally matching the Dictionaries settings label.">Dictionaries</string>
+    <string name="backup_ttu_bookdata">ッツ Backup</string>
+    <string name="backup_ttu_bookdata_description">Importing a backup adds new books and overwrites the statistics and reading progress of books already present.</string>
     <string name="backup_books_saved">Books backup saved.</string>
     <string name="backup_books_save_failed">Unable to save Books backup.</string>
     <string name="backup_dictionaries_saved">Dictionaries backup saved.</string>
     <string name="backup_dictionaries_save_failed">Unable to save Dictionaries backup.</string>
+    <string name="backup_ttu_saved">TTU bookdata backup saved.</string>
+    <string name="backup_ttu_save_failed">Unable to save TTU bookdata backup.</string>
     <string name="backup_books_restored">Books restored.</string>
     <string name="backup_books_restore_failed">Unable to restore Books backup.</string>
     <string name="backup_dictionaries_restored">Dictionaries restored.</string>
     <string name="backup_dictionaries_restore_failed">Unable to restore Dictionaries backup.</string>
+    <string name="backup_ttu_restored">TTU bookdata imported.</string>
+    <string name="backup_ttu_restore_failed">Unable to import TTU bookdata backup.</string>
     <string name="backup_restore_overwrites">Restoring will overwrite the current collection.</string>
     <string name="backup_action_backup" comment="Verb for creating a backup, intentionally matching the Backup settings noun.">Backup</string>
     <string name="backup_action_restore">Restore</string>
     <string name="backup_archiving">Archiving...</string>
     <string name="backup_restoring">Restoring...</string>
+    <string name="backup_exporting">Exporting...</string>
+    <string name="backup_importing" comment="TTU backup import progress label, intentionally matching the generic importing progress text.">Importing...</string>
     <string name="advanced_audio">Audio</string>
     <string name="advanced_statistics" comment="Advanced settings row label, intentionally matching reader statistics label.">Statistics</string>
     <string name="advanced_statistics_subtitle">Track per-book reading time, speed, and characters read</string>
