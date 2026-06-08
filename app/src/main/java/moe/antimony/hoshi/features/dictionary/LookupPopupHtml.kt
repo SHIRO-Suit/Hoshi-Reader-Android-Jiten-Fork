@@ -8,6 +8,7 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
+import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.features.audio.AudioSettings
 import moe.antimony.hoshi.features.anki.AnkiPopupSettings
 import java.util.Locale
@@ -60,6 +61,7 @@ internal object LookupPopupHtml {
         ankiSettings: AnkiPopupSettings = AnkiPopupSettings(),
         fontFaceCss: String = "",
         popupScale: Double = 1.0,
+        contentLanguageProfile: ContentLanguageProfile = ContentLanguageProfile.Default,
     ): String {
         val normalizedSettings = settings.normalized()
         val collapsedDictionaries = dictionaryNamesJson(normalizedSettings.collapsedDictionaries)
@@ -73,6 +75,7 @@ internal object LookupPopupHtml {
         val popupTypographyCss = """
             <style>
                 ${fontFaceCss.trim()}
+                :root { --hoshi-content-font-family: ${contentLanguageProfile.webViewFontFamilyCss}; }
                 html { zoom: ${popupCssNumber(popupScale.coerceIn(0.8, 1.5))}; }
             </style>
         """.trimIndent()
@@ -85,7 +88,7 @@ internal object LookupPopupHtml {
             ?: """<script src="$PopupAssetBaseUrl/popup.js"></script>"""
         return """
             <!DOCTYPE html>
-            <html data-hoshi-color-scheme="$colorScheme" data-hoshi-eink-mode="$eInkMode">
+            <html lang="${contentLanguageProfile.htmlLang}" data-hoshi-color-scheme="$colorScheme" data-hoshi-eink-mode="$eInkMode">
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 $popupCss

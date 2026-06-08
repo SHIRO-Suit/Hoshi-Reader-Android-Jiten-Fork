@@ -21,6 +21,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Keep Dictionary search results tight below a Material-style top search field, allow new searches to replace the current results, add a guarded pull-to-clear/show-keyboard gesture that ignores recursive popup scrolling, and refocus with all search text selected when tapping the active Dictionary tab.
 - Keep iframe lookup popups ready for the next word tap immediately after closing a recursive popup, and let blank parent popup areas dismiss child popups.
 - Keep Dictionary search and Process Text lookup popups on the same iframe popup path as Reader, preserving recursive lookup, dismissal, audio, Anki, and dictionary media behavior without the legacy native popup overlay.
+- Keep Reader, Dictionary search, Process Text, and lookup popup Japanese text on Android Japanese font fallbacks, removing iOS-only font names.
 - Keep TTU bookdata imports rendering in Reader when converted XHTML has leading whitespace before the XML declaration or EPUB resources use parent-directory relative paths.
 - Prevent startup crashes and duplicate packing work when old extracted book folders are migrated to packed EPUB storage, and show Bookshelf progress while those older books are prepared.
 - Keep Reader opens fast for TTU-origin books and lookup popups that reference missing local resources, avoiding WebView network fallbacks while using Android's reserved appassets origin for local content.

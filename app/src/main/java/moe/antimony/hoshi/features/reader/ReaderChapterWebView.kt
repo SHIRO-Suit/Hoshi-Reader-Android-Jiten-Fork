@@ -48,6 +48,7 @@ import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.roundToInt
 import moe.antimony.hoshi.R
+import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.epub.EpubBook
 import moe.antimony.hoshi.epub.HighlightColor
 import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
@@ -74,6 +75,7 @@ internal fun ChapterWebView(
     onContinuousScrollProgress: (progress: Double, restoreEpoch: Int) -> Unit,
     onInternalLink: (ReaderInternalLinkTarget) -> Unit,
     scanNonJapaneseText: Boolean,
+    contentLanguageProfile: ContentLanguageProfile,
     readerSettings: ReaderSettings,
     chapterHighlightsJson: String?,
     chapterSasayakiCuesJson: String?,
@@ -145,12 +147,14 @@ internal fun ChapterWebView(
         chapterPosition.progress,
         chapterFragment,
         scanNonJapaneseText,
+        contentLanguageProfile,
         fontFaceUrl,
     ) {
         ReaderWebViewSetupReloadKey(
             initialProgress = chapterPosition.progress,
             initialFragment = chapterFragment,
             scanNonJapaneseText = scanNonJapaneseText,
+            contentLanguageProfile = contentLanguageProfile,
             fontFaceUrl = fontFaceUrl,
         )
     }
@@ -169,6 +173,7 @@ internal fun ChapterWebView(
         fontFaceUrl,
         systemDark,
         scanNonJapaneseText,
+        contentLanguageProfile,
         webViewViewportCssSize,
         sasayakiTextColor,
         sasayakiBackgroundColor,
@@ -184,6 +189,7 @@ internal fun ChapterWebView(
             fontFaceUrl = fontFaceUrl,
             systemDark = systemDark,
             scanNonJapaneseText = scanNonJapaneseText,
+            contentLanguageProfile = contentLanguageProfile,
             webViewViewportCssSize = webViewViewportCssSize,
             sasayakiTextColor = sasayakiTextColor,
             sasayakiBackgroundColor = sasayakiBackgroundColor,
@@ -418,6 +424,7 @@ internal data class ReaderWebViewSetupReloadKey(
     val initialProgress: Double,
     val initialFragment: String?,
     val scanNonJapaneseText: Boolean,
+    val contentLanguageProfile: ContentLanguageProfile,
     val fontFaceUrl: String?,
 )
 
@@ -726,6 +733,7 @@ private fun readerSetupScript(
     fontFaceUrl: String?,
     systemDark: Boolean,
     scanNonJapaneseText: Boolean,
+    contentLanguageProfile: ContentLanguageProfile,
     webViewViewportCssSize: IntSize,
     sasayakiTextColor: Long,
     sasayakiBackgroundColor: Long,
@@ -735,6 +743,7 @@ private fun readerSetupScript(
     assets: ReaderWebAssets,
 ): String {
     val eInkMode = readerJavaScriptStringLiteral(if (settings.eInkMode) "true" else "false")
+    val contentLanguageTag = readerJavaScriptStringLiteral(contentLanguageProfile.htmlLang)
     val viewportLayout = readerViewportCssLayout(
         settings = settings,
         viewportCssWidth = webViewViewportCssSize.width,
@@ -746,6 +755,7 @@ private fun readerSetupScript(
         systemDark = systemDark,
         sasayakiTextColor = sasayakiTextColor,
         sasayakiBackgroundColor = sasayakiBackgroundColor,
+        contentLanguageProfile = contentLanguageProfile,
         readerCssTemplate = assets.readerCss,
     ).let { css ->
         "${viewportLayout.cssVariables()}\n$css"
@@ -763,6 +773,8 @@ private fun readerSetupScript(
     return """
         (function() {
           document.documentElement.dataset.hoshiReaderEinkMode = $eInkMode;
+          document.documentElement.lang = $contentLanguageTag;
+          document.documentElement.dataset.hoshiContentLanguage = $contentLanguageTag;
           var style = document.createElement('style');
           style.textContent = $css;
           document.head.appendChild(style);

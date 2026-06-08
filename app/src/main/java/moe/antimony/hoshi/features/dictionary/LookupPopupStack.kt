@@ -1,6 +1,7 @@
 package moe.antimony.hoshi.features.dictionary
 
 import de.manhhao.hoshi.LookupResult
+import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.epub.SasayakiMatch
 import moe.antimony.hoshi.dictionary.LookupEngine
 import moe.antimony.hoshi.features.audio.AudioSettings
@@ -28,6 +29,7 @@ internal data class LookupPopupOptions(
     val popupActionBar: Boolean = false,
     val documentTitle: String? = null,
     val coverPath: String? = null,
+    val contentLanguageProfile: ContentLanguageProfile = ContentLanguageProfile.Default,
 )
 
 internal data class LookupPopupItem(
@@ -58,6 +60,7 @@ internal data class LookupPopupState(
     val eInkMode: Boolean = false,
     val audioSettings: AudioSettings = AudioSettings(),
     val popupActionBar: Boolean = false,
+    val contentLanguageProfile: ContentLanguageProfile = ContentLanguageProfile.Default,
     val ankiContext: AnkiMiningContext = AnkiMiningContext(sentence = selection.sentence),
 )
 
@@ -72,6 +75,7 @@ internal fun createLookupPopupItem(
 ): Pair<LookupPopupItem, Int>? {
     val settings = options.dictionarySettings.normalized()
     val styles = dictionaryStyles ?: currentDictionaryStyles()
+    val contentLanguageProfile = options.contentLanguageProfile
     val results = runCatching {
         lookup(selection.text, settings.maxResults, settings.scanLength)
     }.getOrDefault(emptyList())
@@ -98,6 +102,7 @@ internal fun createLookupPopupItem(
             eInkMode = options.eInkMode,
             audioSettings = options.audioSettings,
             popupActionBar = options.popupActionBar,
+            contentLanguageProfile = contentLanguageProfile,
             ankiContext = AnkiMiningContext(
                 sentence = selection.sentence,
                 documentTitle = options.documentTitle,

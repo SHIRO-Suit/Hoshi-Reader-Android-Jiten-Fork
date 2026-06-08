@@ -44,6 +44,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.antimony.hoshi.LocalHoshiUiDependencies
+import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.epub.EpubBook
 import moe.antimony.hoshi.epub.HighlightColor
 import moe.antimony.hoshi.epub.ReadingStatistics
@@ -188,6 +189,7 @@ fun ReaderWebView(
     val popupAssets = remember(context) { LookupPopupAssets.load(context) }
     val readerPopupBridgeHolder = remember { ReaderLookupPopupBridgeCallbackHolder() }
     val popupDarkMode = effectiveSettings.usesDarkInterface(systemDarkTheme)
+    val popupContentLanguageProfile = ContentLanguageProfile.Default
     val readerPopupIframeDocument = remember(
         dictionaryStyles,
         dictionarySettings,
@@ -202,6 +204,7 @@ fun ReaderWebView(
         ankiUiState.popupSettings,
         fontManager,
         effectiveSettings.popupScale,
+        popupContentLanguageProfile,
     ) {
         LookupPopupHtml.renderIframeDocument(
             assets = null,
@@ -218,6 +221,7 @@ fun ReaderWebView(
             ankiSettings = ankiUiState.popupSettings,
             fontFaceCss = fontManager.popupFontFaceCss(),
             popupScale = effectiveSettings.popupScale,
+            contentLanguageProfile = popupContentLanguageProfile,
         )
     }
     val currentReaderPopupIframeDocument = rememberUpdatedState(readerPopupIframeDocument)
@@ -447,6 +451,7 @@ fun ReaderWebView(
                 audioSettings = audioSettings,
                 documentTitle = book.title,
                 coverPath = sasayakiCoverFile?.absolutePath,
+                contentLanguageProfile = popupContentLanguageProfile,
             ),
         )?.let { (popup, highlightCount) ->
             popup.copy(sasayakiCue = sasayakiCueForSelection(selection)) to highlightCount
@@ -474,6 +479,7 @@ fun ReaderWebView(
                 audioSettings = audioSettings,
                 documentTitle = book.title,
                 coverPath = sasayakiCoverFile?.absolutePath,
+                contentLanguageProfile = popupContentLanguageProfile,
             ),
         )?.let { (popup, highlightCount) ->
             popup.copy(sasayakiCue = sasayakiCueForSelection(selection)) to highlightCount
@@ -1234,6 +1240,7 @@ fun ReaderWebView(
                             jumpToPositionWithHistory(target.position, target.fragment)
                         },
                         scanNonJapaneseText = dictionarySettings.scanNonJapaneseText,
+                        contentLanguageProfile = popupContentLanguageProfile,
                         readerSettings = effectiveSettings,
                         chapterHighlightsJson = ReaderHighlights.chapterHighlightsJson(
                             highlights = highlights.orEmpty(),

@@ -102,7 +102,7 @@ class ReaderSettingsTest {
         assertTrue(css.contains("font-family: 'KleeOne-SemiBold';"))
         assertTrue(css.contains("src: url('https://appassets.androidplatform.net/fonts/KleeOne-SemiBold.ttf');"))
         assertTrue(css.contains("writing-mode: vertical-rl !important;"))
-        assertTrue(css.contains("font-family: 'KleeOne-SemiBold', serif !important;"))
+        assertTrue(css.contains("font-family: 'KleeOne-SemiBold', 'Noto Serif CJK JP', 'NotoSerifCJKjp-Regular', serif !important;"))
         assertTrue(css.contains("font-size: 28px !important;"))
         assertTrue(css.contains("line-height: 1.85 !important;"))
         assertTrue(css.contains("letter-spacing: 0.02em !important;"))
@@ -197,18 +197,16 @@ class ReaderSettingsTest {
     }
 
     @Test
-    fun readerCssMigratesLegacyIosPresetNamesToAndroidJapaneseFallbacks() {
-        val legacyMinchoCss = ReaderContentStyles.styleTag(
-            ReaderSettings(selectedFont = "Hiragino Mincho ProN"),
-        )
-        val legacyGothicCss = ReaderContentStyles.styleTag(
-            ReaderSettings(selectedFont = "Hiragino Kaku Gothic ProN"),
+    fun readerCssUsesFixedJapaneseContentFallbackFamilyForCustomFonts() {
+        val css = ReaderContentStyles.styleTag(
+            settings = ReaderSettings(selectedFont = "KleeOne-SemiBold"),
         )
 
-        assertTrue(legacyMinchoCss.contains("'Noto Serif CJK JP'"))
-        assertFalse(legacyMinchoCss.contains("Hiragino Mincho ProN"))
-        assertTrue(legacyGothicCss.contains("'Noto Sans CJK JP'"))
-        assertFalse(legacyGothicCss.contains("Hiragino Kaku Gothic ProN"))
+        assertTrue(
+            css.contains(
+                "font-family: 'KleeOne-SemiBold', 'Noto Serif CJK JP', 'NotoSerifCJKjp-Regular', serif !important;",
+            ),
+        )
     }
 
     @Test

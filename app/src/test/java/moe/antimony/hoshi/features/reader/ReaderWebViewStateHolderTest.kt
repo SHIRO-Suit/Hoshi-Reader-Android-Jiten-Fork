@@ -2,6 +2,7 @@ package moe.antimony.hoshi.features.reader
 
 import androidx.compose.ui.unit.IntSize
 import kotlin.io.path.createTempDirectory
+import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -188,6 +189,7 @@ class ReaderWebViewStateHolderTest {
             initialProgress = 0.2,
             initialFragment = null,
             scanNonJapaneseText = false,
+            contentLanguageProfile = ContentLanguageProfile.Default,
             fontFaceUrl = "https://appassets.androidplatform.net/fonts/default.ttf",
         )
         val viewportSize = IntSize(800, 1200)
@@ -220,6 +222,7 @@ class ReaderWebViewStateHolderTest {
                 initialProgress = 0.2,
                 initialFragment = null,
                 scanNonJapaneseText = false,
+                contentLanguageProfile = ContentLanguageProfile.Default,
                 fontFaceUrl = "https://appassets.androidplatform.net/fonts/default.ttf",
             ),
             webViewViewportSize = viewportSize,
@@ -231,6 +234,7 @@ class ReaderWebViewStateHolderTest {
                 initialProgress = 0.6,
                 initialFragment = null,
                 scanNonJapaneseText = false,
+                contentLanguageProfile = ContentLanguageProfile.Default,
                 fontFaceUrl = "https://appassets.androidplatform.net/fonts/default.ttf",
             ),
             webViewViewportSize = viewportSize,
@@ -247,6 +251,7 @@ class ReaderWebViewStateHolderTest {
             initialProgress = 0.2,
             initialFragment = null,
             scanNonJapaneseText = false,
+            contentLanguageProfile = ContentLanguageProfile.Default,
             fontFaceUrl = "https://appassets.androidplatform.net/fonts/default.ttf",
         )
         val viewportSize = IntSize(800, 1200)

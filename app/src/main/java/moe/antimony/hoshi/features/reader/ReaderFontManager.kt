@@ -61,7 +61,7 @@ class ReaderFontManager @Inject constructor(
     }
 
     fun isDefaultFont(name: String): Boolean =
-        normalizeDefaultFont(name) in defaultFonts
+        name in defaultFonts
 
     fun webViewFontUrl(name: String): String? =
         storedFont(name)?.let { "https://appassets.androidplatform.net/fonts/${it.fileName.pathSegmentEncoded()}" }
@@ -70,7 +70,7 @@ class ReaderFontManager @Inject constructor(
         (defaultFonts + storedFonts().map { it.name }).distinct()
 
     fun cssFontName(name: String): String =
-        normalizeDefaultFont(name)
+        name
 
     fun popupFontFaceCss(): String =
         storedFonts().joinToString(separator = "\n") { font ->
@@ -97,12 +97,6 @@ class ReaderFontManager @Inject constructor(
         const val defaultMinchoFont = "Noto Serif CJK JP"
         const val defaultGothicFont = "Noto Sans CJK JP"
         val defaultFonts = listOf(defaultMinchoFont, defaultGothicFont)
-
-        fun normalizeDefaultFont(name: String): String = when (name) {
-            "Hiragino Mincho ProN" -> defaultMinchoFont
-            "Hiragino Kaku Gothic ProN" -> defaultGothicFont
-            else -> name
-        }
     }
 }
 

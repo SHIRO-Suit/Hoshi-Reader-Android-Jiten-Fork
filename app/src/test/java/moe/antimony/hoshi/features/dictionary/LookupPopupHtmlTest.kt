@@ -32,6 +32,7 @@ class LookupPopupHtmlTest {
         assertTrue(html.contains("html { zoom: 1.15; }"))
         assertTrue(html.contains("""data-hoshi-color-scheme="dark""""))
         assertTrue(html.contains("""data-hoshi-eink-mode="true""""))
+        assertTrue(html.contains("""<html lang="ja""""))
         assertTrue(html.contains("""window.lookupEntries = [];"""))
         assertTrue(html.contains("""window.entryCount = 0;"""))
         assertFalse(html.contains("""<section class="entry">"""))
@@ -96,6 +97,16 @@ class LookupPopupHtmlTest {
         assertTrue(html.contains("html { zoom: 1.25; }"))
         assertTrue(html.contains("window.hoshiPopupPrewarmFonts = function()"))
         assertTrue(html.contains("window.hoshiPopupPrewarmFonts();"))
+    }
+
+    @Test
+    fun iframePopupShellAppliesFixedJapaneseContentFontProfile() {
+        val html = LookupPopupHtml.renderIframeDocument()
+
+        assertTrue(html.contains("""<html lang="ja""""))
+        assertTrue(html.contains("""--hoshi-content-font-family:"""))
+        assertTrue(html.contains("Noto Sans CJK JP"))
+        assertFalse(html.contains("Hira" + "gino"))
     }
 
     @Test

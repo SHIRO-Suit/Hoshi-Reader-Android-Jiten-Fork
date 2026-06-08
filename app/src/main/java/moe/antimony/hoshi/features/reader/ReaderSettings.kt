@@ -241,9 +241,7 @@ class ReaderSettingsStore(context: Context) : ReaderSettingsLegacySource {
         customTextColor = preferences.getLong("customTextColor", 0xFF000000),
         customInfoColor = preferences.getLong("customInfoColor", 0xFF999999),
         verticalWriting = preferences.getBoolean("verticalWriting", true),
-        selectedFont = ReaderFontManager.normalizeDefaultFont(
-            preferences.getString("selectedFont", null) ?: ReaderFontManager.defaultMinchoFont,
-        ),
+        selectedFont = preferences.getString("selectedFont", null) ?: ReaderFontManager.defaultMinchoFont,
         fontSize = preferences.getInt("fontSize", 22),
         hideFurigana = preferences.getBoolean("readerHideFurigana", false),
         continuousMode = preferences.getBoolean("continuousMode", false),
@@ -390,9 +388,7 @@ class ReaderSettingsRepository(
             customTextColor = this[KEY_CUSTOM_TEXT_COLOR] ?: 0xFF000000,
             customInfoColor = this[KEY_CUSTOM_INFO_COLOR] ?: 0xFF999999,
             verticalWriting = this[KEY_VERTICAL_WRITING] ?: true,
-            selectedFont = ReaderFontManager.normalizeDefaultFont(
-                this[KEY_SELECTED_FONT] ?: ReaderFontManager.defaultMinchoFont,
-            ),
+            selectedFont = this[KEY_SELECTED_FONT] ?: ReaderFontManager.defaultMinchoFont,
             fontSize = this[KEY_FONT_SIZE] ?: 22,
             hideFurigana = this[KEY_HIDE_FURIGANA] ?: false,
             continuousMode = this[KEY_CONTINUOUS_MODE] ?: false,

@@ -35,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import moe.antimony.hoshi.ProcessTextLookupRequest
+import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.dictionary.DictionaryRepository
 import moe.antimony.hoshi.dictionary.LookupEngine
 import moe.antimony.hoshi.features.audio.AudioRequestHandler
@@ -105,6 +106,7 @@ class ProcessTextLookupActivity : ComponentActivity() {
                 ProcessTextLookupOverlay(
                     query = request.query,
                     readerSettings = loadedReaderSettings,
+                    contentLanguageProfile = ContentLanguageProfile.Default,
                     dependencies = dependencies,
                     onClose = ::finish,
                 )
@@ -117,6 +119,7 @@ class ProcessTextLookupActivity : ComponentActivity() {
 private fun ProcessTextLookupOverlay(
     query: String,
     readerSettings: ReaderSettings,
+    contentLanguageProfile: ContentLanguageProfile,
     dependencies: ProcessTextLookupDependencies,
     onClose: () -> Unit,
 ) {
@@ -139,6 +142,7 @@ private fun ProcessTextLookupOverlay(
         popupSettings?.dictionaryStyles,
         popupSettings?.dictionarySettings,
         popupSettings?.audioSettings,
+        contentLanguageProfile,
         readerSettings.popupSwipeThreshold,
         readerSettings.popupReducedMotionScrolling,
         readerSettings.popupReducedMotionScrollPercent,
@@ -164,6 +168,7 @@ private fun ProcessTextLookupOverlay(
             ankiSettings = ankiUiState.popupSettings,
             fontFaceCss = fontFaceCss,
             popupScale = readerSettings.popupScale,
+            contentLanguageProfile = contentLanguageProfile,
         )
     }
     val currentReaderPopupIframeDocument = rememberUpdatedState(readerPopupIframeDocument)
@@ -187,7 +192,7 @@ private fun ProcessTextLookupOverlay(
     }
     val readerPopupBridgeHolder = remember { ReaderLookupPopupBridgeCallbackHolder() }
 
-    LaunchedEffect(query, readerSettings, darkMode) {
+    LaunchedEffect(query, readerSettings, darkMode, contentLanguageProfile) {
         runCatching {
             withContext(Dispatchers.IO) {
                 dependencies.dictionaryRepository.rebuildLookupQuery()
@@ -214,6 +219,7 @@ private fun ProcessTextLookupOverlay(
                     audioSettings = audioSettings,
                     readerSettings = readerSettings,
                     darkMode = darkMode,
+                    contentLanguageProfile = contentLanguageProfile,
                 )
             }
         }.onSuccess { popup ->
@@ -310,6 +316,7 @@ private fun ProcessTextLookupOverlay(
                     eInkMode = readerSettings.eInkMode,
                     audioSettings = popupSettings?.audioSettings ?: AudioSettings(),
                     popupActionBar = false,
+                    contentLanguageProfile = contentLanguageProfile,
                 ),
                 dictionaryStyles = popupSettings?.dictionaryStyles,
             )
@@ -516,6 +523,7 @@ private fun lookupPopupItem(
     audioSettings: AudioSettings,
     readerSettings: ReaderSettings,
     darkMode: Boolean,
+    contentLanguageProfile: ContentLanguageProfile,
 ): LookupPopupItem? {
     if (results.isEmpty()) return null
     return LookupPopupItem(
@@ -539,6 +547,7 @@ private fun lookupPopupItem(
             eInkMode = readerSettings.eInkMode,
             audioSettings = audioSettings,
             popupActionBar = false,
+            contentLanguageProfile = contentLanguageProfile,
         ),
     )
 }

@@ -3,6 +3,7 @@ package moe.antimony.hoshi.features.dictionary
 import de.manhhao.hoshi.GlossaryEntry
 import de.manhhao.hoshi.LookupResult
 import de.manhhao.hoshi.TermResult
+import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.features.reader.ReaderSelectionData
 import moe.antimony.hoshi.features.reader.ReaderSelectionRect
 import moe.antimony.hoshi.features.reader.ReaderLookupPopupFramePayload
@@ -507,6 +508,24 @@ class LookupPopupTest {
             ),
             0.0,
         )
+    }
+
+    @Test
+    fun lookupPopupUsesFixedJapaneseContentLanguageWithoutInspectingSelectionText() {
+        val selection = ReaderSelectionData(
+            text = "한국어",
+            sentence = "한국어",
+            rect = ReaderSelectionRect(x = 0.0, y = 0.0, width = 1.0, height = 1.0),
+            normalizedOffset = null,
+        )
+        val defaultPopup = createLookupPopupItem(
+            selection = selection,
+            options = LookupPopupOptions(isVertical = false),
+            dictionaryStyles = emptyMap(),
+            lookup = { _, _, _ -> listOf(lookupResult("한국어", "한국어", "Korean")) },
+        )
+
+        assertEquals(ContentLanguageProfile.Default, defaultPopup?.first?.state?.contentLanguageProfile)
     }
 
     private fun lookupResult(
