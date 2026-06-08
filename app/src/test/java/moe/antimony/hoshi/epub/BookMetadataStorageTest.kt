@@ -14,10 +14,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.util.zip.ZipEntry
-import java.util.zip.ZipFile
+import java.io.File
 import java.nio.file.Files
 import java.util.UUID
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 
 class BookMetadataStorageTest {
     @Test
@@ -108,6 +109,41 @@ class BookMetadataStorageTest {
             assertEquals(ZipEntry.STORED, first.method)
             assertEquals("application/epub+zip", zip.getInputStream(first).readBytes().decodeToString())
         }
+    }
+
+    @Test
+    fun loadBookEntriesReportsLegacyPackedMigrationProgress() = runBlocking {
+        val repository = BookRepository(Files.createTempDirectory("hoshi-packed-migration-progress").toFile())
+        val first = repository.createBookDirectory("legacy-first")
+        val second = repository.createBookDirectory("legacy-second")
+        val modern = repository.createBookDirectory("modern-book")
+        writeMinimalExtractedEpub(first, title = "Legacy First")
+        writeMinimalExtractedEpub(second, title = "Legacy Second")
+        writeMinimalEpubArchive(modern.resolve("modern-book.epub"), title = "Modern Book")
+        listOf(first, second, modern).forEach { root ->
+            repository.saveMetadata(
+                root,
+                BookMetadata(
+                    id = UUID.randomUUID().toString(),
+                    title = root.name,
+                    cover = null,
+                    folder = root.name,
+                    lastAccess = 1.0,
+                    epub = root.resolve("${root.name}.epub").takeIf(File::isFile)?.name,
+                ),
+            )
+        }
+        val progress = mutableListOf<LegacyBookMigrationProgress>()
+
+        repository.loadBookEntries(onLegacyBookMigrationProgress = progress::add)
+
+        assertEquals(
+            listOf(
+                LegacyBookMigrationProgress(current = 1, total = 2),
+                LegacyBookMigrationProgress(current = 2, total = 2),
+            ),
+            progress,
+        )
     }
 
     @Test

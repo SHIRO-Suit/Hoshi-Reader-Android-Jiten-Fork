@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import moe.antimony.hoshi.R
 import moe.antimony.hoshi.epub.BookEntry
+import moe.antimony.hoshi.epub.LegacyBookMigrationProgress
 import moe.antimony.hoshi.epub.BookSortOption
 import moe.antimony.hoshi.features.sync.GoogleDriveApiException
 import moe.antimony.hoshi.features.sync.StatisticsSyncMode
@@ -565,6 +566,8 @@ internal class BookshelfViewModel : ViewModel {
                 showReading = result.settings.showReading,
                 selectedBookIds = validSelectedIds,
                 hasLoadedBooks = true,
+                isLoading = false,
+                blockingProgressMessage = null,
                 errorMessage = null,
             )
         }
@@ -572,7 +575,22 @@ internal class BookshelfViewModel : ViewModel {
     }
 
     private suspend fun loadBookEntries(sortOption: BookSortOption): BookshelfLoadResult =
-        repository.loadBooks(sortOption)
+        repository.loadBooks(sortOption, ::showLegacyBookMigrationProgress)
+
+    private fun showLegacyBookMigrationProgress(progress: LegacyBookMigrationProgress) {
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                blockingProgressMessage = UiText.Resource(
+                    R.string.bookshelf_legacy_migration_progress_format,
+                    progress.current,
+                    progress.total,
+                ),
+                statusMessage = null,
+                errorMessage = null,
+            )
+        }
+    }
 
     private fun reloadRemoteBookEntries(
         localEntries: List<BookEntry>,

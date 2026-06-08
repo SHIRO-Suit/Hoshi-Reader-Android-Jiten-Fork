@@ -68,8 +68,11 @@ class BookStorage(filesDir: File) {
 
     suspend fun loadAllBooks(): List<File> = repository.loadAllBooks()
 
-    suspend fun loadBookEntries(sortOption: BookSortOption = BookSortOption.Recent): List<BookEntry> =
-        repository.loadBookEntries(sortOption)
+    suspend fun loadBookEntries(
+        sortOption: BookSortOption = BookSortOption.Recent,
+        onLegacyBookMigrationProgress: (LegacyBookMigrationProgress) -> Unit = {},
+    ): List<BookEntry> =
+        repository.loadBookEntries(sortOption, onLegacyBookMigrationProgress)
 
     suspend fun loadBookEntry(bookId: String): BookEntry? = repository.loadBookEntry(bookId)
 

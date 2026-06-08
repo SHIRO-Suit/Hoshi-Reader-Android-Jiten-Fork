@@ -56,11 +56,28 @@ class BookRepository private constructor(
 
     suspend fun loadAllBooks(): List<File> = fileDataSource.loadAllBooks()
 
-    suspend fun loadBookEntries(sortOption: BookSortOption = BookSortOption.Recent): List<BookEntry> {
+    suspend fun loadBookEntries(
+        sortOption: BookSortOption = BookSortOption.Recent,
+        onLegacyBookMigrationProgress: (LegacyBookMigrationProgress) -> Unit = {},
+    ): List<BookEntry> {
         val idReplacements = linkedMapOf<String, String>()
-        val entries = loadAllBooks()
-            .map { root ->
-                val migration = migrateLegacyBookForIosBackupCompatibility(root, loadMetadata(root))
+        val roots = loadAllBooks().map { root -> root to loadMetadata(root) }
+        val legacyMigrationTotal = roots.count { (root, metadata) ->
+            shouldMigrateLegacyExtractedBookToPackedEpub(root, metadata)
+        }
+        var legacyMigrationCurrent = 0
+        val entries = roots
+            .map { (root, metadata) ->
+                if (shouldMigrateLegacyExtractedBookToPackedEpub(root, metadata)) {
+                    legacyMigrationCurrent += 1
+                    onLegacyBookMigrationProgress(
+                        LegacyBookMigrationProgress(
+                            current = legacyMigrationCurrent,
+                            total = legacyMigrationTotal,
+                        ),
+                    )
+                }
+                val migration = migrateLegacyBookForIosBackupCompatibility(root, metadata)
                 if (migration.oldId != migration.metadata.id) {
                     idReplacements[migration.oldId] = migration.metadata.id
                 }
@@ -235,6 +252,9 @@ class BookRepository private constructor(
         LegacyBookMigration(oldId = oldId, metadata = packedMetadata)
     }
 
+    private fun shouldMigrateLegacyExtractedBookToPackedEpub(root: File, metadata: BookMetadata?): Boolean =
+        metadata?.epub.isNullOrBlank() && root.resolve("META-INF/container.xml").isFile
+
     // Legacy migration for Android builds that predate iOS-compatible Books backup.
     // Once supported users have upgraded through this path, remove this function and
     // the associated legacy migration tests; normal writes already produce this shape.
@@ -335,6 +355,11 @@ class BookRepository private constructor(
         val metadata: BookMetadata,
     )
 }
+
+data class LegacyBookMigrationProgress(
+    val current: Int,
+    val total: Int,
+)
 
 interface ReaderRouteBookRepository {
     suspend fun loadBookEntry(bookId: String): BookEntry?

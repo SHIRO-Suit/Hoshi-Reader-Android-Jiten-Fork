@@ -22,6 +22,7 @@ import moe.antimony.hoshi.epub.BookSortOption
 import moe.antimony.hoshi.epub.Bookmark
 import moe.antimony.hoshi.epub.EpubBook
 import moe.antimony.hoshi.epub.EpubBookParser
+import moe.antimony.hoshi.epub.LegacyBookMigrationProgress
 import moe.antimony.hoshi.epub.isUuidString
 import moe.antimony.hoshi.features.sync.StatisticsSyncMode
 import moe.antimony.hoshi.features.sync.DriveAuthStatus
@@ -47,7 +48,10 @@ import java.util.UUID
 import kotlinx.coroutines.flow.first
 
 internal interface BookshelfRepository {
-    suspend fun loadBooks(sortOption: BookSortOption): BookshelfLoadResult
+    suspend fun loadBooks(
+        sortOption: BookSortOption,
+        onLegacyBookMigrationProgress: (LegacyBookMigrationProgress) -> Unit = {},
+    ): BookshelfLoadResult
     suspend fun loadRemoteBooks(localEntries: List<BookEntry>): RemoteBookshelfLoadResult
     suspend fun openBook(entry: BookEntry): String
     suspend fun importBook(uri: Uri): String
@@ -94,8 +98,11 @@ internal class AndroidBookshelfRepository @Inject constructor(
     @param:CacheDir private val cacheDir: File,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : BookshelfRepository {
-    override suspend fun loadBooks(sortOption: BookSortOption): BookshelfLoadResult = withContext(ioDispatcher) {
-        val entries = bookRepository.loadBookEntries(sortOption)
+    override suspend fun loadBooks(
+        sortOption: BookSortOption,
+        onLegacyBookMigrationProgress: (LegacyBookMigrationProgress) -> Unit,
+    ): BookshelfLoadResult = withContext(ioDispatcher) {
+        val entries = bookRepository.loadBookEntries(sortOption, onLegacyBookMigrationProgress)
         val shelves = bookRepository.loadShelves()
         BookshelfLoadResult(
             entries = entries,

@@ -5,6 +5,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import moe.antimony.hoshi.R
 import moe.antimony.hoshi.epub.BookEntry
+import moe.antimony.hoshi.epub.LegacyBookMigrationProgress
 import moe.antimony.hoshi.epub.BookMetadata
 import moe.antimony.hoshi.epub.BookShelf
 import moe.antimony.hoshi.epub.BookSortOption
@@ -59,6 +60,33 @@ class BookshelfViewModelTest {
         assertTrue(viewModel.uiState.value.sasayakiEnabled)
         assertFalse(viewModel.uiState.value.isLoading)
         assertNull(viewModel.uiState.value.errorMessage.testString())
+    }
+
+    @Test
+    fun reloadBooksShowsLegacyPackedMigrationProgressWhileLoading() {
+        val continueLoad = CompletableDeferred<Unit>()
+        val entry = bookEntry("legacy-book")
+        val repository = FakeBookshelfRepository(
+            migrationProgressEvents = listOf(LegacyBookMigrationProgress(current = 1, total = 2)),
+            loadPlans = ArrayDeque(
+                listOf(
+                    FakeBookshelfRepository.LoadPlan(
+                        gate = continueLoad,
+                        entries = listOf(entry),
+                    ),
+                ),
+            ),
+        )
+        val viewModel = BookshelfViewModel(repository, testScope())
+
+        viewModel.reloadBookEntries()
+
+        assertEquals("Preparing older books 1 / 2...", viewModel.uiState.value.blockingProgressMessage.testString())
+
+        continueLoad.complete(Unit)
+
+        assertEquals(listOf(entry), viewModel.uiState.value.bookEntries)
+        assertNull(viewModel.uiState.value.blockingProgressMessage.testString())
     }
 
     @Test
@@ -838,6 +866,7 @@ class BookshelfViewModelTest {
         val remoteImportGate: CompletableDeferred<Unit>? = null,
         val remoteDeleteGate: CompletableDeferred<Unit>? = null,
         val remoteImportProgress: List<Double> = emptyList(),
+        val migrationProgressEvents: List<LegacyBookMigrationProgress> = emptyList(),
         private val loadPlans: ArrayDeque<LoadPlan> = ArrayDeque(),
     ) : BookshelfRepository {
         data class LoadPlan(
@@ -859,8 +888,12 @@ class BookshelfViewModelTest {
         val showReadingUpdates = mutableListOf<Boolean>()
         val renamedBooks = mutableListOf<Pair<BookEntry, String?>>()
 
-        override suspend fun loadBooks(sortOption: BookSortOption): BookshelfLoadResult {
+        override suspend fun loadBooks(
+            sortOption: BookSortOption,
+            onLegacyBookMigrationProgress: (LegacyBookMigrationProgress) -> Unit,
+        ): BookshelfLoadResult {
             loadRequests += sortOption
+            migrationProgressEvents.forEach(onLegacyBookMigrationProgress)
             val plan = loadPlans.removeFirstOrNull()
             plan?.gate?.await()
             return BookshelfLoadResult(
@@ -970,6 +1003,7 @@ private fun UiText?.testString(): String? =
         is UiText.Resource -> when (id) {
             R.string.bookshelf_importing_named_format -> "Importing ${args[0]}..."
             R.string.bookshelf_importing_progress_format -> "Importing ${args[0]} / ${args[1]}..."
+            R.string.bookshelf_legacy_migration_progress_format -> "Preparing older books ${args[0]} / ${args[1]}..."
             R.string.bookshelf_import_failed_list_format -> "Failed to import:\n${args[0]}"
             R.string.bookshelf_scanning_folder -> "Scanning folder..."
             R.string.bookshelf_no_epub_files_found -> "No EPUB files found."
