@@ -1016,8 +1016,12 @@ window.hoshiReader.initialize = function() {
         }
         resolve();
       };
-      if (img.complete && img.naturalWidth > 0) {
-        mark();
+      if (img.complete) {
+        if (img.naturalWidth > 0) {
+          mark();
+        } else {
+          resolve();
+        }
       } else {
         img.onload = mark;
         img.onerror = function() { resolve(); };

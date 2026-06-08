@@ -244,6 +244,17 @@ function queryRuby(root) {
     return result;
 }
 
+function queryByTag(root, tagName) {
+    const result = [];
+    const normalizedTag = tagName.toUpperCase();
+    const visit = (node) => {
+        if (node.nodeType === 1 && node.tagName === normalizedTag) result.push(node);
+        if (node.childNodes) node.childNodes.forEach(visit);
+    };
+    visit(root);
+    return result;
+}
+
 function loadReader(body, sourceUrl = readerPaginatedUrl, options = {}) {
     const head = new TestElement('head');
     const documentElement = new TestElement('html');
@@ -287,7 +298,9 @@ function loadReader(body, sourceUrl = readerPaginatedUrl, options = {}) {
             return head.childNodes.find((node) => node.tagName === 'META' && node.name === 'viewport') ?? null;
         },
         querySelectorAll(selector) {
-            return selector === 'ruby' ? queryRuby(body) : [];
+            if (selector === 'ruby') return queryRuby(body);
+            if (selector === 'img') return queryByTag(body, 'img');
+            return [];
         },
         getElementsByTagName(tagName) {
             return tagName.toLowerCase() === 'head' ? [head] : [];
@@ -311,6 +324,10 @@ function loadReader(body, sourceUrl = readerPaginatedUrl, options = {}) {
         Highlight: class {},
         Node: { ELEMENT_NODE: 1, TEXT_NODE: 3 },
         NodeFilter: { SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2 },
+        setTimeout(callback) {
+            callback();
+            return 0;
+        },
         window,
     });
     return { reader: window.hoshiReader, document, head };
@@ -480,6 +497,29 @@ test('paginated backward navigation leaves final partial page by one page', () =
 
     assert.equal(result, 'scrolled');
     assert.equal(body.scrollTop, 3200);
+});
+
+test('reader initialization completes when an image has already failed loading', async () => {
+    for (const sourceUrl of [readerPaginatedUrl, readerContinuousUrl]) {
+        const body = new TestElement('body');
+        const image = new TestElement('img');
+        image.complete = true;
+        image.naturalWidth = 0;
+        image.naturalHeight = 0;
+        body.appendChild(image);
+        const { reader } = loadReader(body, sourceUrl);
+        let offsetsBuilt = 0;
+        reader.buildNodeOffsets = () => {
+            offsetsBuilt += 1;
+        };
+
+        reader.initialize();
+        for (let i = 0; i < 5; i += 1) {
+            await Promise.resolve();
+        }
+
+        assert.equal(offsetsBuilt, 1);
+    }
 });
 
 test('continuous reader stabilizes vertical ruby-adjacent text like paginated reader', () => {

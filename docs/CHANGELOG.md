@@ -25,6 +25,7 @@ The format follows a Keep a Changelog style, and release sections use Semantic V
 - Keep TTU bookdata imports rendering in Reader when converted XHTML has leading whitespace before the XML declaration or EPUB resources use parent-directory relative paths.
 - Prevent startup crashes and duplicate packing work when old extracted book folders are migrated to packed EPUB storage, and show Bookshelf progress while those older books are prepared.
 - Keep Reader opens fast for TTU-origin books and lookup popups that reference missing local resources, avoiding WebView network fallbacks while using Android's reserved appassets origin for local content.
+- Keep Reader chapters visible when an EPUB contains a broken image resource, instead of staying blank while waiting for the failed image.
 - Keep paginated Reader final partial pages visible while still avoiding blank trailing pages from spacer or CSS overflow.
 - Keep large Reader images within the padded page area so vertical image pages do not spill their bottom edge onto the next page.
 - Keep vertical E-ink Sasayaki sentence underlines from merging adjacent ruby columns into one misplaced line.
