@@ -179,7 +179,7 @@ internal class AnkiRepository(
         val noteType = availableNoteTypes.firstOrNull { it.id == settings.selectedNoteTypeId }
             ?: settings.selectedNoteTypeName?.let { name -> availableNoteTypes.firstOrNull { it.name == name } }
             ?: return@withContext false
-        val fieldMappings = settings.fieldMappings
+        val fieldMappings = settings.fieldMappings.activeAnkiFieldMappings(noteType)
         val payload = runCatching { AnkiMiningPayload.fromJson(rawPayload) }.getOrNull()
             ?: return@withContext false
         val needsCover = fieldMappings.referencesAnkiHandlebar("{book-cover}")
@@ -378,26 +378,14 @@ internal fun selectNoteTypeAfterFetch(
 ): AnkiNoteType =
     noteTypes.firstOrNull { it.id == current.selectedNoteTypeId }
         ?: current.selectedNoteTypeName?.let { name -> noteTypes.firstOrNull { it.name == name } }
-        ?: noteTypes.firstOrNull { LapisPreset.matches(it) }
+        ?: noteTypes.firstOrNull { AnkiFieldTemplates.matches(it) }
         ?: noteTypes.first()
 
 internal fun fieldMappingsAfterFetch(
     selectedNoteType: AnkiNoteType,
     current: AnkiSettings,
 ): Map<String, String> =
-    if (LapisPreset.matches(selectedNoteType) && !currentSelectionMatchesLapis(current)) {
-        LapisPreset.applyDefaults(selectedNoteType, emptyMap())
-    } else {
-        current.fieldMappings
-    }
-
-private fun currentSelectionMatchesLapis(current: AnkiSettings): Boolean =
-    current.availableNoteTypes.firstOrNull {
-        it.id == current.selectedNoteTypeId || it.name == current.selectedNoteTypeName
-    }
-        ?.let(LapisPreset::matches)
-        ?: current.selectedNoteTypeName?.contains("lapis", ignoreCase = true)
-        ?: false
+    AnkiFieldTemplates.applyDefaultsIfUnmapped(selectedNoteType, current.fieldMappings)
 
 sealed interface AnkiFetchResult {
     data class Success(
