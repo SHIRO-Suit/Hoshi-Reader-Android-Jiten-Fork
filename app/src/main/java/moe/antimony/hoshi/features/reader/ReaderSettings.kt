@@ -13,10 +13,16 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import moe.antimony.hoshi.R
 import moe.antimony.hoshi.features.sync.StatisticsSyncMode
+import moe.antimony.hoshi.profiles.ProfileRepository
 import java.util.Locale
 
 data class ReaderSettings(
@@ -344,22 +350,50 @@ class ReaderSettingsStore(context: Context) : ReaderSettingsLegacySource {
 
 private val Context.readerSettingsDataStore by preferencesDataStore(name = ReaderSettingsRepository.DataStoreName)
 
-fun Context.readerSettingsRepository(): ReaderSettingsRepository =
+fun Context.readerSettingsRepository(profileRepository: ProfileRepository? = null): ReaderSettingsRepository =
     ReaderSettingsRepository(
         dataStore = readerSettingsDataStore,
         legacySource = ReaderSettingsStore(this),
+        profileRepository = profileRepository,
     )
 
 class ReaderSettingsRepository(
     private val dataStore: DataStore<Preferences>,
     private val legacySource: ReaderSettingsLegacySource? = null,
+    private val profileRepository: ProfileRepository? = null,
 ) {
-    val settings: Flow<ReaderSettings> = dataStore.data
-        .onStart { migrateLegacySettingsIfNeeded() }
-        .map { preferences -> preferences.toReaderSettings() }
+    private val profileSettingsVersion = MutableStateFlow(0)
+
+    val settings: Flow<ReaderSettings> =
+        if (profileRepository == null) {
+            dataStore.data
+                .onStart { migrateLegacySettingsIfNeeded() }
+                .map { preferences -> preferences.toReaderSettings() }
+        } else {
+            combine(
+                dataStore.data.onStart { migrateLegacySettingsIfNeeded() },
+                profileRepository.state,
+                profileSettingsVersion,
+            ) { preferences, _, _ ->
+                val globalSettings = preferences.toReaderSettings()
+                globalSettings.withProfileAppearance(profileAppearanceSettingsOrMigrate(globalSettings))
+            }
+        }
 
     suspend fun update(transform: (ReaderSettings) -> ReaderSettings) {
         migrateLegacySettingsIfNeeded()
+        if (profileRepository != null) {
+            val globalCurrent = dataStore.data.first().toReaderSettings()
+            val current = globalCurrent.withProfileAppearance(profileAppearanceSettingsOrMigrate(globalCurrent))
+            val updated = transform(current).withStatisticsTransitionFrom(current)
+            saveProfileAppearanceSettings(updated.toProfileAppearanceSettings())
+            dataStore.edit { preferences ->
+                preferences.writeGlobalReaderSettings(updated)
+                preferences[KEY_MIGRATED_FROM_SHARED_PREFERENCES] = true
+            }
+            profileSettingsVersion.value += 1
+            return
+        }
         dataStore.edit { preferences ->
             val current = preferences.toReaderSettings()
             preferences.writeReaderSettings(transform(current).withStatisticsTransitionFrom(current))
@@ -484,6 +518,36 @@ class ReaderSettingsRepository(
         this[KEY_KEEP_SCREEN_ON_WHILE_READING] = settings.keepScreenOnWhileReading
     }
 
+    private fun MutablePreferences.writeGlobalReaderSettings(settings: ReaderSettings) {
+        this[KEY_ENABLE_STATISTICS] = settings.enableStatistics
+        this[KEY_STATISTICS_AUTOSTART_MODE] = settings.statisticsAutostartMode.rawValue
+        this[KEY_STATISTICS_SYNC_ENABLED] = settings.statisticsSyncEnabled
+        this[KEY_STATISTICS_SYNC_MODE] = settings.statisticsSyncMode.rawValue
+        this[KEY_VOLUME_KEYS_TURN_PAGES] = settings.volumeKeysTurnPages
+        this[KEY_VOLUME_KEYS_SEEK_SASAYAKI] = settings.volumeKeysSeekSasayaki
+        this[KEY_REVERSE_VOLUME_KEY_DIRECTION] = settings.reverseVolumeKeyDirection
+        this[KEY_KEEP_SCREEN_ON_WHILE_READING] = settings.keepScreenOnWhileReading
+    }
+
+    private fun profileAppearanceSettingsOrMigrate(globalSettings: ReaderSettings): ProfileReaderAppearanceSettings {
+        val repository = profileRepository ?: return globalSettings.toProfileAppearanceSettings()
+        val file = repository.readerSettingsFile()
+        if (file.isFile) {
+            return runCatching {
+                json.decodeFromString<ProfileReaderAppearanceSettings>(file.readText())
+            }.getOrDefault(globalSettings.toProfileAppearanceSettings())
+        }
+        val migrated = globalSettings.toProfileAppearanceSettings()
+        saveProfileAppearanceSettings(migrated)
+        return migrated
+    }
+
+    private fun saveProfileAppearanceSettings(settings: ProfileReaderAppearanceSettings) {
+        val file = profileRepository?.readerSettingsFile() ?: return
+        file.parentFile?.mkdirs()
+        file.writeText(json.encodeToString(ProfileReaderAppearanceSettings.serializer(), settings))
+    }
+
     companion object {
         const val DataStoreName = "reader-settings"
 
@@ -539,8 +603,152 @@ class ReaderSettingsRepository(
         private val KEY_VOLUME_KEYS_SEEK_SASAYAKI = booleanPreferencesKey("volumeKeysSeekSasayaki")
         private val KEY_REVERSE_VOLUME_KEY_DIRECTION = booleanPreferencesKey("reverseVolumeKeyDirection")
         private val KEY_KEEP_SCREEN_ON_WHILE_READING = booleanPreferencesKey("keepScreenOnWhileReading")
+
+        private val json = Json {
+            prettyPrint = true
+            encodeDefaults = true
+            ignoreUnknownKeys = true
+        }
     }
 }
+
+@Serializable
+private data class ProfileReaderAppearanceSettings(
+    val theme: ReaderTheme = ReaderTheme.System,
+    val eInkMode: Boolean = false,
+    val uiTheme: ReaderInterfaceTheme = ReaderInterfaceTheme.System,
+    val systemLightSepia: Boolean = false,
+    val sepiaInvertInDark: Boolean = false,
+    val customBackgroundColor: Long = 0xFFFFFFFF,
+    val customTextColor: Long = 0xFF000000,
+    val customInfoColor: Long = 0xFF999999,
+    val verticalWriting: Boolean = true,
+    val selectedFont: String = ReaderFontManager.defaultMinchoFont,
+    val fontSize: Int = 22,
+    val hideFurigana: Boolean = false,
+    val continuousMode: Boolean = false,
+    val showStatisticsToggle: Boolean = false,
+    val showReadingSpeed: Boolean = false,
+    val showReadingTime: Boolean = false,
+    val chapterSwipeDistance: Int = 20,
+    val horizontalPadding: Int = 5,
+    val verticalPadding: Int = 0,
+    val avoidPageBreak: Boolean = false,
+    val justifyText: Boolean = false,
+    val blurImages: Boolean = false,
+    val layoutAdvanced: Boolean = false,
+    val lineHeight: Double = 1.65,
+    val characterSpacing: Double = 0.0,
+    val paragraphSpacing: Double = 0.0,
+    val showTitle: Boolean = true,
+    val showCharacters: Boolean = true,
+    val showPercentage: Boolean = true,
+    val alwaysShowProgress: Boolean = true,
+    val showProgressTop: Boolean = true,
+    val showReaderBackButton: Boolean = true,
+    val popupWidth: Int = 320,
+    val popupHeight: Int = 250,
+    val popupScale: Double = 1.0,
+    val popupActionBar: Boolean = false,
+    val popupFullWidth: Boolean = false,
+    val popupSwipeToDismiss: Boolean = true,
+    val popupSwipeThreshold: Int = 30,
+    val popupReducedMotionScrolling: Boolean = false,
+    val popupReducedMotionScrollPercent: Int = 100,
+    val popupReducedMotionSwipeThreshold: Int = 40,
+)
+
+private fun ReaderSettings.toProfileAppearanceSettings(): ProfileReaderAppearanceSettings =
+    ProfileReaderAppearanceSettings(
+        theme = theme,
+        eInkMode = eInkMode,
+        uiTheme = uiTheme,
+        systemLightSepia = systemLightSepia,
+        sepiaInvertInDark = sepiaInvertInDark,
+        customBackgroundColor = customBackgroundColor,
+        customTextColor = customTextColor,
+        customInfoColor = customInfoColor,
+        verticalWriting = verticalWriting,
+        selectedFont = selectedFont,
+        fontSize = fontSize,
+        hideFurigana = hideFurigana,
+        continuousMode = continuousMode,
+        showStatisticsToggle = showStatisticsToggle,
+        showReadingSpeed = showReadingSpeed,
+        showReadingTime = showReadingTime,
+        chapterSwipeDistance = chapterSwipeDistance,
+        horizontalPadding = horizontalPadding,
+        verticalPadding = verticalPadding,
+        avoidPageBreak = avoidPageBreak,
+        justifyText = justifyText,
+        blurImages = blurImages,
+        layoutAdvanced = layoutAdvanced,
+        lineHeight = lineHeight,
+        characterSpacing = characterSpacing,
+        paragraphSpacing = paragraphSpacing,
+        showTitle = showTitle,
+        showCharacters = showCharacters,
+        showPercentage = showPercentage,
+        alwaysShowProgress = alwaysShowProgress,
+        showProgressTop = showProgressTop,
+        showReaderBackButton = showReaderBackButton,
+        popupWidth = popupWidth,
+        popupHeight = popupHeight,
+        popupScale = popupScale,
+        popupActionBar = popupActionBar,
+        popupFullWidth = popupFullWidth,
+        popupSwipeToDismiss = popupSwipeToDismiss,
+        popupSwipeThreshold = popupSwipeThreshold,
+        popupReducedMotionScrolling = popupReducedMotionScrolling,
+        popupReducedMotionScrollPercent = popupReducedMotionScrollPercent,
+        popupReducedMotionSwipeThreshold = popupReducedMotionSwipeThreshold,
+    )
+
+private fun ReaderSettings.withProfileAppearance(appearance: ProfileReaderAppearanceSettings): ReaderSettings =
+    copy(
+        theme = appearance.theme,
+        eInkMode = appearance.eInkMode,
+        uiTheme = appearance.uiTheme,
+        systemLightSepia = appearance.systemLightSepia,
+        sepiaInvertInDark = appearance.sepiaInvertInDark,
+        customBackgroundColor = appearance.customBackgroundColor,
+        customTextColor = appearance.customTextColor,
+        customInfoColor = appearance.customInfoColor,
+        verticalWriting = appearance.verticalWriting,
+        selectedFont = appearance.selectedFont,
+        fontSize = appearance.fontSize,
+        hideFurigana = appearance.hideFurigana,
+        continuousMode = appearance.continuousMode,
+        showStatisticsToggle = appearance.showStatisticsToggle,
+        showReadingSpeed = appearance.showReadingSpeed,
+        showReadingTime = appearance.showReadingTime,
+        chapterSwipeDistance = appearance.chapterSwipeDistance.coerceIn(10, 60),
+        horizontalPadding = appearance.horizontalPadding,
+        verticalPadding = appearance.verticalPadding,
+        avoidPageBreak = appearance.avoidPageBreak,
+        justifyText = appearance.justifyText,
+        blurImages = appearance.blurImages,
+        layoutAdvanced = appearance.layoutAdvanced,
+        lineHeight = appearance.lineHeight,
+        characterSpacing = appearance.characterSpacing,
+        paragraphSpacing = appearance.paragraphSpacing,
+        showTitle = appearance.showTitle,
+        showCharacters = appearance.showCharacters,
+        showPercentage = appearance.showPercentage,
+        alwaysShowProgress = appearance.alwaysShowProgress,
+        showProgressTop = appearance.showProgressTop,
+        showReaderBackButton = appearance.showReaderBackButton,
+        popupWidth = appearance.popupWidth,
+        popupHeight = appearance.popupHeight,
+        popupScale = appearance.popupScale.coerceIn(0.8, 1.5),
+        popupActionBar = appearance.popupActionBar,
+        popupFullWidth = appearance.popupFullWidth,
+        popupSwipeToDismiss = appearance.popupSwipeToDismiss,
+        popupSwipeThreshold = appearance.popupSwipeThreshold.coerceIn(20, 60),
+        popupReducedMotionScrolling = appearance.popupReducedMotionScrolling,
+        popupReducedMotionScrollPercent = appearance.popupReducedMotionScrollPercent.coerceIn(40, 100),
+        popupReducedMotionSwipeThreshold = appearance.popupReducedMotionSwipeThreshold.coerceIn(0, 100),
+    )
 
 private fun ReaderSettings.withStatisticsTransitionFrom(previous: ReaderSettings): ReaderSettings =
     if (enableStatistics && !previous.enableStatistics) {

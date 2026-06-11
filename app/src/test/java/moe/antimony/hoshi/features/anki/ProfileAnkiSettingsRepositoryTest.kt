@@ -26,7 +26,7 @@ class ProfileAnkiSettingsRepositoryTest {
         val english = profileRepository.createProfile("English", "en")
         profileRepository.activateGlobal(english.id)
 
-        assertEquals(null, repository.settings.first().selectedDeckName)
+        assertEquals("Japanese", repository.settings.first().selectedDeckName)
 
         repository.update { it.copy(selectedDeckName = "English") }
         profileRepository.activateGlobal(profileRepository.state.value.defaultProfileId)

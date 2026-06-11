@@ -44,6 +44,7 @@ class ProfileRepository internal constructor(
 
     fun createProfile(name: String, dictionaryLanguageId: String): HoshiProfile = synchronized(lock) {
         validateDictionaryLanguage(dictionaryLanguageId)
+        val sourceProfileId = storedIndex.globalActiveProfileId
         val trimmedName = name.trim().ifBlank {
             ContentLanguageProfile.fromDictionaryLanguageId(dictionaryLanguageId)?.id?.replaceFirstChar {
                 if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
@@ -55,6 +56,7 @@ class ProfileRepository internal constructor(
             dictionaryLanguageId = dictionaryLanguageId,
         )
         storedIndex = storedIndex.copy(profiles = storedIndex.profiles + profile).normalized()
+        copyProfileOwnedFiles(sourceProfileId = sourceProfileId, targetProfileId = profile.id)
         persistIndexLocked()
         publishLocked()
         profile
@@ -136,6 +138,9 @@ class ProfileRepository internal constructor(
 
     fun ankiConfigFile(profileId: String = currentEffectiveProfileId): File =
         profileDataFile(profileId, AnkiConfigFileName)
+
+    fun readerSettingsFile(profileId: String = currentEffectiveProfileId): File =
+        profileDataFile(profileId, ReaderSettingsFileName)
 
     fun loadCollapsedDictionariesOrMigrate(legacyCollapsedDictionaries: Set<String>): Set<String> =
         synchronized(lock) {
@@ -247,6 +252,17 @@ class ProfileRepository internal constructor(
     private fun profileDir(profileId: String): File =
         profilesDir.resolve(profileId)
 
+    private fun copyProfileOwnedFiles(sourceProfileId: String, targetProfileId: String) {
+        val sourceDir = profileDir(sourceProfileId)
+        val targetDir = profileDir(targetProfileId)
+        ProfileOwnedFileNames.forEach { fileName ->
+            val source = sourceDir.resolve(fileName)
+            if (!source.isFile) return@forEach
+            targetDir.mkdirs()
+            source.copyTo(targetDir.resolve(fileName), overwrite = false)
+        }
+    }
+
     private fun saveCollapsedDictionariesLocked(file: File, collapsedDictionaries: Set<String>) {
         file.parentFile?.mkdirs()
         file.writeText(json.encodeToString(StringSetSerializer, collapsedDictionaries))
@@ -268,6 +284,13 @@ class ProfileRepository internal constructor(
         private const val DictionaryConfigFileName = "dictionary_config.json"
         private const val DictionaryCollapsedFileName = "dictionary_collapsed.json"
         private const val AnkiConfigFileName = "anki_config.json"
+        private const val ReaderSettingsFileName = "reader_settings.json"
+        private val ProfileOwnedFileNames = listOf(
+            DictionaryConfigFileName,
+            DictionaryCollapsedFileName,
+            AnkiConfigFileName,
+            ReaderSettingsFileName,
+        )
 
         private val StringSetSerializer = SetSerializer(String.serializer())
 

@@ -14,6 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import moe.antimony.hoshi.profiles.ProfileRepository
 
 class ReaderSettingsRepositoryTest {
     @get:Rule
@@ -243,8 +244,48 @@ class ReaderSettingsRepositoryTest {
         }
     }
 
+    @Test
+    fun profileModeScopesAppearanceFieldsButKeepsBehaviorFieldsGlobal() = runBlocking {
+        val profileRepository = ProfileRepository(tempFolder.newFolder("files"))
+        repository(profileRepository = profileRepository).use { repository ->
+            repository.update {
+                it.copy(
+                    theme = ReaderTheme.Dark,
+                    fontSize = 30,
+                    popupWidth = 440,
+                    volumeKeysTurnPages = true,
+                )
+            }
+
+            val english = profileRepository.createProfile("English", "en")
+            profileRepository.activateGlobal(english.id)
+            val inherited = repository.settings.first()
+            assertEquals(ReaderTheme.Dark, inherited.theme)
+            assertEquals(30, inherited.fontSize)
+            assertEquals(440, inherited.popupWidth)
+            assertTrue(inherited.volumeKeysTurnPages)
+
+            repository.update {
+                it.copy(
+                    theme = ReaderTheme.Light,
+                    fontSize = 18,
+                    popupWidth = 280,
+                    volumeKeysTurnPages = false,
+                )
+            }
+
+            profileRepository.activateGlobal(profileRepository.state.value.defaultProfileId)
+            val japanese = repository.settings.first()
+            assertEquals(ReaderTheme.Dark, japanese.theme)
+            assertEquals(30, japanese.fontSize)
+            assertEquals(440, japanese.popupWidth)
+            assertFalse(japanese.volumeKeysTurnPages)
+        }
+    }
+
     private fun repository(
         legacySource: ReaderSettingsLegacySource? = null,
+        profileRepository: ProfileRepository? = null,
     ): RepositoryHandle {
         val scope = CoroutineScope(Dispatchers.IO + Job())
         val dataStore = PreferenceDataStoreFactory.create(
@@ -255,6 +296,7 @@ class ReaderSettingsRepositoryTest {
             repository = ReaderSettingsRepository(
                 dataStore = dataStore,
                 legacySource = legacySource,
+                profileRepository = profileRepository,
             ),
             scope = scope,
         )

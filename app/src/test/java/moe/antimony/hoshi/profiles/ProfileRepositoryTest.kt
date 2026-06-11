@@ -48,6 +48,27 @@ class ProfileRepositoryTest {
     }
 
     @Test
+    fun createProfileCopiesProfileOwnedFilesFromGlobalActiveProfile() {
+        val repository = ProfileRepository(tempFolder.newFolder("files"))
+        val sourceProfileId = repository.state.value.globalActiveProfileId
+        val dictionaryConfig = """{"termDictionaries":[{"fileName":"b","isEnabled":true,"order":0}]}"""
+        val collapsed = """["JMdict","Jitendex"]"""
+        val ankiConfig = """{"selectedDeckName":"Japanese"}"""
+        val readerSettings = """{"theme":"Dark","fontSize":30}"""
+        repository.dictionaryConfigFile(sourceProfileId).writeProfileText(dictionaryConfig)
+        repository.collapsedDictionariesFile(sourceProfileId).writeProfileText(collapsed)
+        repository.ankiConfigFile(sourceProfileId).writeProfileText(ankiConfig)
+        repository.readerSettingsFile(sourceProfileId).writeProfileText(readerSettings)
+
+        val english = repository.createProfile("English", "en")
+
+        assertEquals(dictionaryConfig, repository.dictionaryConfigFile(english.id).readText())
+        assertEquals(collapsed, repository.collapsedDictionariesFile(english.id).readText())
+        assertEquals(ankiConfig, repository.ankiConfigFile(english.id).readText())
+        assertEquals(readerSettings, repository.readerSettingsFile(english.id).readText())
+    }
+
+    @Test
     fun rejectsUnsupportedDictionaryLanguageIds() {
         val repository = ProfileRepository(tempFolder.newFolder("files"))
 
@@ -85,4 +106,9 @@ class ProfileRepositoryTest {
             profileId = profileId,
             bookLanguage = bookLanguage,
         )
+
+    private fun java.io.File.writeProfileText(value: String) {
+        parentFile?.mkdirs()
+        writeText(value)
+    }
 }

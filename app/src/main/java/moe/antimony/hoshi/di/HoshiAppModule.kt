@@ -80,8 +80,11 @@ internal object HoshiAppModule {
 
     @Provides
     @Singleton
-    fun provideReaderSettingsRepository(@ApplicationContext context: Context): ReaderSettingsRepository =
-        context.readerSettingsRepository()
+    fun provideReaderSettingsRepository(
+        @ApplicationContext context: Context,
+        profileRepository: ProfileRepository,
+    ): ReaderSettingsRepository =
+        context.readerSettingsRepository(profileRepository)
 
     @Provides
     @Singleton

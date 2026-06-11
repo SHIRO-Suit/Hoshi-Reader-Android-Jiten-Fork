@@ -27,7 +27,7 @@ class ProfileDictionarySettingsRepositoryTest {
         profileRepository.activateGlobal(english.id)
 
         assertEquals(12, repository.settings.first().maxResults)
-        assertEquals(emptySet<String>(), repository.settings.first().collapsedDictionaries)
+        assertEquals(setOf("JMdict"), repository.settings.first().collapsedDictionaries)
 
         repository.update { it.copy(maxResults = 9, collapsedDictionaries = setOf("Oxford")) }
         profileRepository.activateGlobal(profileRepository.state.value.defaultProfileId)
