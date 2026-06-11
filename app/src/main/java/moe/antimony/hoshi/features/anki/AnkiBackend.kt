@@ -30,7 +30,7 @@ interface AnkiBackend {
 }
 
 enum class AnkiFetchFailure(
-    @StringRes val userMessageRes: Int,
+    @param:StringRes val userMessageRes: Int,
     val userMessage: String,
 ) {
     ApiUnavailable(
