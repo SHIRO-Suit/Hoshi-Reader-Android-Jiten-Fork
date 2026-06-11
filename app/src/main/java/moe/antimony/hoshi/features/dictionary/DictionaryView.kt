@@ -104,6 +104,7 @@ import java.text.DateFormat
 import java.util.Date
 import moe.antimony.hoshi.LocalHoshiUiDependencies
 import moe.antimony.hoshi.R
+import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.dictionary.DictionaryInfo
 import moe.antimony.hoshi.dictionary.DictionaryType
 import moe.antimony.hoshi.dictionary.recommendedDictionariesForLanguage
@@ -118,6 +119,9 @@ import moe.antimony.hoshi.ui.hoshiTextFieldCursorBrush
 import kotlin.math.roundToInt
 
 private val DictionarySwitchColor = Color(0xFF34C759)
+
+internal fun scanNonJapaneseTextSettingVisible(contentLanguageProfile: ContentLanguageProfile): Boolean =
+    contentLanguageProfile.dictionaryLanguageId == ContentLanguageProfile.JapaneseLanguageId
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -319,6 +323,9 @@ fun DictionaryView(
             DictionarySettingsView(
                 settings = uiState.settings,
                 termDictionaries = uiState.dictionaries[DictionaryType.Term].orEmpty(),
+                showScanNonJapaneseText = scanNonJapaneseTextSettingVisible(
+                    profileState.effectiveContentLanguageProfile,
+                ),
                 onSettingsChange = dictionaryViewModel::updateSettings,
                 onClose = { destination = null },
                 modifier = modifier,
@@ -1013,6 +1020,7 @@ private fun GroupDivider() {
 private fun DictionarySettingsView(
     settings: DictionarySettings,
     termDictionaries: List<DictionaryInfo>,
+    showScanNonJapaneseText: Boolean,
     onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1064,10 +1072,15 @@ private fun DictionarySettingsView(
             item {
                 SectionLabel(stringResource(R.string.dictionary_settings_lookup))
                 SettingsGroup {
-                    ToggleRow(stringResource(R.string.dictionary_scan_non_japanese), settings.scanNonJapaneseText) {
-                        onSettingsChange { current -> current.copy(scanNonJapaneseText = it) }
+                    if (showScanNonJapaneseText) {
+                        ToggleRow(
+                            stringResource(R.string.dictionary_scan_non_japanese),
+                            settings.scanNonJapaneseText,
+                        ) {
+                            onSettingsChange { current -> current.copy(scanNonJapaneseText = it) }
+                        }
+                        GroupDivider()
                     }
-                    GroupDivider()
                     StepperRow(
                         title = stringResource(R.string.dictionary_max_results),
                         value = settings.maxResults,
