@@ -113,6 +113,7 @@ internal fun ReaderAppearanceScreen(
 @Composable
 internal fun ReaderAppearanceSheet(
     settings: ReaderSettings,
+    progressDisplay: ReaderProgressDisplay = ReaderProgressDisplay.characters(),
     onSettingsChange: (ReaderSettings) -> Unit,
     sasayakiSettings: SasayakiSettings,
     onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
@@ -130,6 +131,7 @@ internal fun ReaderAppearanceSheet(
     ) {
         ReaderAppearanceContent(
             settings = settings,
+            progressDisplay = progressDisplay,
             onSettingsChange = onSettingsChange,
             sasayakiSettings = sasayakiSettings,
             onSasayakiSettingsChange = onSasayakiSettingsChange,
@@ -148,6 +150,7 @@ internal fun ReaderAppearanceSheet(
 @Composable
 private fun ReaderAppearanceContent(
     settings: ReaderSettings,
+    progressDisplay: ReaderProgressDisplay = ReaderProgressDisplay.characters(),
     onSettingsChange: (ReaderSettings) -> Unit,
     sasayakiSettings: SasayakiSettings,
     onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
@@ -436,7 +439,13 @@ private fun ReaderAppearanceContent(
                     )
                     AppearanceDivider(palette)
                     SwitchRow(
-                        label = stringResource(R.string.reader_appearance_show_character_count),
+                        label = stringResource(
+                            if (progressDisplay.usesWords) {
+                                R.string.reader_appearance_show_word_count
+                            } else {
+                                R.string.reader_appearance_show_character_count
+                            },
+                        ),
                         checked = settings.showCharacters,
                         onCheckedChange = { onSettingsChange(settings.copy(showCharacters = it)) },
                     )

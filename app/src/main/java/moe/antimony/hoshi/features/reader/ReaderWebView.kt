@@ -191,6 +191,7 @@ fun ReaderWebView(
     val readerPopupBridgeHolder = remember { ReaderLookupPopupBridgeCallbackHolder() }
     val popupDarkMode = effectiveSettings.usesDarkInterface(systemDarkTheme)
     val popupContentLanguageProfile = contentLanguageProfile
+    val progressDisplay = readerProgressDisplay(contentLanguageProfile)
     val readerPopupIframeDocument = remember(
         dictionaryStyles,
         dictionarySettings,
@@ -1131,6 +1132,7 @@ fun ReaderWebView(
     val chromeLayout = readerChromeLayout(
         chromeState,
         effectiveSettings,
+        progressDisplay = progressDisplay,
         showSasayakiToggle = reserveSasayakiTopToggle || showSasayakiTopToggle,
         showStatisticsToggle = effectiveSettings.enableStatistics && effectiveSettings.showStatisticsToggle,
         focusMode = focusMode,
@@ -1283,6 +1285,7 @@ fun ReaderWebView(
         ReaderTopInfo(
             state = chromeState,
             settings = effectiveSettings,
+            progressDisplay = progressDisplay,
             colors = readerChromeColors(effectiveSettings, systemDarkTheme),
             onStatisticsToggle = if (effectiveSettings.enableStatistics && effectiveSettings.showStatisticsToggle) {
                 ::toggleStatisticsTracking
@@ -1320,6 +1323,7 @@ fun ReaderWebView(
         ReaderBottomSafeProgress(
             state = chromeState,
             settings = effectiveSettings,
+            progressDisplay = progressDisplay,
             colors = readerChromeColors(effectiveSettings, systemDarkTheme),
             metrics = bottomChromeMetrics,
             focusMode = focusMode,
@@ -1335,6 +1339,7 @@ fun ReaderWebView(
             state = chromeState,
             settings = effectiveSettings,
             layout = chromeLayout,
+            progressDisplay = progressDisplay,
             colors = readerChromeColors(effectiveSettings, systemDarkTheme),
             onClose = ::closeReader,
             onMenu = stateHolder::toggleReaderMenu,
@@ -1359,6 +1364,7 @@ fun ReaderWebView(
         if (showAppearance) {
             ReaderAppearanceSheet(
                 settings = effectiveSettings,
+                progressDisplay = progressDisplay,
                 onSettingsChange = {
                     stateHolder.applySettings(it)
                     onReaderSettingsChange(it)
@@ -1373,6 +1379,7 @@ fun ReaderWebView(
             ReaderChapterSheet(
                 book = book,
                 currentPosition = readerPosition.displayedPosition,
+                progressDisplay = progressDisplay,
                 onJump = { target, fragment ->
                     closeLookupPopupsAndSelection()
                     jumpToPositionWithHistory(target, fragment)
@@ -1410,6 +1417,7 @@ fun ReaderWebView(
                 currentCharacter = currentDisplayedCharacter(),
                 currentChapterEndCharacter = currentChapterEndCharacter(),
                 totalCharacters = book.bookInfo.characterCount,
+                progressDisplay = progressDisplay,
                 onToggleTracking = ::toggleStatisticsTracking,
                 onDismiss = stateHolder::dismissStatistics,
             )

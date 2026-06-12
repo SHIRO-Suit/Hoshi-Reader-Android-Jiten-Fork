@@ -233,7 +233,14 @@
     <string name="reader_statistics" comment="Reader menu label, intentionally matching advanced statistics.">Statistics</string>
     <string name="reader_untitled_chapter">Untitled</string>
     <string name="reader_jump_to_character">Jump to Character</string>
+    <string name="reader_jump_to_word">Jump to Word</string>
     <string name="reader_character">Character</string>
+    <string name="reader_word" comment="Jump input field label; capitalized separately from the inline word unit.">Word</string>
+    <string name="reader_progress_word_singular" comment="Inline lowercase count unit for English-profile approximate word displays.">word</string>
+    <string name="reader_progress_word_plural" comment="Inline lowercase count unit for English-profile approximate word displays.">words</string>
+    <string name="reader_progress_word_count_format">%1$s %2$s</string>
+    <string name="reader_progress_word_range_format">%1$s / %2$s %3$s</string>
+    <string name="reader_progress_word_speed_format">%1$s %2$s / h</string>
     <string name="reader_jump">Jump</string>
     <string name="reader_no_highlights">No Highlights</string>
     <string name="reader_delete_highlight">Delete highlight</string>
@@ -244,6 +251,7 @@
     <string name="reader_statistics_time_to_finish_book">Time to finish Book:</string>
     <string name="reader_statistics_time_to_finish_chapter">Time to finish Chapter:</string>
     <string name="reader_statistics_characters_read">Characters Read:</string>
+    <string name="reader_statistics_words_read">Words Read:</string>
     <string name="reader_statistics_reading_speed">Reading Speed:</string>
     <string name="reader_statistics_reading_time">Reading Time:</string>
     <string name="reader_statistics_autostart">Autostart</string>
@@ -298,6 +306,7 @@
     <string name="reader_appearance_paragraph_spacing">Paragraph Spacing</string>
     <string name="reader_appearance_show_title">Show Title</string>
     <string name="reader_appearance_show_character_count">Show Character Count</string>
+    <string name="reader_appearance_show_word_count">Show Word Count</string>
     <string name="reader_appearance_show_percentage">Show Percentage</string>
     <string name="reader_appearance_always_show_progress">Always Show Progress</string>
     <string name="reader_appearance_show_back_button">Show Back Button</string>
