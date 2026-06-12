@@ -205,10 +205,9 @@
     <string name="profiles_loaded_reader">Reader Profile</string>
     <string name="profiles_language">Profile Language</string>
     <string name="profiles_default_for_language_format">Default for %1$s</string>
-    <string name="profiles_default_profile">Default</string>
     <string name="profiles_current_profile">Current</string>
-    <string name="profiles_default_current_profile">Default, current</string>
     <string name="profiles_create">Create Profile</string>
+    <string name="profiles_create_copy_settings_note">The new profile starts as a copy of settings from the current active profile.</string>
     <string name="profiles_new_profile_name">Profile name</string>
     <string name="profiles_delete_title_format" comment="Profile delete confirmation, intentionally matching book and imported-font delete confirmation formats.">Delete \"%1$s\"?</string>
     <string name="profiles_default_cannot_delete">The default profile cannot be deleted.</string>

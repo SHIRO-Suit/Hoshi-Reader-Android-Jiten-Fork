@@ -203,10 +203,9 @@
     <string name="profiles_loaded_reader">阅读器 Profile</string>
     <string name="profiles_language">Profile 语言</string>
     <string name="profiles_default_for_language_format">%1$s 默认 Profile</string>
-    <string name="profiles_default_profile">默认</string>
     <string name="profiles_current_profile">当前启用</string>
-    <string name="profiles_default_current_profile">默认，当前启用</string>
     <string name="profiles_create">创建 Profile</string>
+    <string name="profiles_create_copy_settings_note">新 Profile 会基于当前启用 Profile 拷贝一份设置。</string>
     <string name="profiles_new_profile_name">Profile 名称</string>
     <string name="profiles_delete_title_format" comment="Profile delete confirmation, intentionally matching book and imported-font delete confirmation formats.">删除“%1$s”？</string>
     <string name="profiles_default_cannot_delete">默认 Profile 不能删除。</string>

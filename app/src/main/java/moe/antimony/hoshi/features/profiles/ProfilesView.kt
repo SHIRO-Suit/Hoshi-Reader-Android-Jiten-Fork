@@ -107,7 +107,6 @@ private fun ProfilesContent(
             items(state.profileLanguageGroups(), key = { it.language.dictionaryLanguageId }) { group ->
                 LanguageProfileSection(
                     group = group,
-                    globalActiveProfileId = state.globalActiveProfileId,
                     onEdit = { profile -> editingProfile = profile },
                     onDelete = { profile -> deletingProfile = profile },
                     onSetPrimary = { profile ->
@@ -132,8 +131,9 @@ private fun ProfilesContent(
         ProfileEditDialog(
             title = stringResource(R.string.profiles_create),
             initialName = "",
-            initialLanguageId = ContentLanguageProfile.English.dictionaryLanguageId,
+            initialLanguageId = state.createProfileInitialLanguageId(),
             allowLanguageChange = true,
+            supportingText = stringResource(R.string.profiles_create_copy_settings_note),
             onDismiss = { creatingProfile = false },
             onConfirm = { name, languageId ->
                 onCreateProfile(name, languageId)
@@ -234,7 +234,6 @@ private fun ActiveProfileSection(
 @Composable
 private fun LanguageProfileSection(
     group: ProfileLanguageGroup,
-    globalActiveProfileId: String,
     onEdit: (HoshiProfile) -> Unit,
     onDelete: (HoshiProfile) -> Unit,
     onSetPrimary: (HoshiProfile) -> Unit,
@@ -248,9 +247,7 @@ private fun LanguageProfileSection(
                     group.profiles.forEachIndexed { index, profile ->
                         ProfileSelectionRow(
                             profile = profile,
-                            supportingText = profileStatusText(
-                                isGlobalActive = profile.id == globalActiveProfileId,
-                            ),
+                            supportingText = null,
                             selected = group.defaultProfileId == profile.id,
                             onSelected = { onSetPrimary(profile) },
                             onEdit = { onEdit(profile) },
@@ -265,10 +262,7 @@ private fun LanguageProfileSection(
                 val profile = group.profiles.first()
                 ProfileReadOnlyRow(
                     profile = profile,
-                    supportingText = profileStatusText(
-                        isGlobalActive = profile.id == globalActiveProfileId,
-                        fallbackText = stringResource(R.string.profiles_default_profile),
-                    ),
+                    supportingText = null,
                     onEdit = { onEdit(profile) },
                     onDelete = { onDelete(profile) },
                 )
@@ -353,21 +347,6 @@ private fun HoshiProfile.languageDisplayName(): String {
     return stringResource(language.displayNameRes)
 }
 
-@Composable
-private fun profileStatusText(
-    isGlobalActive: Boolean,
-    fallbackText: String? = null,
-): String? =
-    if (isGlobalActive) {
-        if (fallbackText != null) {
-            stringResource(R.string.profiles_default_current_profile)
-        } else {
-            stringResource(R.string.profiles_current_profile)
-        }
-    } else {
-        fallbackText
-    }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProfileEditDialog(
@@ -375,6 +354,7 @@ private fun ProfileEditDialog(
     initialName: String,
     initialLanguageId: String,
     allowLanguageChange: Boolean,
+    supportingText: String? = null,
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit,
 ) {
@@ -388,6 +368,7 @@ private fun ProfileEditDialog(
         title = { Text(title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                supportingText?.let { Text(it) }
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },

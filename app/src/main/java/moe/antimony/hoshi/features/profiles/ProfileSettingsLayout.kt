@@ -28,3 +28,6 @@ internal fun ProfileState.profileLanguageGroups(): List<ProfileLanguageGroup> =
             canChooseDefault = languageProfiles.size > 1,
         )
     }
+
+internal fun ProfileState.createProfileInitialLanguageId(): String =
+    globalActiveProfile.dictionaryLanguageId

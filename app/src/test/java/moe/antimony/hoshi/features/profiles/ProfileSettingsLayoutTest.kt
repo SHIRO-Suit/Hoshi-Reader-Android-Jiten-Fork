@@ -54,4 +54,31 @@ class ProfileSettingsLayoutTest {
         assertEquals(english.id, groups[1].defaultProfileId)
         assertFalse(groups[1].canChooseDefault)
     }
+
+    @Test
+    fun createProfileInitialLanguageUsesGlobalActiveProfileLanguage() {
+        val japaneseDefault = HoshiProfile(
+            id = "default-ja",
+            name = "Japanese",
+            dictionaryLanguageId = ContentLanguageProfile.JapaneseLanguageId,
+            isDefault = true,
+        )
+        val english = HoshiProfile(
+            id = "reading-en",
+            name = "English reading",
+            dictionaryLanguageId = ContentLanguageProfile.EnglishLanguageId,
+        )
+        val state = ProfileState(
+            profiles = listOf(japaneseDefault, english),
+            defaultProfileId = japaneseDefault.id,
+            globalActiveProfileId = english.id,
+            loadedProfileId = null,
+            primaryProfileIdsByLanguage = mapOf(
+                ContentLanguageProfile.JapaneseLanguageId to japaneseDefault.id,
+                ContentLanguageProfile.EnglishLanguageId to english.id,
+            ),
+        )
+
+        assertEquals(ContentLanguageProfile.EnglishLanguageId, state.createProfileInitialLanguageId())
+    }
 }
