@@ -92,6 +92,7 @@ class ReaderSettingsRepositoryTest {
             assertFalse(settings.volumeKeysSeekSasayaki)
             assertFalse(settings.reverseVolumeKeyDirection)
             assertFalse(settings.keepScreenOnWhileReading)
+            assertFalse(settings.lockCurrentOrientation)
         }
     }
 
@@ -115,6 +116,7 @@ class ReaderSettingsRepositoryTest {
                 volumeKeysTurnPages = true,
                 volumeKeysSeekSasayaki = true,
                 keepScreenOnWhileReading = true,
+                lockCurrentOrientation = true,
             ),
         )
 
@@ -137,6 +139,7 @@ class ReaderSettingsRepositoryTest {
             assertTrue(migrated.volumeKeysTurnPages)
             assertTrue(migrated.volumeKeysSeekSasayaki)
             assertTrue(migrated.keepScreenOnWhileReading)
+            assertTrue(migrated.lockCurrentOrientation)
 
             repository.update { it.copy(fontSize = 31) }
             assertEquals(31, repository.settings.first().fontSize)
@@ -193,6 +196,7 @@ class ReaderSettingsRepositoryTest {
                     volumeKeysSeekSasayaki = true,
                     reverseVolumeKeyDirection = true,
                     keepScreenOnWhileReading = true,
+                    lockCurrentOrientation = true,
                 )
             }
 
@@ -242,6 +246,7 @@ class ReaderSettingsRepositoryTest {
             assertTrue(saved.volumeKeysSeekSasayaki)
             assertTrue(saved.reverseVolumeKeyDirection)
             assertTrue(saved.keepScreenOnWhileReading)
+            assertTrue(saved.lockCurrentOrientation)
         }
     }
 
@@ -276,6 +281,7 @@ class ReaderSettingsRepositoryTest {
                     fontSize = 30,
                     popupWidth = 440,
                     volumeKeysTurnPages = true,
+                    lockCurrentOrientation = true,
                 )
             }
 
@@ -286,6 +292,7 @@ class ReaderSettingsRepositoryTest {
             assertEquals(30, inherited.fontSize)
             assertEquals(440, inherited.popupWidth)
             assertTrue(inherited.volumeKeysTurnPages)
+            assertTrue(inherited.lockCurrentOrientation)
 
             repository.update {
                 it.copy(
@@ -293,6 +300,7 @@ class ReaderSettingsRepositoryTest {
                     fontSize = 18,
                     popupWidth = 280,
                     volumeKeysTurnPages = false,
+                    lockCurrentOrientation = false,
                 )
             }
 
@@ -302,6 +310,7 @@ class ReaderSettingsRepositoryTest {
             assertEquals(30, japanese.fontSize)
             assertEquals(440, japanese.popupWidth)
             assertFalse(japanese.volumeKeysTurnPages)
+            assertFalse(japanese.lockCurrentOrientation)
         }
     }
 

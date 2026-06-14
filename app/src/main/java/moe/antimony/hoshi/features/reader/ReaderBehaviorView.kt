@@ -85,6 +85,14 @@ fun ReaderBehaviorScreen(
                     )
                     BehaviorDivider()
                     BehaviorSwitchRow(
+                        label = stringResource(ReaderBehaviorRow.LockCurrentOrientation.labelRes),
+                        checked = settings.lockCurrentOrientation,
+                        onCheckedChange = {
+                            onSettingsChange(settings.copy(lockCurrentOrientation = it))
+                        },
+                    )
+                    BehaviorDivider()
+                    BehaviorSwitchRow(
                         label = stringResource(ReaderBehaviorRow.AutomaticallyCheckForUpdates.labelRes),
                         checked = loadedUpdateSettings.autoCheckUpdates,
                         onCheckedChange = { enabled ->
@@ -117,6 +125,7 @@ private enum class ReaderBehaviorRow(val labelRes: Int) {
     VolumeKeysSeekSasayaki(R.string.reader_behavior_volume_keys_seek_sasayaki),
     ReverseVolumeKeyDirection(R.string.reader_behavior_reverse_volume_key_direction),
     KeepScreenOn(R.string.reader_behavior_keep_screen_on),
+    LockCurrentOrientation(R.string.reader_behavior_lock_current_orientation),
     AutomaticallyCheckForUpdates(R.string.reader_behavior_auto_check_updates),
 }
 

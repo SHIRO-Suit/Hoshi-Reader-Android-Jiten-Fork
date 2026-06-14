@@ -13,6 +13,7 @@ class ReaderBehaviorSasayakiTest {
                 R.string.reader_behavior_volume_keys_seek_sasayaki,
                 R.string.reader_behavior_reverse_volume_key_direction,
                 R.string.reader_behavior_keep_screen_on,
+                R.string.reader_behavior_lock_current_orientation,
                 R.string.reader_behavior_auto_check_updates,
             ),
             readerBehaviorRows(),
