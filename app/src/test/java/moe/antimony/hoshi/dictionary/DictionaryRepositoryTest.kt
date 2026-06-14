@@ -565,6 +565,44 @@ class DictionaryRepositoryTest {
     }
 
     @Test
+    fun importingDictionaryEnablesItOnlyForTheActiveProfile() = kotlinx.coroutines.runBlocking {
+        val filesDir = temporaryFolder.newFolder("profile-import-files")
+        val profileRepository = ProfileRepository(filesDir)
+        val storage = DictionaryStorageDataSource(filesDir, profileRepository = profileRepository)
+        val bridge = ImportingDictionaryNativeBridge()
+        val repository = DictionaryRepository(
+            filesDir,
+            storage,
+            DictionaryImportDataSource(bridge),
+            DictionaryLookupQueryService(bridge),
+            profileRepository = profileRepository,
+        )
+        val englishProfile = profileRepository.createProfile(
+            name = "English",
+            dictionaryLanguageId = ContentLanguageProfile.EnglishLanguageId,
+        )
+        profileRepository.activateGlobal(englishProfile.id)
+
+        repository.importDictionary(
+            input = ByteArrayInputStream(dictionaryArchive(DictionaryIndex("English Dictionary", 3, "rev"))),
+        )
+
+        assertEquals(
+            listOf(true),
+            repository.loadDictionaries(DictionaryType.Term).map { it.isEnabled },
+        )
+
+        profileRepository.activateGlobal(ProfileRepository.DefaultProfileId)
+        val japaneseProfileDictionaries = repository.loadDictionaries(DictionaryType.Term)
+        assertEquals(listOf("English Dictionary"), japaneseProfileDictionaries.map { it.index.title })
+        assertEquals(listOf(false), japaneseProfileDictionaries.map { it.isEnabled })
+
+        repository.ensureLookupQueryReady()
+
+        assertEquals(emptyList<String>(), bridge.termPaths.toList())
+    }
+
+    @Test
     fun recommendedDictionariesKeepJapaneseListAndAddEnglishWtyList() {
         assertEquals(
             listOf("jmdict", "jmnedict", "jiten", "jitendex"),
