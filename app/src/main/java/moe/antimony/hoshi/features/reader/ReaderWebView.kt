@@ -1252,6 +1252,7 @@ fun ReaderWebView(
                             jumpToPositionWithHistory(target.position, target.fragment)
                         },
                         scanNonJapaneseText = dictionarySettings.scanNonJapaneseText,
+                        selectionScanLength = readerSelectionMaxLength(dictionarySettings),
                         contentLanguageProfile = popupContentLanguageProfile,
                         readerSettings = effectiveSettings,
                         chapterHighlightsJson = ReaderHighlights.chapterHighlightsJson(

@@ -51,6 +51,7 @@ import moe.antimony.hoshi.R
 import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.epub.EpubBook
 import moe.antimony.hoshi.epub.HighlightColor
+import moe.antimony.hoshi.features.dictionary.DictionarySettings
 import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
 import moe.antimony.hoshi.webview.applyHoshiWebViewSecurityDefaults
 
@@ -75,6 +76,7 @@ internal fun ChapterWebView(
     onContinuousScrollProgress: (progress: Double, restoreEpoch: Int) -> Unit,
     onInternalLink: (ReaderInternalLinkTarget) -> Unit,
     scanNonJapaneseText: Boolean,
+    selectionScanLength: Int,
     contentLanguageProfile: ContentLanguageProfile,
     readerSettings: ReaderSettings,
     chapterHighlightsJson: String?,
@@ -274,7 +276,7 @@ internal fun ChapterWebView(
                     ReaderSelectionCommand.SelectText(
                         x = androidPixelsToCssPixels(x, density),
                         y = androidPixelsToCssPixels(y, density),
-                        maxLength = MAX_SELECTION_LENGTH,
+                        maxLength = selectionScanLength,
                     ).source,
                 ) { result ->
                     val selectionResult = ReaderSelectionResult.fromWebViewResult(result)
@@ -499,6 +501,9 @@ internal fun readerShouldReserveSasayakiTopToggle(bookRoot: File?, settings: Sas
         settings.showReaderToggle &&
         bookRoot?.resolve(ReaderSasayakiMatchFileName)?.isFile == true &&
         bookRoot.resolve(ReaderSasayakiPlaybackFileName).isFile
+
+internal fun readerSelectionMaxLength(settings: DictionarySettings): Int =
+    settings.normalized().scanLength
 
 private class HoshiReaderWebView(context: Context) : WebView(context) {
     var onHighlightCreated: (HighlightColor, String, ReaderHighlightCreationResult) -> Unit = { _, _, _ -> }
@@ -1151,7 +1156,6 @@ private val readerAppliedSasayakiCues = WeakHashMap<WebView, ReaderAppliedSasaya
 private val readerPendingProgressSaveCallbacks = WeakHashMap<WebView, Runnable>()
 private val readerPageTurnProgressRequestIds = WeakHashMap<WebView, Long>()
 private var readerPageTurnProgressRequestId = 0L
-private const val MAX_SELECTION_LENGTH = 16
 private const val CONTINUOUS_PROGRESS_THROTTLE_MS = 50L
 private const val CONTINUOUS_SCROLL_SAVE_IDLE_DELAY_MS = 250L
 
