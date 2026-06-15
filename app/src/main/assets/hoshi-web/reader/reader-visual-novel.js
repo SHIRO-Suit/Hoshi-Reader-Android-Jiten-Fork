@@ -219,21 +219,23 @@ window.hoshiReader = {
   buildBlockScreens: function() {
     var screens = [];
     var runningEnd = 0;
-    var children = Array.from(this.sourceRoot.childNodes);
-    for (var i = 0; i < children.length; i++) {
-      let child = children[i];
-      if (child.nodeType === Node.TEXT_NODE && !(child.textContent || '').trim()) continue;
-      if (child.nodeType === Node.ELEMENT_NODE && this.isIgnoredElement(child)) continue;
+    var runningRawEnd = 0;
+    var sources = this.collectBlockScreenSources(this.sourceRoot);
+    for (var i = 0; i < sources.length; i++) {
+      let child = sources[i].node;
       var stats = this.statsForSourceNode(child);
       var start = stats.hasText ? stats.startChar : runningEnd;
       var end = stats.hasText ? stats.endChar : start;
+      var rawStart = stats.hasText ? stats.startRaw : runningRawEnd;
+      var rawEnd = stats.hasText ? stats.endRaw : rawStart;
       runningEnd = end;
+      runningRawEnd = rawEnd;
       screens.push({
         startCharCount: start,
         endCharCount: end,
-        startRawCount: stats.hasText ? stats.startRaw : start,
-        endRawCount: stats.hasText ? stats.endRaw : start,
-        ids: this.collectIdsForNode(child),
+        startRawCount: rawStart,
+        endRawCount: rawEnd,
+        ids: this.collectIdsForNode(child, sources[i].extraIds),
         render: () => {
           var fragment = document.createDocumentFragment();
           fragment.appendChild(this.cloneSourceNodeWithOffsets(child));
@@ -242,6 +244,117 @@ window.hoshiReader = {
       });
     }
     return screens;
+  },
+  collectBlockScreenSources: function(root, inheritedIds) {
+    var sources = [];
+    var pendingIds = new Set(inheritedIds || []);
+    var children = Array.from(root.childNodes || []);
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      if (!this.isRenderableBlockSource(child)) continue;
+      if (child.nodeType === Node.ELEMENT_NODE && this.isSplittableBlockContainer(child)) {
+        var nestedIds = this.mergeIds(pendingIds, this.ownIdsForNode(child));
+        var nested = this.collectBlockScreenSources(child, nestedIds);
+        if (nested.length) {
+          sources = sources.concat(nested);
+          pendingIds = new Set();
+          continue;
+        }
+      }
+      sources.push({
+        node: child,
+        extraIds: new Set(pendingIds)
+      });
+      pendingIds = new Set();
+    }
+    return sources;
+  },
+  isRenderableBlockSource: function(node) {
+    if (!node) return false;
+    if (node.nodeType === Node.TEXT_NODE) return !!(node.textContent || '').trim();
+    if (node.nodeType !== Node.ELEMENT_NODE) return false;
+    if (this.isIgnoredElement(node)) return false;
+    return !!((node.textContent || '').trim() || this.containsStandaloneMedia(node));
+  },
+  isSplittableBlockContainer: function(node) {
+    if (!node || node.nodeType !== Node.ELEMENT_NODE) return false;
+    var tag = String(node.tagName || '').toLowerCase();
+    if (['body', 'section', 'article', 'main', 'div'].indexOf(tag) < 0) return false;
+    var candidates = this.renderableBlockChildren(node);
+    if (candidates.length > 1) return true;
+    return candidates.length === 1
+      && candidates[0].nodeType === Node.ELEMENT_NODE
+      && this.isSplittableBlockContainer(candidates[0]);
+  },
+  renderableBlockChildren: function(node) {
+    var children = Array.from(node.childNodes || []);
+    var result = [];
+    for (var i = 0; i < children.length; i++) {
+      var child = children[i];
+      if (!this.isRenderableBlockSource(child)) continue;
+      if (child.nodeType === Node.TEXT_NODE) {
+        result.push(child);
+        continue;
+      }
+      var tag = String(child.tagName || '').toLowerCase();
+      if (this.isBlockScreenElement(tag) || this.isSplittableBlockContainer(child)) {
+        result.push(child);
+      }
+    }
+    return result;
+  },
+  isBlockScreenElement: function(tag) {
+    return [
+      'address',
+      'aside',
+      'blockquote',
+      'canvas',
+      'details',
+      'dialog',
+      'dl',
+      'fieldset',
+      'figcaption',
+      'figure',
+      'footer',
+      'form',
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'header',
+      'hr',
+      'iframe',
+      'img',
+      'li',
+      'object',
+      'ol',
+      'p',
+      'picture',
+      'pre',
+      'section',
+      'svg',
+      'table',
+      'ul',
+      'video'
+    ].indexOf(tag) >= 0;
+  },
+  mergeIds: function(first, second) {
+    var merged = new Set();
+    (first || new Set()).forEach(function(id) { merged.add(id); });
+    (second || new Set()).forEach(function(id) { merged.add(id); });
+    return merged;
+  },
+  ownIdsForNode: function(node) {
+    var ids = new Set();
+    if (node && node.nodeType === Node.ELEMENT_NODE) {
+      var id = node.getAttribute && node.getAttribute('id');
+      if (id) ids.add(id);
+      var name = node.getAttribute && node.getAttribute('name');
+      if (name) ids.add(name);
+    }
+    return ids;
   },
   buildSentenceScreens: function() {
     this.sentenceAtomicRoots = this.buildSentenceAtomicRoots();
@@ -540,8 +653,8 @@ window.hoshiReader = {
     }
     return false;
   },
-  collectIdsForNode: function(root) {
-    var ids = new Set();
+  collectIdsForNode: function(root, extraIds) {
+    var ids = new Set(extraIds || []);
     var visit = function(node) {
       if (node.nodeType === Node.ELEMENT_NODE) {
         var id = node.getAttribute && node.getAttribute('id');
@@ -698,7 +811,10 @@ window.hoshiReader = {
     } else {
       while (this.screen.firstChild) this.screen.removeChild(this.screen.firstChild);
     }
-    this.screen.appendChild(this.screens[safeIndex].render());
+    var content = document.createElement('div');
+    content.className = 'hoshi-vn-content';
+    content.appendChild(this.screens[safeIndex].render());
+    this.screen.appendChild(content);
     if (fullyRevealed || this.revealSpeed <= 0) {
       this.revealComplete = true;
     } else {

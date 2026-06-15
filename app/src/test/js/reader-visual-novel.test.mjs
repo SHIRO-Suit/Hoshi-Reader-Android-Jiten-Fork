@@ -543,6 +543,22 @@ test('block mode renders one top-level block per screen without cloning the enti
     assert.equal(currentScreen(reader).textContent.includes('第一段落。'), false);
 });
 
+test('block mode splits a chapter wrapper into child block screens', async () => {
+    const wrapper = new TestElement('section');
+    wrapper.setAttribute('id', 'chapter');
+    wrapper.appendChild(p('第一段落。', { id: 'p1' }));
+    wrapper.appendChild(p('第二段落。', { id: 'p2' }));
+    wrapper.appendChild(p('第三段落。', { id: 'p3' }));
+    const { reader } = await initializeReader(bodyWith(wrapper), { mode: 'block', revealSpeed: 0 });
+
+    assert.equal(currentScreen(reader).textContent, '第一段落。');
+    assert.equal(reader.screenIndexForFragment('chapter'), 0);
+    assert.equal(reader.screenIndexForFragment('p2'), 1);
+
+    assert.equal(reader.paginate('forward'), 'scrolled');
+    assert.equal(currentScreen(reader).textContent, '第二段落。');
+});
+
 test('sentence mode groups sentences by configured count', async () => {
     const body = bodyWith(p('一。二！三？四。'));
     const { reader } = await initializeReader(body, {
@@ -595,6 +611,15 @@ test('reveal speed zero renders the current screen fully immediately', async () 
 
     assert.equal(currentScreen(reader).textContent, '即時表示。');
     assert.equal(currentScreen(reader).querySelectorAll('[data-hoshi-visual-novel-unrevealed]').length, 0);
+});
+
+test('visual novel screen wraps current content in a stable content container', async () => {
+    const body = bodyWith(p('中央に置く。'));
+    const { reader } = await initializeReader(body, { revealSpeed: 0 });
+    const screen = currentScreen(reader);
+
+    assert.equal(screen.firstChild.classList.contains('hoshi-vn-content'), true);
+    assert.equal(screen.firstChild.textContent, '中央に置く。');
 });
 
 test('forward pagination completes an unfinished reveal before changing screens', async () => {

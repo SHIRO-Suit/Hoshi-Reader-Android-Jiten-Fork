@@ -231,7 +231,19 @@ internal object ReaderContentStyles {
                 }
                 .hoshi-vn-screen {
                     writing-mode: ${settings.writingModeCss} !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    height: var(--page-height, 100vh) !important;
+                    width: var(--page-width, 100vw) !important;
                     padding: ${settings.pagePaddingCss} !important;
+                }
+                .hoshi-vn-content {
+                    writing-mode: ${settings.writingModeCss} !important;
+                    box-sizing: border-box !important;
+                    max-width: 100% !important;
+                    max-height: 100% !important;
+                    overflow: hidden !important;
                 }
                 """.trimIndent()
             }

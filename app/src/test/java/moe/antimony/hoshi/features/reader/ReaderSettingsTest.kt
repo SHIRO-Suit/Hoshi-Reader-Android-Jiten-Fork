@@ -569,6 +569,21 @@ class ReaderSettingsTest {
     }
 
     @Test
+    fun visualNovelReaderCssCentersCurrentScreenContent() {
+        val css = ReaderContentStyles.styleTag(
+            ReaderSettings(viewMode = ReaderViewMode.VisualNovel),
+        )
+
+        assertTrue(css.contains(".hoshi-vn-screen"))
+        assertTrue(css.contains("display: flex !important;"))
+        assertTrue(css.contains("align-items: center !important;"))
+        assertTrue(css.contains("justify-content: center !important;"))
+        assertTrue(css.contains(".hoshi-vn-content"))
+        assertTrue(css.contains("max-width: 100% !important;"))
+        assertTrue(css.contains("max-height: 100% !important;"))
+    }
+
+    @Test
     fun readerCssUsesIosAppearanceFlags() {
         val css = ReaderContentStyles.styleTag(
             ReaderSettings(
