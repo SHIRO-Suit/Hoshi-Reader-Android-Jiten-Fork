@@ -306,6 +306,91 @@ class TestFragment extends TestNode {
     }
 }
 
+class TestRange {
+    constructor() {
+        this.node = null;
+        this.startNode = null;
+        this.startOffset = 0;
+        this.endNode = null;
+        this.endOffset = 0;
+        this.insertionParent = null;
+        this.insertionIndex = null;
+    }
+
+    selectNodeContents(node) {
+        this.node = node;
+        this.startNode = node;
+        this.startOffset = 0;
+        this.endNode = node;
+        this.endOffset = node.textContent?.length ?? 0;
+    }
+
+    setStart(node, offset = 0) {
+        this.node = node;
+        this.startNode = node;
+        this.startOffset = offset;
+    }
+
+    setEnd(node, offset = node.textContent?.length ?? 0) {
+        this.endNode = node;
+        this.endOffset = offset;
+    }
+
+    extractContents() {
+        const fragment = new TestFragment();
+        if (this.startNode !== this.endNode || this.startNode?.nodeType !== 3) return fragment;
+        const textNode = this.startNode;
+        const parent = textNode.parentNode;
+        if (!parent) return fragment;
+        const index = parent.childNodes.indexOf(textNode);
+        if (index < 0) return fragment;
+        const value = textNode.nodeValue;
+        const before = value.slice(0, this.startOffset);
+        const selected = value.slice(this.startOffset, this.endOffset);
+        const after = value.slice(this.endOffset);
+        const replacements = [];
+        if (before) replacements.push(new TestText(before));
+        if (after) replacements.push(new TestText(after));
+        replacements.forEach((node) => {
+            node.parentNode = parent;
+        });
+        parent.childNodes.splice(index, 1, ...replacements);
+        textNode.parentNode = null;
+        this.insertionParent = parent;
+        this.insertionIndex = before ? index + 1 : index;
+        if (selected) fragment.appendChild(new TestText(selected));
+        return fragment;
+    }
+
+    insertNode(node) {
+        if (!this.insertionParent || this.insertionIndex === null) return;
+        node.parentNode?.removeChild(node);
+        node.parentNode = this.insertionParent;
+        this.insertionParent.childNodes.splice(this.insertionIndex, 0, node);
+        this.insertionIndex += 1;
+    }
+
+    getClientRects() {
+        return this.startNode?.rects ?? this.node?.rects ?? [
+            { x: 12, y: 24, left: 12, right: 32, top: 24, bottom: 48, width: 20, height: 24 },
+        ];
+    }
+
+    getBoundingClientRect() {
+        const rects = this.getClientRects();
+        if (!rects.length) {
+            return { left: 0, right: 0, top: 0, bottom: 0, width: 0, height: 0 };
+        }
+        const left = Math.min(...rects.map((rect) => rect.left));
+        const right = Math.max(...rects.map((rect) => rect.right));
+        const top = Math.min(...rects.map((rect) => rect.top));
+        const bottom = Math.max(...rects.map((rect) => rect.bottom));
+        return { left, right, top, bottom, width: right - left, height: bottom - top };
+    }
+
+    detach() {}
+}
+
 function matchesSelector(node, selector) {
     if (selector.startsWith('#')) {
         return node.id === selector.slice(1);
@@ -377,6 +462,9 @@ function buildDocument(body) {
         createElement(tagName) {
             return new TestElement(tagName);
         },
+        createRange() {
+            return new TestRange();
+        },
         createTreeWalker(root, _whatToShow, filter) {
             const nodes = [];
             const visit = (node) => {
@@ -413,6 +501,7 @@ function loadReader(body, options = {}) {
     const document = buildDocument(body);
     const restoreMessages = [];
     const imageMessages = [];
+    const sasayakiHighlights = [];
     const timers = [];
     const imageBridge = {
         postMessage(message) {
@@ -427,8 +516,19 @@ function loadReader(body, options = {}) {
         scrollY: 0,
         scrollTo() {},
         getComputedStyle(target) {
+            const vnWritingMode = options.vnWritingMode ?? 'horizontal-tb';
+            let writingMode = 'horizontal-tb';
+            if (target === document.body) {
+                writingMode = options.bodyWritingMode ?? 'vertical-rl';
+            } else if (
+                target.classList?.contains('hoshi-vn-stage') ||
+                target.classList?.contains('hoshi-vn-screen') ||
+                target.classList?.contains('hoshi-vn-content')
+            ) {
+                writingMode = vnWritingMode;
+            }
             return {
-                writingMode: target === document.body ? 'vertical-rl' : 'horizontal-tb',
+                writingMode,
                 getPropertyValue(name) {
                     return target.style?.getPropertyValue(name) ?? '';
                 },
@@ -440,6 +540,14 @@ function loadReader(body, options = {}) {
             },
         },
         HoshiReaderImage: imageBridge,
+        hoshiReaderPopupHost: {
+            renderSasayakiHighlight(payload) {
+                sasayakiHighlights.push(payload);
+            },
+            clearSasayakiHighlight() {
+                sasayakiHighlights.push(null);
+            },
+        },
     };
     vm.runInNewContext(configuredReaderSource(options), {
         document,
@@ -460,7 +568,7 @@ function loadReader(body, options = {}) {
         },
         URL,
     });
-    return { reader: window.hoshiReader, document, restoreMessages, timers, imageMessages, window };
+    return { reader: window.hoshiReader, document, restoreMessages, timers, imageMessages, sasayakiHighlights, window };
 }
 
 async function initializeReader(body, options = {}) {
@@ -504,6 +612,10 @@ function bodyWith(...children) {
 
 function currentScreen(reader) {
     return reader.stage.querySelector('.hoshi-vn-screen');
+}
+
+function sasayakiWrappers(reader) {
+    return currentScreen(reader).querySelectorAll('.hoshi-sasayaki-cue');
 }
 
 test('visual novel reader asset defines the expected public surface', () => {
@@ -793,4 +905,154 @@ test('unrevealed text is omitted from node offsets until reveal completes', asyn
 
     const revealedText = collectTextNodes(currentScreen(reader))[0];
     assert.equal(reader.nodeStartOffsets.get(revealedText), 0);
+});
+
+test('visual novel Sasayaki wraps and activates a cue on the current screen', async () => {
+    const cue = { id: 'cue', start: 0, length: 4 };
+    const { reader } = await initializeReader(bodyWith(p('蒸し暑い')), { revealSpeed: 0 });
+
+    reader.applySasayakiCues([cue]);
+    const result = reader.highlightSasayakiCue(cue, false);
+
+    const wrappers = sasayakiWrappers(reader);
+    assert.equal(result, null);
+    assert.equal(wrappers.length, 1);
+    assert.equal(wrappers[0].classList.contains('hoshi-sasayaki-active'), true);
+    assert.equal(wrappers[0].textContent, '蒸し暑い');
+    assert.equal(reader.cueWrappers.get('cue')[0], wrappers[0]);
+    assert.equal(reader.nodeStartOffsets.get(collectTextNodes(wrappers[0])[0]), 0);
+});
+
+test('visual novel Sasayaki reveal jumps to a later screen and returns progress', async () => {
+    const cue = { id: 'cue', start: 1, length: 2 };
+    const { reader } = await initializeReader(
+        bodyWith(p('一。'), p('二三。'), p('四。')),
+        { revealSpeed: 10 },
+    );
+
+    reader.applySasayakiCues([cue]);
+    const result = reader.highlightSasayakiCue(cue, true);
+
+    assert.equal(result, 0.75);
+    assert.equal(currentScreen(reader).textContent, '二三。');
+    assert.equal(currentScreen(reader).querySelectorAll('[data-hoshi-visual-novel-unrevealed]').length, 0);
+    assert.equal(sasayakiWrappers(reader)[0].textContent, '二三');
+    assert.equal(sasayakiWrappers(reader)[0].classList.contains('hoshi-sasayaki-active'), true);
+});
+
+test('visual novel Sasayaki cue without reveal does not move to another screen', async () => {
+    const cue = { id: 'cue', start: 1, length: 2 };
+    const { reader } = await initializeReader(bodyWith(p('一。'), p('二三。')), { revealSpeed: 0 });
+
+    reader.applySasayakiCues([cue]);
+    const result = reader.highlightSasayakiCue(cue, false);
+
+    assert.equal(result, null);
+    assert.equal(currentScreen(reader).textContent, '一。');
+    assert.equal(sasayakiWrappers(reader).length, 0);
+    assert.equal(reader.activeCueId, 'cue');
+
+    assert.equal(reader.paginate('forward'), 'scrolled');
+    assert.equal(sasayakiWrappers(reader)[0].textContent, '二三');
+    assert.equal(sasayakiWrappers(reader)[0].classList.contains('hoshi-sasayaki-active'), true);
+});
+
+test('visual novel Sasayaki e-ink mode renders overlay geometry instead of inline wrappers', async () => {
+    const cue = { id: 'cue', start: 0, length: 4 };
+    const { reader, sasayakiHighlights } = await initializeReader(bodyWith(p('蒸し暑い')), { revealSpeed: 0 });
+    reader.isEInkMode = () => true;
+
+    reader.applySasayakiCues([cue]);
+    const result = reader.highlightSasayakiCue(cue, false);
+
+    assert.equal(result, null);
+    assert.equal(sasayakiWrappers(reader).length, 0);
+    assert.equal((reader.cueGeometryRanges.get('cue') ?? []).length, 1);
+    assert.equal(reader.activeCueId, 'cue');
+    assert.equal(sasayakiHighlights.at(-1).rects.length, 1);
+    assert.equal(sasayakiHighlights.at(-1).eInkMode, true);
+
+    reader.clearSasayakiCue();
+    assert.equal(sasayakiHighlights.at(-1), null);
+});
+
+test('visual novel Sasayaki e-ink overlay uses VN screen writing direction', async () => {
+    const cue = { id: 'cue', start: 0, length: 4 };
+    const { reader, document, sasayakiHighlights } = await initializeReader(bodyWith(p('蒸し暑い')), {
+        bodyWritingMode: 'horizontal-tb',
+        vnWritingMode: 'vertical-rl',
+        revealSpeed: 0,
+    });
+    document.documentElement.style.setProperty('--hoshi-reader-vertical-writing', '1');
+    reader.isEInkMode = () => true;
+
+    reader.applySasayakiCues([cue]);
+    reader.highlightSasayakiCue(cue, false);
+
+    assert.equal(reader.isVertical(), true);
+    assert.equal(sasayakiHighlights.at(-1).verticalWriting, true);
+});
+
+test('visual novel Sasayaki refresh switches between inline and e-ink presentation', async () => {
+    const cue = { id: 'cue', start: 0, length: 4 };
+    const { reader, sasayakiHighlights } = await initializeReader(bodyWith(p('蒸し暑い')), { revealSpeed: 0 });
+    let eInkMode = false;
+    reader.isEInkMode = () => eInkMode;
+
+    reader.applySasayakiCues([cue]);
+    reader.highlightSasayakiCue(cue, false);
+    const wrapper = sasayakiWrappers(reader)[0];
+    assert.equal(wrapper.classList.contains('hoshi-sasayaki-active'), true);
+
+    eInkMode = true;
+    reader.refreshSasayakiCuePresentation();
+    assert.equal(wrapper.classList.contains('hoshi-sasayaki-active'), false);
+    assert.equal(sasayakiHighlights.at(-1).rects.length, 1);
+
+    eInkMode = false;
+    reader.refreshSasayakiCuePresentation();
+    assert.equal(wrapper.classList.contains('hoshi-sasayaki-active'), true);
+    assert.equal(sasayakiHighlights.at(-1), null);
+});
+
+test('visual novel clear Sasayaki cue removes active state and preserves chapter offsets', async () => {
+    const cue = { id: 'cue', start: 0, length: 4 };
+    const { reader } = await initializeReader(bodyWith(p('蒸し暑い')), { revealSpeed: 0 });
+
+    reader.applySasayakiCues([cue]);
+    reader.highlightSasayakiCue(cue, false);
+    reader.clearSasayakiCue();
+
+    const wrapper = sasayakiWrappers(reader)[0];
+    assert.equal(reader.activeCueId, null);
+    assert.equal(wrapper.classList.contains('hoshi-sasayaki-active'), false);
+    assert.equal(reader.nodeStartOffsets.get(collectTextNodes(wrapper)[0]), 0);
+});
+
+test('visual novel Sasayaki highlights only the visible part of a cross-screen cue', async () => {
+    const cue = { id: 'cue', start: 1, length: 3 };
+    const { reader } = await initializeReader(bodyWith(p('一二。'), p('三四。')), { revealSpeed: 0 });
+
+    reader.applySasayakiCues([cue]);
+    reader.highlightSasayakiCue(cue, false);
+
+    assert.equal(sasayakiWrappers(reader).length, 1);
+    assert.equal(sasayakiWrappers(reader)[0].textContent, '二。');
+
+    assert.equal(reader.paginate('forward'), 'scrolled');
+    assert.equal(sasayakiWrappers(reader).length, 1);
+    assert.equal(sasayakiWrappers(reader)[0].textContent, '三四');
+});
+
+test('visual novel Sasayaki completes reveal before highlighting the active cue', async () => {
+    const cue = { id: 'cue', start: 0, length: 4 };
+    const { reader } = await initializeReader(bodyWith(p('蒸し暑い')), { revealSpeed: 10 });
+
+    reader.applySasayakiCues([cue]);
+    reader.highlightSasayakiCue(cue, false);
+
+    assert.equal(reader.revealComplete, true);
+    assert.equal(currentScreen(reader).querySelectorAll('[data-hoshi-visual-novel-unrevealed]').length, 0);
+    assert.equal(sasayakiWrappers(reader)[0].textContent, '蒸し暑い');
+    assert.equal(sasayakiWrappers(reader)[0].classList.contains('hoshi-sasayaki-active'), true);
 });

@@ -8,6 +8,8 @@ window.hoshiReader = {
   initialHighlights: __HOSHI_INITIAL_HIGHLIGHTS_JSON__,
   nativeSelectionActive: false,
   activeCueId: null,
+  sasayakiCues: [],
+  sasayakiCueMap: new Map(),
   cueWrappers: new Map(),
   cueSourceRanges: new Map(),
   cueGeometryRanges: new Map(),
@@ -29,7 +31,20 @@ window.hoshiReader = {
   readyPromise: null,
 
   isVertical: function() {
-    return window.getComputedStyle(document.body).writingMode === "vertical-rl";
+    var targets = [
+      this.screen,
+      document.querySelector('.hoshi-vn-content'),
+      this.stage,
+      document.body,
+      document.documentElement
+    ];
+    for (var i = 0; i < targets.length; i++) {
+      var target = targets[i];
+      if (!target) continue;
+      var writingMode = window.getComputedStyle(target).writingMode || '';
+      if (writingMode.indexOf('vertical') === 0) return true;
+    }
+    return this.readerCssVariable('--hoshi-reader-vertical-writing') === '1';
   },
   readerCssVariable: function(name) {
     return window.getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -806,6 +821,7 @@ window.hoshiReader = {
     var safeIndex = Math.min(Math.max(0, index), this.screens.length - 1);
     this.clearRevealTimer();
     this.currentScreenIndex = safeIndex;
+    this.clearCurrentSasayakiScreenTargets();
     if (this.screen.replaceChildren) {
       this.screen.replaceChildren();
     } else {
@@ -823,6 +839,7 @@ window.hoshiReader = {
     this.setupReaderImages(this.screen);
     this.buildNodeOffsets();
     if (this.revealComplete) this.applyCurrentScreenHighlights();
+    if (this.revealComplete) this.refreshSasayakiCuePresentation();
   },
   hideCurrentScreenForReveal: function() {
     this.revealSegments = [];
@@ -925,6 +942,7 @@ window.hoshiReader = {
     this.revealComplete = true;
     this.buildNodeOffsets();
     this.applyCurrentScreenHighlights();
+    this.refreshSasayakiCuePresentation();
   },
   patchHighlightsForVisualNovel: function() {
     var highlights = window.hoshiHighlights;
@@ -1081,19 +1099,313 @@ window.hoshiReader = {
   setNativeSelectionActive: function(active) {
     this.nativeSelectionActive = !!active;
   },
-  applySasayakiCues: function(cues) {
-    this.sasayakiCues = Array.isArray(cues) ? cues : [];
-    this.activeCueId = null;
-    this.buildNodeOffsets();
+  sasayakiCueForInput: function(cue) {
+    if (!cue) return null;
+    if (typeof cue === 'string') return this.sasayakiCueMap.get(cue) || null;
+    if (cue.id) {
+      this.sasayakiCueMap.set(cue.id, cue);
+    }
+    return cue;
   },
-  highlightSasayakiCue: function(cue) {
-    this.activeCueId = typeof cue === 'string' ? cue : cue && cue.id;
+  sasayakiCueStart: function(cue) {
+    return Math.max(0, Number(cue && cue.start) || 0);
+  },
+  sasayakiCueEnd: function(cue) {
+    var start = this.sasayakiCueStart(cue);
+    return start + Math.max(0, Number(cue && cue.length) || 0);
+  },
+  sasayakiCueIntersectsScreen: function(cue, screen) {
+    if (!cue || !screen) return false;
+    var start = this.sasayakiCueStart(cue);
+    var end = this.sasayakiCueEnd(cue);
+    if (end <= start) return start >= screen.startCharCount && start <= screen.endCharCount;
+    return end > screen.startCharCount && start < screen.endCharCount;
+  },
+  screenIndexForSasayakiCue: function(cue) {
+    if (!cue || !this.screens || !this.screens.length) return -1;
+    var start = this.sasayakiCueStart(cue);
+    for (var i = 0; i < this.screens.length; i++) {
+      var screen = this.screens[i];
+      if (start >= screen.startCharCount && start < screen.endCharCount) return i;
+    }
+    for (var j = 0; j < this.screens.length; j++) {
+      if (this.sasayakiCueIntersectsScreen(cue, this.screens[j])) return j;
+    }
+    return -1;
+  },
+  collectSasayakiCueRanges: function(cues) {
+    var result = [];
+    for (var i = 0; i < cues.length; i++) {
+      var cue = this.sasayakiCueForInput(cues[i]);
+      if (!cue || !cue.id) continue;
+      result.push({ id: cue.id, ranges: this.currentScreenRangesForSasayakiCue(cue) });
+    }
+    return result;
+  },
+  currentScreenRangesForSasayakiCue: function(cue) {
+    var start = this.sasayakiCueStart(cue);
+    var end = this.sasayakiCueEnd(cue);
+    var ranges = [];
+    if (end <= start) return ranges;
+    var walker = this.createWalker();
+    var node;
+    while (node = walker.nextNode()) {
+      var nodeStart = this.nodeStartOffsets.get(node);
+      if (nodeStart === undefined) continue;
+      var text = node.textContent || '';
+      var cursor = nodeStart;
+      var offset = 0;
+      var segment = null;
+      var flushSegment = function() {
+        if (!segment) return;
+        ranges.push(segment);
+        segment = null;
+      };
+      while (offset < text.length && cursor < end) {
+        var char = String.fromCodePoint(text.codePointAt(offset));
+        var next = offset + char.length;
+        if (this.isMatchableChar(char)) {
+          if (cursor >= start && cursor < end) {
+            if (!segment) {
+              segment = { node: node, start: offset, end: next };
+            } else {
+              segment.end = next;
+            }
+          } else {
+            flushSegment();
+          }
+          cursor += 1;
+          if (cursor === end) flushSegment();
+        } else if (segment) {
+          segment.end = next;
+        }
+        offset = next;
+      }
+      flushSegment();
+    }
+    return ranges;
+  },
+  rememberSasayakiCueSources: function(cueRanges) {
+    for (var i = 0; i < cueRanges.length; i++) {
+      this.cueSourceRanges.set(cueRanges[i].id, cueRanges[i]);
+    }
+  },
+  sasayakiInlineTargetsForCue: function(cueId) {
+    return this.cueWrappers.get(cueId) || [];
+  },
+  hasSasayakiCueTarget: function(cueId) {
+    return (this.cueGeometryRanges.get(cueId) || []).length > 0 ||
+      (this.cueWrappers.get(cueId) || []).length > 0;
+  },
+  wrapSasayakiCueRanges: function(cueRanges) {
+    var wrapped = new Map();
+    var range = document.createRange();
+    for (var i = cueRanges.length - 1; i >= 0; i--) {
+      var id = cueRanges[i].id;
+      var ranges = cueRanges[i].ranges;
+      if (!ranges.length) continue;
+      var wrappers = [];
+      for (var j = ranges.length - 1; j >= 0; j--) {
+        var segment = ranges[j];
+        range.setStart(segment.node, segment.start);
+        range.setEnd(segment.node, segment.end);
+        var wrapper = document.createElement('span');
+        wrapper.className = 'hoshi-sasayaki-cue';
+        wrapper.appendChild(range.extractContents());
+        range.insertNode(wrapper);
+        wrappers.push(wrapper);
+      }
+      wrappers.reverse();
+      this.cueWrappers.set(id, wrappers);
+      wrapped.set(id, wrappers);
+    }
+    return wrapped;
+  },
+  buildSasayakiGeometryRanges: function(cueRanges) {
+    var geometryRanges = new Map();
+    for (var i = 0; i < cueRanges.length; i++) {
+      var id = cueRanges[i].id;
+      var ranges = cueRanges[i].ranges;
+      if (!ranges.length) continue;
+      var cueGeometryRanges = [];
+      for (var j = 0; j < ranges.length; j++) {
+        var segment = ranges[j];
+        var range = document.createRange();
+        range.setStart(segment.node, segment.start);
+        range.setEnd(segment.node, segment.end);
+        cueGeometryRanges.push(range);
+      }
+      if (cueGeometryRanges.length) geometryRanges.set(id, cueGeometryRanges);
+    }
+    return geometryRanges;
+  },
+  prepareSasayakiInlineTargets: function(cueRanges) {
+    if (!this.isEInkMode()) {
+      this.wrapSasayakiCueRanges(cueRanges);
+      this.buildNodeOffsets();
+    }
+  },
+  ensureSasayakiInlineTargetsForCue: function(cueId) {
+    if (this.isEInkMode() || this.sasayakiInlineTargetsForCue(cueId).length) return;
+    var cue = this.sasayakiCueMap.get(cueId);
+    if (!cue) return;
+    var cueRanges = this.collectSasayakiCueRanges([cue]);
+    this.rememberSasayakiCueSources(cueRanges);
+    this.prepareSasayakiInlineTargets(cueRanges);
+  },
+  ensureSasayakiCueGeometry: function(cue) {
+    var cueId = typeof cue === 'string' ? cue : cue && cue.id;
+    if (!cueId) return;
+    var existing = this.cueGeometryRanges.get(cueId);
+    if (existing && existing.length) return;
+    var cueObject = this.sasayakiCueForInput(cue) || this.sasayakiCueMap.get(cueId);
+    if (!cueObject) return;
+    var cueRanges = this.collectSasayakiCueRanges([cueObject]);
+    this.rememberSasayakiCueSources(cueRanges);
+    var geometryRanges = this.buildSasayakiGeometryRanges(cueRanges).get(cueId) || [];
+    if (geometryRanges.length) this.cueGeometryRanges.set(cueId, geometryRanges);
+  },
+  sasayakiOverlayRects: function(cueId) {
+    var ranges = this.cueGeometryRanges.get(cueId) || [];
+    var rects = [];
+    ranges.forEach(function(range) {
+      if (window.hoshiRubyGeometry) {
+        window.hoshiRubyGeometry.rectsForRange(range).forEach(function(rect) { rects.push(rect); });
+      } else {
+        Array.from(range.getClientRects()).forEach(function(rect) {
+          rects.push({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+        });
+      }
+    });
+    return window.hoshiRubyGeometry ? window.hoshiRubyGeometry.mergeInlineRects(rects) : rects;
+  },
+  renderSasayakiOverlay: function() {
+    if (!this.activeCueId || !this.isEInkMode()) {
+      this.clearSasayakiOverlay();
+      return;
+    }
+    if (window.hoshiReaderPopupHost && window.hoshiReaderPopupHost.renderSasayakiHighlight) {
+      window.hoshiReaderPopupHost.renderSasayakiHighlight({
+        rects: this.sasayakiOverlayRects(this.activeCueId),
+        eInkMode: true,
+        verticalWriting: this.isVertical()
+      });
+    }
+  },
+  clearSasayakiOverlay: function() {
+    if (window.hoshiReaderPopupHost && window.hoshiReaderPopupHost.clearSasayakiHighlight) {
+      window.hoshiReaderPopupHost.clearSasayakiHighlight();
+    }
+  },
+  clearInlineSasayakiCue: function(cueId) {
+    var clearWrappers = function(wrappers) {
+      wrappers.forEach(function(wrapper) {
+        wrapper.classList.remove('hoshi-sasayaki-active');
+      });
+    };
+    if (cueId) {
+      clearWrappers(this.cueWrappers.get(cueId) || []);
+      return;
+    }
+    this.cueWrappers.forEach(clearWrappers);
+  },
+  applyInlineSasayakiCue: function(cueId) {
+    var wrappers = this.cueWrappers.get(cueId) || [];
+    wrappers.forEach(function(wrapper) {
+      wrapper.classList.add('hoshi-sasayaki-active');
+    });
+    return wrappers.length > 0;
+  },
+  clearSasayakiCuePresentation: function() {
+    this.clearInlineSasayakiCue();
+    this.clearSasayakiOverlay();
+  },
+  clearCurrentSasayakiScreenTargets: function() {
+    this.cueSourceRanges.clear();
+    this.cueGeometryRanges.clear();
+    this.cueWrappers.clear();
+    this.clearSasayakiOverlay();
+  },
+  applySasayakiCues: function(cues) {
+    var activeCueId = this.activeCueId;
+    this.resetSasayakiCues();
+    this.sasayakiCues = Array.isArray(cues) ? cues : [];
+    this.sasayakiCueMap = new Map();
+    for (var i = 0; i < this.sasayakiCues.length; i++) {
+      var cue = this.sasayakiCues[i];
+      if (cue && cue.id) this.sasayakiCueMap.set(cue.id, cue);
+    }
+    this.activeCueId = activeCueId && this.sasayakiCueMap.has(activeCueId) ? activeCueId : null;
+    this.buildNodeOffsets();
+    if (this.activeCueId) this.refreshSasayakiCuePresentation();
+  },
+  highlightSasayakiCue: function(cue, reveal) {
+    var cueObject = this.sasayakiCueForInput(cue);
+    var cueId = typeof cue === 'string' ? cue : cueObject && cueObject.id;
+    if (!cueId) return null;
+    this.clearSasayakiCuePresentation();
+    this.activeCueId = cueId;
+    if (!cueObject) {
+      this.refreshSasayakiCuePresentation();
+      return null;
+    }
+    var targetIndex = this.screenIndexForSasayakiCue(cueObject);
+    if (targetIndex < 0) {
+      this.refreshSasayakiCuePresentation();
+      return null;
+    }
+    if (targetIndex !== this.currentScreenIndex) {
+      if (!reveal) {
+        this.refreshSasayakiCuePresentation();
+        return null;
+      }
+      this.renderScreen(targetIndex, true);
+      this.refreshSasayakiCuePresentation();
+      return this.calculateProgress();
+    }
+    if (!this.revealComplete) this.completeCurrentReveal();
+    this.refreshSasayakiCuePresentation();
     return null;
   },
   clearSasayakiCue: function() {
+    this.clearSasayakiCuePresentation();
     this.activeCueId = null;
   },
-  refreshSasayakiCuePresentation: function() {},
+  refreshSasayakiCuePresentation: function() {
+    if (!this.activeCueId) {
+      this.clearSasayakiOverlay();
+      return;
+    }
+    this.clearInlineSasayakiCue(this.activeCueId);
+    var cue = this.sasayakiCueMap.get(this.activeCueId);
+    var screen = this.screens && this.screens[this.currentScreenIndex];
+    if (!cue || !this.sasayakiCueIntersectsScreen(cue, screen) || !this.revealComplete) {
+      this.clearSasayakiOverlay();
+      return;
+    }
+    if (this.isEInkMode()) {
+      this.ensureSasayakiCueGeometry(cue);
+      this.renderSasayakiOverlay();
+    } else {
+      this.clearSasayakiOverlay();
+      this.ensureSasayakiInlineTargetsForCue(this.activeCueId);
+      this.applyInlineSasayakiCue(this.activeCueId);
+    }
+  },
+  resetSasayakiCues: function() {
+    this.clearSasayakiCuePresentation();
+    var self = this;
+    this.cueWrappers.forEach(function(wrappers) {
+      self.unwrap(wrappers);
+    });
+    this.cueWrappers.clear();
+    this.cueSourceRanges.clear();
+    this.cueGeometryRanges.clear();
+    this.sasayakiCues = [];
+    this.sasayakiCueMap = new Map();
+    this.activeCueId = null;
+    this.buildNodeOffsets();
+  },
   unwrap: function(wrappers) {
     var parents = [];
     wrappers.forEach(function(wrapper) {
