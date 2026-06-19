@@ -55,7 +55,7 @@ android {
 
     defaultConfig {
         applicationId = "moe.antimony.hoshi"
-        minSdk = 28
+        minSdk = 26
         targetSdk = 36
         versionCode = 10201
         versionName = "1.2.1"

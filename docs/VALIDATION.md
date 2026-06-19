@@ -19,6 +19,19 @@ build behavior:
 ./gradlew lint
 ```
 
+Run a release build when changing `minSdk`, `targetSdk`, `compileSdk`, ABI
+filters, signing, native packaging, or other release packaging behavior:
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+For `minSdk` changes, validate both the newly admitted Android version when
+available and an existing supported Android 9+ device path. Preserve app data
+for existing-user checks, compare release APK structure when packaging output
+changes, and keep older-version compatibility fixes guarded so Android 9+
+behavior stays on the existing path.
+
 For a single JVM unit test, do not use `./gradlew test --tests ...`; the
 `:app:test` aggregate task does not support filtering. Use:
 

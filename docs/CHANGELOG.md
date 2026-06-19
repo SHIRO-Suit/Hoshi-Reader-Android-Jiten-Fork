@@ -6,6 +6,10 @@ Historical release notes before v1.1.0 live in [CHANGELOG_ARCHIVE.md](CHANGELOG_
 
 ## [Unreleased]
 
+### Changed
+
+- Support installing Hoshi Reader Android on Android 8.0 and 8.1 devices.
+
 ### Fixed
 
 - Update VN reveal speed in Reader Appearance without reloading the current chapter.
