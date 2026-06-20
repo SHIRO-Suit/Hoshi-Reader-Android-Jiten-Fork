@@ -125,8 +125,7 @@ internal fun ChapterWebView(
                 .coerceAtLeast(1),
         )
     }
-    var lastContinuousProgressUpdate by remember { mutableStateOf(0L) }
-    var continuousScrollSaveRequestId by remember { mutableStateOf(0L) }
+    val continuousScrollProgressScheduler = remember { ReaderContinuousScrollProgressScheduler() }
     val chapter = book.chapters[chapterPosition.index]
     var readerWebView by remember { mutableStateOf<WebView?>(null) }
     val fontFaceUrl = remember(readerSettings.selectedFont) {
@@ -320,18 +319,13 @@ internal fun ChapterWebView(
                         ),
                     )
                     webView.setOnScrollChangeListener { _, _, _, _, _ ->
-                        val now = SystemClock.uptimeMillis()
-                        if (now - lastContinuousProgressUpdate < CONTINUOUS_PROGRESS_THROTTLE_MS) return@setOnScrollChangeListener
-                        lastContinuousProgressUpdate = now
-                        if (currentIsWebViewRestoring.value) return@setOnScrollChangeListener
-                        val restoreEpoch = currentWebViewRestoreEpoch.value
-                        continuousScrollSaveRequestId += 1L
-                        val requestId = continuousScrollSaveRequestId
-                        readerPendingProgressSaveCallbacks.remove(webView)?.let(webView::removeCallbacks)
-                        currentOnClearLookupPopup.value()
-                        webView.evaluateJavascript(ReaderPaginationScripts.progressInvocation()) { progressResult ->
-                            if (continuousScrollSaveRequestId != requestId) return@evaluateJavascript
-                            ReaderPaginationScripts.doubleResult(progressResult)?.let { progress ->
+                        continuousScrollProgressScheduler.onScrollChanged(
+                            isRestoring = currentIsWebViewRestoring.value,
+                            restoreEpoch = currentWebViewRestoreEpoch.value,
+                            evaluateProgress = { callback ->
+                                webView.evaluateJavascript(ReaderPaginationScripts.progressInvocation(), callback)
+                            },
+                            onProgressChanged = { progress, restoreEpoch ->
                                 when (readerProgressPersistenceAction(ReaderProgressPersistenceEvent.ContinuousScrollChanged)) {
                                     ReaderProgressPersistenceAction.DisplayOnly -> {
                                         currentOnContinuousScrollDisplayProgress.value(progress, restoreEpoch)
@@ -340,28 +334,39 @@ internal fun ChapterWebView(
                                         currentOnContinuousScrollProgress.value(progress, restoreEpoch)
                                     }
                                 }
+                            },
+                            onProgressIdle = { progress, restoreEpoch ->
+                                when (readerProgressPersistenceAction(ReaderProgressPersistenceEvent.ContinuousScrollIdle)) {
+                                    ReaderProgressPersistenceAction.DisplayOnly -> currentOnDisplayProgress.value(progress)
+                                    ReaderProgressPersistenceAction.SaveBookmark -> {
+                                        currentOnContinuousScrollProgress.value(progress, restoreEpoch)
+                                    }
+                                }
+                            },
+                            onClearLookupPopup = currentOnClearLookupPopup.value,
+                            postDelayed = webView::postDelayed,
+                            removeCallback = webView::removeCallbacks,
+                            cancelIdleSave = {
+                                readerPendingProgressSaveCallbacks.remove(webView)?.let(webView::removeCallbacks)
+                            },
+                            scheduleIdleSave = { callback, delayMillis ->
                                 lateinit var saveCallback: Runnable
                                 saveCallback = Runnable {
-                                    if (continuousScrollSaveRequestId != requestId) return@Runnable
                                     if (readerPendingProgressSaveCallbacks[webView] == saveCallback) {
                                         readerPendingProgressSaveCallbacks.remove(webView)
                                     }
-                                    when (readerProgressPersistenceAction(ReaderProgressPersistenceEvent.ContinuousScrollIdle)) {
-                                        ReaderProgressPersistenceAction.DisplayOnly -> currentOnDisplayProgress.value(progress)
-                                        ReaderProgressPersistenceAction.SaveBookmark -> {
-                                            currentOnContinuousScrollProgress.value(progress, restoreEpoch)
-                                        }
-                                    }
+                                    callback.run()
                                 }
                                 readerPendingProgressSaveCallbacks[webView] = saveCallback
-                                webView.postDelayed(saveCallback, CONTINUOUS_SCROLL_SAVE_IDLE_DELAY_MS)
-                            }
-                        }
+                                webView.postDelayed(saveCallback, delayMillis)
+                            },
+                        )
                     }
                 }
                 ReaderViewMode.Paginated,
                 ReaderViewMode.VisualNovel,
                 -> {
+                    continuousScrollProgressScheduler.reset(webView::removeCallbacks)
                     readerPendingProgressSaveCallbacks.remove(webView)?.let(webView::removeCallbacks)
                     webView.setOnScrollChangeListener(null)
                     webView.setOnTouchListener(object : SwipePageTouchListener() {
@@ -441,6 +446,7 @@ internal fun ChapterWebView(
             }
         },
         onRelease = { webView ->
+            continuousScrollProgressScheduler.reset(webView::removeCallbacks)
             if (readerWebView == webView) {
                 readerWebView = null
             }
@@ -1106,6 +1112,120 @@ private class ContinuousScrollTouchListener(
         }
     }
 
+}
+
+internal class ReaderContinuousScrollProgressScheduler(
+    private val nowMillis: () -> Long = SystemClock::uptimeMillis,
+    private val throttleMs: Long = CONTINUOUS_PROGRESS_THROTTLE_MS,
+    private val idleDelayMs: Long = CONTINUOUS_SCROLL_SAVE_IDLE_DELAY_MS,
+) {
+    private var generation = 0L
+    private var progressInFlight = false
+    private var lastProgressRequestAt: Long? = null
+    private var pendingRequest: ProgressRequest? = null
+    private var throttleCallback: Runnable? = null
+
+    fun onScrollChanged(
+        isRestoring: Boolean,
+        restoreEpoch: Int,
+        evaluateProgress: (((String?) -> Unit) -> Unit),
+        onProgressChanged: (Double, Int) -> Unit,
+        onProgressIdle: (Double, Int) -> Unit,
+        onClearLookupPopup: () -> Unit,
+        postDelayed: (Runnable, Long) -> Unit,
+        removeCallback: (Runnable) -> Unit,
+        cancelIdleSave: () -> Unit,
+        scheduleIdleSave: (Runnable, Long) -> Unit,
+    ) {
+        if (isRestoring) return
+        cancelIdleSave()
+        onClearLookupPopup()
+        val request = ProgressRequest(
+            restoreEpoch = restoreEpoch,
+            evaluateProgress = evaluateProgress,
+            onProgressChanged = onProgressChanged,
+            onProgressIdle = onProgressIdle,
+            removeCallback = removeCallback,
+            scheduleIdleSave = scheduleIdleSave,
+        )
+        pendingRequest = request
+        if (progressInFlight) return
+        val delayMillis = progressRequestDelayMillis()
+        if (delayMillis > 0) {
+            scheduleThrottledProgressRequest(delayMillis, postDelayed)
+            return
+        }
+        pendingRequest = null
+        startProgressRequest(request)
+    }
+
+    fun reset(removeCallback: (Runnable) -> Unit) {
+        generation += 1
+        progressInFlight = false
+        lastProgressRequestAt = null
+        pendingRequest = null
+        throttleCallback?.let(removeCallback)
+        throttleCallback = null
+    }
+
+    private fun progressRequestDelayMillis(): Long {
+        val lastRequestAt = lastProgressRequestAt ?: return 0L
+        return (throttleMs - (nowMillis() - lastRequestAt)).coerceAtLeast(0L)
+    }
+
+    private fun scheduleThrottledProgressRequest(
+        delayMillis: Long,
+        postDelayed: (Runnable, Long) -> Unit,
+    ) {
+        if (throttleCallback != null) return
+        val callback = Runnable {
+            throttleCallback = null
+            val request = pendingRequest ?: return@Runnable
+            pendingRequest = null
+            startProgressRequest(request)
+        }
+        throttleCallback = callback
+        postDelayed(callback, delayMillis)
+    }
+
+    private fun startProgressRequest(request: ProgressRequest) {
+        request.removeThrottleCallback()
+        progressInFlight = true
+        lastProgressRequestAt = nowMillis()
+        val requestGeneration = generation
+        request.evaluateProgress { progressResult ->
+            if (requestGeneration != generation) return@evaluateProgress
+            progressInFlight = false
+            val progress = ReaderPaginationScripts.doubleResult(progressResult)
+            if (progress != null) {
+                request.onProgressChanged(progress, request.restoreEpoch)
+            }
+            val nextRequest = pendingRequest
+            if (nextRequest != null) {
+                pendingRequest = null
+                startProgressRequest(nextRequest)
+            } else if (progress != null) {
+                request.scheduleIdleSave(
+                    Runnable { request.onProgressIdle(progress, request.restoreEpoch) },
+                    idleDelayMs,
+                )
+            }
+        }
+    }
+
+    private fun ProgressRequest.removeThrottleCallback() {
+        throttleCallback?.let(removeCallback)
+        throttleCallback = null
+    }
+
+    private class ProgressRequest(
+        val restoreEpoch: Int,
+        val evaluateProgress: (((String?) -> Unit) -> Unit),
+        val onProgressChanged: (Double, Int) -> Unit,
+        val onProgressIdle: (Double, Int) -> Unit,
+        val removeCallback: (Runnable) -> Unit,
+        val scheduleIdleSave: (Runnable, Long) -> Unit,
+    )
 }
 
 private const val CONTINUOUS_READER_TAP_SLOP = 12f
