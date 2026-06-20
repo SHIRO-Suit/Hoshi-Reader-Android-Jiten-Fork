@@ -16,6 +16,7 @@ Historical release notes before v1.1.0 live in [CHANGELOG_ARCHIVE.md](CHANGELOG_
 - Keep VN vertical text screens from splitting closing Japanese quotation marks onto their own page.
 - Speed up VN Reader opening for long chapters with Sasayaki cue merging.
 - Prevent repeated Reader re-entry from accumulating WebViews and causing long Sasayaki blank screens.
+- Prevent Reader from briefly rendering with the global profile appearance before the book's automatic profile is applied.
 
 ## [v1.2.1] - 2026-06-18
 
