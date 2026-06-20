@@ -117,6 +117,8 @@ navigation changes chapter, compare native gesture boundaries with JS boundary
 checks. For blank trailing pages, check small fractional overflow from images,
 spacers, column gap, or CSS sizing.
 
+For performance investigation workflow, see `docs/PERFORMANCE.md`.
+
 ## Bookshelf, Import, And Backup
 
 Validate relevant bookshelf/import changes with:
