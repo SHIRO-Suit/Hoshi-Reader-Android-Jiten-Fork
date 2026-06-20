@@ -584,4 +584,20 @@
     <string name="sasayaki_matching">正在匹配...</string>
     <string name="sasayaki_current_match">当前匹配</string>
     <string name="sasayaki_match_rate">匹配率</string>
+    <string name="dictionary_settings_jiten">Jiten</string>
+    <string name="jiten_use_service">使用 Jiten</string>
+    <string name="jiten_use_service_description">使用您的 Jiten 账户解析阅读器文本并显示词汇状态。</string>
+    <string name="jiten_api_key">API 密钥</string>
+    <string name="jiten_api_key_placeholder">粘贴您的 Jiten API 密钥</string>
+    <string name="jiten_marker_style">单词标记</string>
+    <string name="jiten_marker_underline">下划线</string>
+    <string name="jiten_separate_popup_page">独立 Jiten 页面</string>
+    <string name="jiten_separate_popup_page_description">将 Jiten 显示为可滑动的第二页，而不是显示在查词释义上方。</string>
+    <string name="jiten_state_new">新词</string>
+    <string name="jiten_state_young">学习中</string>
+    <string name="jiten_state_mature">熟悉</string>
+    <string name="jiten_state_due">待复习</string>
+    <string name="jiten_parse_failed">Jiten 解析失败：%1$s</string>
+    <string name="jiten_invalid_response">Jiten 返回了不支持的响应。</string>
+    <string name="jiten_request_failed">无法连接到 Jiten。</string>
 </resources>

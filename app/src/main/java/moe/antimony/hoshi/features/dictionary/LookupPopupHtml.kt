@@ -24,6 +24,8 @@ internal data class LookupPopupAssets(
     val selectionEnglishJs: String = "",
     val selectionJs: String = "",
     val readerPopupHostJs: String = "",
+    val jitenPopupJs: String = "",
+    val jitenPopupCss: String = "",
 ) {
     companion object {
         @Volatile
@@ -42,6 +44,8 @@ internal data class LookupPopupAssets(
             selectionEnglishJs = context.readAsset("hoshi-web/shared/selection-en.js"),
             selectionJs = context.readAsset("hoshi-web/shared/selection.js"),
             readerPopupHostJs = context.readAsset("hoshi-web/popup/reader-popup-host.js"),
+            jitenPopupJs = context.readAsset("hoshi-web/popup/jiten-popup.js"),
+            jitenPopupCss = context.readAsset("hoshi-web/popup/jiten-popup.css"),
         )
 
         private fun Context.readAsset(path: String): String =
@@ -94,6 +98,8 @@ internal object LookupPopupHtml {
         val customCss = customCssStyle(normalizedSettings.customCSS)
         val fontPrewarmScript = """<script>${popupFontPrewarmScript()}</script>"""
         val eInkCss = if (eInkMode) """<style>$eInkPopupCss</style>""" else ""
+        val jitenPopupCss = assets?.let { """<style>${it.jitenPopupCss}</style>""" }
+            ?: """<link rel="stylesheet" href="$PopupAssetBaseUrl/jiten-popup.css">"""
         val selectionSupportJs = assets
             ?.selectionSupportJs(contentLanguageProfile)
             ?.takeIf(String::isNotBlank)
@@ -111,6 +117,8 @@ internal object LookupPopupHtml {
         val selectionConfigureJs = """<script>window.hoshiSelection?.configure?.({ language: $selectionLanguageId });</script>"""
         val popupJs = assets?.let { """<script>${it.popupJs}</script>""" }
             ?: """<script src="$PopupAssetBaseUrl/popup.js"></script>"""
+        val jitenPopupJs = assets?.let { """<script>${it.jitenPopupJs}</script>""" }
+            ?: """<script src="$PopupAssetBaseUrl/jiten-popup.js"></script>"""
         return """
             <!DOCTYPE html>
             <html lang="${contentLanguageProfile.htmlLang}" data-hoshi-color-scheme="$colorScheme" data-hoshi-eink-mode="$eInkMode">
@@ -122,6 +130,7 @@ internal object LookupPopupHtml {
                 $customCss
                 $fontPrewarmScript
                 $eInkCss
+                $jitenPopupCss
                 <style>
                     html,
                     body {
@@ -188,6 +197,7 @@ internal object LookupPopupHtml {
                     window.harmonicFrequency = ${normalizedSettings.harmonicFrequency};
                     window.deduplicatePitchAccents = ${normalizedSettings.deduplicatePitchAccents};
                     window.compactPitchAccents = ${normalizedSettings.compactPitchAccents};
+                    window.hoshiJitenPopupMode = ${JsonPrimitive(normalizedSettings.jitenPopupMode.rawValue)};
                     window.audioSources = ${audioSourcesJson(audioSettings)};
                     window.audioRequestEndpoint = "https://appassets.androidplatform.net/audio";
                     window.dictionaryMediaRequestEndpoint = "https://appassets.androidplatform.net/image";
@@ -224,6 +234,7 @@ internal object LookupPopupHtml {
                 $selectionJs
                 $selectionConfigureJs
                 $popupJs
+                $jitenPopupJs
             </head>
             <body>
                 <script>${popupGestureScript()}</script>
@@ -287,6 +298,7 @@ internal object LookupPopupHtml {
                             }
                             if (message.type === 'resetPopup') {
                                 window.popupId = null;
+                                window.hoshiJitenPopup?.setCard(null);
                                 closeOverlay();
                                 window.hoshiSelection?.clearSelection();
                                 window.resetPopupResults?.();
@@ -297,6 +309,7 @@ internal object LookupPopupHtml {
                                 window.popupId = message.popupId || null;
                                 closeOverlay();
                                 window.entryCount = message.entriesCount || 0;
+                                window.hoshiJitenPopup?.setCard(message.jitenCard || null);
                                 var initialEntries = [];
                                 if (message.initialEntryJson) {
                                     try {
@@ -313,6 +326,10 @@ internal object LookupPopupHtml {
                                     window.renderPopup();
                                 }
                                 requestAnimationFrame(window.hoshiPostPopupScrollState);
+                                return;
+                            }
+                            if (message.type === 'updateJitenCard') {
+                                window.hoshiJitenPopup?.setCard(message.jitenCard || null);
                                 return;
                             }
                             if (message.type === 'navigateBack') {
@@ -441,9 +458,6 @@ internal object LookupPopupHtml {
                     e.preventDefault();
                 }, { passive: false });
             }
-            if (!window.swipeThreshold) {
-                return;
-            }
             var startX, startY;
             document.addEventListener('touchstart', function(e) {
                 startX = e.touches[0].clientX;
@@ -454,10 +468,16 @@ internal object LookupPopupHtml {
                 var dy = e.changedTouches[0].clientY - startY;
                 var absDx = Math.abs(dx);
                 var absDy = Math.abs(dy);
-                var isHorizontalDismiss = absDx > window.swipeThreshold && absDx > absDy * 1.75;
+                var hasJitenPage = window.hoshiJitenPopup?.hasCard?.() === true;
+                var threshold = hasJitenPage ? 40 : window.swipeThreshold;
+                var isHorizontalDismiss = threshold && absDx > threshold && absDx > absDy * 1.75;
                 var hasSelection = window.getSelection().toString();
                 if (isHorizontalDismiss && !hasSelection) {
-                    webkit.messageHandlers.swipeDismiss.postMessage(null);
+                    if (hasJitenPage) {
+                        window.hoshiJitenPopup.navigate(dx);
+                    } else {
+                        webkit.messageHandlers.swipeDismiss.postMessage(null);
+                    }
                 }
             });
         })();

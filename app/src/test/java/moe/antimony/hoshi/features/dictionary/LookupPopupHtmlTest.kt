@@ -22,6 +22,15 @@ import org.junit.Test
 
 class LookupPopupHtmlTest {
     @Test
+    fun iframePopupShellExposesIntegratedJitenMode() {
+        val html = LookupPopupHtml.renderIframeDocument(
+            settings = DictionarySettings(jitenPopupMode = JitenPopupMode.Integrated),
+        )
+
+        assertTrue(html.contains("""window.hoshiJitenPopupMode = "integrated";"""))
+    }
+
+    @Test
     fun iframePopupShellUsesDomButtonsAndAbsoluteAssets() {
         val html = LookupPopupHtml.renderIframeDocument(
             assets = null,

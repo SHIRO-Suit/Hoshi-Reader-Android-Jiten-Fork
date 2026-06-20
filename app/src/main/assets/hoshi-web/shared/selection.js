@@ -542,12 +542,15 @@ window.hoshiSelection = {
 
         const sentenceContext = this.getSentenceContext(hit.node, hit.offset);
         const normalizedOffset = window.hoshiReader ? this.getNormalizedOffset(hit.node, hit.offset) : null;
+        const jitenWord = hitElement?.closest?.('.hoshi-jiten-word');
         this.postTextSelected({
             text,
             sentence: sentenceContext.sentence,
             rect: this.getSelectionRect(rectX, rectY),
             normalizedOffset,
-            sentenceOffset: sentenceContext.sentenceOffset
+            sentenceOffset: sentenceContext.sentenceOffset,
+            jitenWordId: jitenWord?.dataset?.wordId ? Number(jitenWord.dataset.wordId) : null,
+            jitenReadingIndex: jitenWord?.dataset?.readingIndex ? Number(jitenWord.dataset.readingIndex) : null
         });
 
         return text;

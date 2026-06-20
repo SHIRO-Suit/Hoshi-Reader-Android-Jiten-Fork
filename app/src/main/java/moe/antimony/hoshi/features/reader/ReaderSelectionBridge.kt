@@ -39,6 +39,8 @@ internal object ReaderSelectionBridgePayload {
             ),
             normalizedOffset = payload.normalizedOffset,
             sentenceOffset = payload.sentenceOffset,
+            jitenWordId = payload.jitenWordId,
+            jitenReadingIndex = payload.jitenReadingIndex,
         )
     }
 
@@ -68,6 +70,8 @@ internal object ReaderSelectionBridgePayload {
         val rect: Rect,
         val normalizedOffset: Int? = null,
         val sentenceOffset: Int? = null,
+        val jitenWordId: Long? = null,
+        val jitenReadingIndex: Int? = null,
     )
 
     @Serializable

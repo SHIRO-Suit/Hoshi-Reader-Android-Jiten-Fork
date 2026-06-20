@@ -129,12 +129,14 @@
     }
 
     function iframeRenderMessage(payload) {
-        return {
+        const message = {
             type: 'renderPopup',
             popupId: payload.id,
             entriesCount: payload.entriesCount || 0,
             initialEntryJson: payload.initialEntryJson || null
         };
+        if (payload.jitenCard) message.jitenCard = payload.jitenCard;
+        return message;
     }
 
     function renderIframe(record) {
@@ -255,6 +257,9 @@
     function renderPayload(payload, index) {
         const isRoot = index === 0;
         const { record, needsRender } = activateRecord(payload, isRoot);
+        const jitenCardKey = JSON.stringify(payload.jitenCard || null);
+        const jitenCardChanged = record.jitenCardKey !== undefined && record.jitenCardKey !== jitenCardKey;
+        record.jitenCardKey = jitenCardKey;
 
         if (record.clearSelectionSignal !== undefined && record.clearSelectionSignal !== payload.clearSelectionSignal) {
             record.iframe.contentWindow?.postMessage({ type: 'clearSelection' }, ORIGIN);
@@ -273,6 +278,11 @@
             record.iframe.src = payload.iframeUrl;
         } else if (needsRender && record.loaded) {
             renderIframe(record);
+        } else if (record.loaded && jitenCardChanged) {
+            record.iframe.contentWindow?.postMessage({
+                type: 'updateJitenCard',
+                jitenCard: payload.jitenCard || null
+            }, ORIGIN);
         }
     }
 
@@ -281,6 +291,7 @@
         resetIframe(record);
         record.payload = null;
         record.clearSelectionSignal = undefined;
+        record.jitenCardKey = undefined;
         record.root = false;
         record.shell.dataset.popupId = '';
         setRevealReady(record, false);

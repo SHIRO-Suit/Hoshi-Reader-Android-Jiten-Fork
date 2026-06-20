@@ -1,6 +1,8 @@
 package moe.antimony.hoshi.features.reader
 
 import moe.antimony.hoshi.features.audio.AudioPlaybackMode
+import moe.antimony.hoshi.features.jiten.JitenVocabularyAction
+import moe.antimony.hoshi.features.jiten.JitenVocabularyList
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -45,6 +47,20 @@ class ReaderLookupPopupBridgeMessageTest {
                       "body":{"url":"https://audio.example/word.mp3","mode":"interrupt"}
                     }
                 """.trimIndent(),
+            ),
+        )
+
+        assertEquals(
+            ReaderLookupPopupBridgeMessage.JitenAction(
+                popupId = "root",
+                messageId = null,
+                wordId = 42,
+                readingIndex = 1,
+                list = JitenVocabularyList.NeverForget,
+                action = JitenVocabularyAction.Add,
+            ),
+            ReaderLookupPopupBridgeMessage.fromJson(
+                """{"name":"jitenAction","popupId":"root","body":{"wordId":42,"readingIndex":1,"list":"neverForget","action":"add"}}""",
             ),
         )
     }

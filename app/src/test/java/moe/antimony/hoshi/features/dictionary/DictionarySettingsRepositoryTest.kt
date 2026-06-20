@@ -20,6 +20,13 @@ class DictionarySettingsRepositoryTest {
     val tempFolder = TemporaryFolder()
 
     @Test
+    fun upgradesLegacyJitenEndpointToApiPrefix() {
+        val settings = DictionarySettings(jitenApiEndpoint = "https://api.jiten.moe").normalized()
+
+        assertEquals(DictionarySettings.DEFAULT_JITEN_API_ENDPOINT, settings.jitenApiEndpoint)
+    }
+
+    @Test
     fun emitsDefaultSettingsWhenThereIsNoLegacyStore() = runBlocking {
         repository().use { repository ->
             val settings = repository.settings.first()
@@ -49,6 +56,9 @@ class DictionarySettingsRepositoryTest {
                 compactPitchAccents = false,
                 lowRamDictionaryImport = true,
                 customCSS = ".term { color: red; }",
+                jitenEnabled = true,
+                jitenApiKey = " legacy-key ",
+                jitenApiEndpoint = "https://jiten.example/",
             ),
         )
 
@@ -72,6 +82,9 @@ class DictionarySettingsRepositoryTest {
             assertFalse(migrated.compactPitchAccents)
             assertTrue(migrated.lowRamDictionaryImport)
             assertEquals(".term { color: red; }", migrated.customCSS)
+            assertTrue(migrated.jitenEnabled)
+            assertEquals("legacy-key", migrated.jitenApiKey)
+            assertEquals("https://jiten.example", migrated.jitenApiEndpoint)
 
             repository.update { it.copy(maxResults = 12) }
             assertEquals(12, repository.settings.first().maxResults)
@@ -101,6 +114,11 @@ class DictionarySettingsRepositoryTest {
                     compactPitchAccents = false,
                     lowRamDictionaryImport = true,
                     customCSS = ".tag { display: none; }",
+                    jitenEnabled = true,
+                    jitenApiKey = " test-key ",
+                    jitenApiEndpoint = " ",
+                    jitenMarkerStyle = JitenMarkerStyle.TextColor,
+                    jitenPopupMode = JitenPopupMode.Integrated,
                 )
             }
 
@@ -123,6 +141,11 @@ class DictionarySettingsRepositoryTest {
             assertFalse(saved.compactPitchAccents)
             assertTrue(saved.lowRamDictionaryImport)
             assertEquals(".tag { display: none; }", saved.customCSS)
+            assertTrue(saved.jitenEnabled)
+            assertEquals("test-key", saved.jitenApiKey)
+            assertEquals(DictionarySettings.DEFAULT_JITEN_API_ENDPOINT, saved.jitenApiEndpoint)
+            assertEquals(JitenMarkerStyle.TextColor, saved.jitenMarkerStyle)
+            assertEquals(JitenPopupMode.Integrated, saved.jitenPopupMode)
         }
     }
 

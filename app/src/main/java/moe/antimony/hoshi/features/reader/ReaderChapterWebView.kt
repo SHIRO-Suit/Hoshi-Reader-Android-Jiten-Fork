@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -47,6 +48,9 @@ import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import moe.antimony.hoshi.R
 import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.epub.EpubBook
@@ -77,6 +81,9 @@ internal fun ChapterWebView(
     onInternalLink: (ReaderInternalLinkTarget) -> Unit,
     scanNonJapaneseText: Boolean,
     selectionScanLength: Int,
+    dictionarySettings: DictionarySettings,
+    onJitenParse: suspend (List<String>) -> String,
+    onJitenError: (ReaderJitenError) -> Unit,
     contentLanguageProfile: ContentLanguageProfile,
     readerSettings: ReaderSettings,
     chapterHighlightsJson: String?,
@@ -106,6 +113,8 @@ internal fun ChapterWebView(
     val currentOnReaderInteraction = rememberUpdatedState(onReaderInteraction)
     val currentOnImageTapped = rememberUpdatedState(onImageTapped)
     val currentOnHighlightCreated = rememberUpdatedState(onHighlightCreated)
+    val currentOnJitenParse = rememberUpdatedState(onJitenParse)
+    val currentOnJitenError = rememberUpdatedState(onJitenError)
     val currentReaderPopupResourceHandler = rememberUpdatedState(readerPopupResourceHandler)
     val currentReaderPopupFrames = rememberUpdatedState(readerPopupFrames)
     val currentOnNextChapter = rememberUpdatedState(onNextChapter)
@@ -115,6 +124,7 @@ internal fun ChapterWebView(
     val currentOnRestoreStarted = rememberUpdatedState(onRestoreStarted)
     val currentOnRestoreCompleted = rememberUpdatedState(onRestoreCompleted)
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val readerWebAssets = remember(context) { ReaderWebAssets.load(context) }
     val viewportDensity = context.resources.displayMetrics.density.coerceAtLeast(1f)
     val webViewViewportCssSize = remember(webViewViewportSize, viewportDensity) {
@@ -150,6 +160,9 @@ internal fun ChapterWebView(
         scanNonJapaneseText,
         contentLanguageProfile,
         fontFaceUrl,
+        dictionarySettings.jitenEnabled,
+        dictionarySettings.jitenApiKey,
+        dictionarySettings.jitenApiEndpoint,
     ) {
         ReaderWebViewSetupReloadKey(
             initialProgress = chapterPosition.progress,
@@ -157,6 +170,7 @@ internal fun ChapterWebView(
             scanNonJapaneseText = scanNonJapaneseText,
             contentLanguageProfile = contentLanguageProfile,
             fontFaceUrl = fontFaceUrl,
+            jitenConfigurationKey = dictionarySettings.jitenConfigurationKey(),
         )
     }
     val loadKey = readerWebViewLoadKey(
@@ -166,6 +180,17 @@ internal fun ChapterWebView(
         webViewViewportSize = webViewViewportSize,
     )
     val restoreToken = readerWebViewRestoreToken(loadKey, webViewRestoreEpoch)
+    val jitenConfiguration = remember(
+        dictionarySettings.jitenEnabled,
+        dictionarySettings.jitenApiKey,
+        dictionarySettings.jitenMarkerStyle,
+        dictionarySettings.jitenVisibleStates,
+    ) {
+        jitenConfigurationJson(dictionarySettings)
+    }
+    LaunchedEffect(readerWebView, jitenConfiguration) {
+        readerWebView?.evaluateJavascript("window.hoshiJiten?.configure($jitenConfiguration);", null)
+    }
     val readerSetupScript = remember(
         chapter,
         chapterPosition.progress,
@@ -181,6 +206,7 @@ internal fun ChapterWebView(
         sasayakiBackgroundColor,
         chapterSasayakiCuesJson,
         chapterHighlightsJson,
+        readerSetupReloadKey,
         restoreToken,
         readerWebAssets,
     ) {
@@ -199,6 +225,7 @@ internal fun ChapterWebView(
             highlightsJson = chapterHighlightsJson,
             restoreToken = restoreToken,
             assets = readerWebAssets,
+            dictionarySettings = dictionarySettings,
         )
     }
     val currentOnRestoreAccepted = rememberUpdatedState<(WebView, String) -> (() -> Unit)?> { restoredWebView, reportedRestoreToken ->
@@ -250,6 +277,15 @@ internal fun ChapterWebView(
                         currentOnImageTapped.value(sourceUrl)
                     },
                     "HoshiReaderImage",
+                )
+                addJavascriptInterface(
+                    ReaderJitenBridge(
+                        webView = this,
+                        scope = scope,
+                        parse = { texts -> currentOnJitenParse.value(texts) },
+                        onError = { error -> currentOnJitenError.value(error) },
+                    ),
+                    "HoshiJiten",
                 )
                 ReaderLookupPopupWebBridge.install(this, readerPopupBridgeHolder)
                 webViewClient = EpubWebViewClient(
@@ -484,7 +520,15 @@ internal data class ReaderWebViewSetupReloadKey(
     val scanNonJapaneseText: Boolean,
     val contentLanguageProfile: ContentLanguageProfile,
     val fontFaceUrl: String?,
+    val jitenConfigurationKey: Int = 0,
 )
+
+private fun DictionarySettings.jitenConfigurationKey(): Int =
+    listOf(
+        jitenEnabled,
+        jitenApiKey,
+        jitenApiEndpoint,
+    ).hashCode()
 
 internal data class ReaderAppearanceUpdateKey(
     val backgroundColorCss: String,
@@ -813,6 +857,7 @@ private fun readerSetupScript(
     highlightsJson: String?,
     restoreToken: String,
     assets: ReaderWebAssets,
+    dictionarySettings: DictionarySettings,
 ): String {
     val eInkMode = readerJavaScriptStringLiteral(if (settings.eInkMode) "true" else "false")
     val contentLanguageTag = readerJavaScriptStringLiteral(contentLanguageProfile.htmlLang)
@@ -844,6 +889,9 @@ private fun readerSetupScript(
         restoreToken = restoreToken,
         assets = assets,
     ).scriptTagBody()
+    val jitenConfiguration = jitenConfigurationJson(dictionarySettings)
+    val jitenScript = assets.jitenJs
+    val jitenToken = readerJavaScriptStringLiteral(restoreToken)
     return """
         (function() {
           document.documentElement.dataset.hoshiReaderEinkMode = $eInkMode;
@@ -855,6 +903,8 @@ private fun readerSetupScript(
           window.scanNonJapaneseText = $scanNonJapaneseText;
           $selectionSupportScript
           $selectionScript
+          $jitenScript
+          window.hoshiJiten.configure($jitenConfiguration);
           window.hoshiSelection.configure({
             bridge: 'android-reader',
             language: $selectionLanguageId,
@@ -870,9 +920,19 @@ private fun readerSetupScript(
             document.head.appendChild(popupHostScript);
           }
           $paginationScript
+          window.hoshiJiten.requestParse($jitenToken);
         })();
     """.trimIndent()
 }
+
+private fun jitenConfigurationJson(dictionarySettings: DictionarySettings): String =
+    kotlinx.serialization.json.buildJsonObject {
+        put("enabled", dictionarySettings.jitenEnabled && dictionarySettings.jitenApiKey.isNotBlank())
+        put("markerStyle", dictionarySettings.jitenMarkerStyle.rawValue)
+        putJsonArray("visibleStates") {
+            dictionarySettings.jitenVisibleStates.sorted().forEach { add(JsonPrimitive(it)) }
+        }
+    }.toString()
 
 internal data class ReaderViewportCssLayout(
     val pageHeightPx: Int,
@@ -1335,6 +1395,7 @@ private fun releaseReaderWebView(webView: HoshiReaderWebView) {
     webView.removeJavascriptInterface("HoshiTextSelection")
     webView.removeJavascriptInterface("HoshiReaderRestore")
     webView.removeJavascriptInterface("HoshiReaderImage")
+    webView.removeJavascriptInterface("HoshiJiten")
     webView.stopLoading()
     webView.destroy()
 }

@@ -52,6 +52,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -90,6 +91,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -1107,6 +1109,101 @@ private fun DictionarySettingsView(
                         canIncrease = settings.scanLength < DictionarySettings.MAX_SCAN_LENGTH,
                     )
                 }
+                SectionLabel(stringResource(R.string.dictionary_settings_jiten))
+                SettingsGroup {
+                    ToggleRow(
+                        title = stringResource(R.string.jiten_use_service),
+                        checked = settings.jitenEnabled,
+                        supportingText = stringResource(R.string.jiten_use_service_description),
+                    ) {
+                        onSettingsChange { current -> current.copy(jitenEnabled = it) }
+                    }
+                    GroupDivider()
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        headlineContent = { Text(stringResource(R.string.jiten_api_key)) },
+                        supportingContent = {
+                            OutlinedTextField(
+                                value = settings.jitenApiKey,
+                                onValueChange = { value ->
+                                    onSettingsChange { current -> current.copy(jitenApiKey = value) }
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = settings.jitenEnabled,
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                placeholder = { Text(stringResource(R.string.jiten_api_key_placeholder)) },
+                            )
+                        },
+                    )
+                    GroupDivider()
+                    ListItem(
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        headlineContent = { Text(stringResource(R.string.jiten_marker_style)) },
+                        supportingContent = {
+                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                JitenMarkerStyle.entries.forEachIndexed { index, style ->
+                                    SegmentedButton(
+                                        selected = settings.jitenMarkerStyle == style,
+                                        enabled = settings.jitenEnabled,
+                                        onClick = {
+                                            onSettingsChange { it.copy(jitenMarkerStyle = style) }
+                                        },
+                                        shape = SegmentedButtonDefaults.itemShape(
+                                            index = index,
+                                            count = JitenMarkerStyle.entries.size,
+                                        ),
+                                        icon = {},
+                                    ) {
+                                        Text(
+                                            stringResource(
+                                                when (style) {
+                                                    JitenMarkerStyle.Underline -> R.string.jiten_marker_underline
+                                                    JitenMarkerStyle.Highlight -> R.string.reader_highlight_action
+                                                    JitenMarkerStyle.TextColor -> R.string.reader_appearance_text_color
+                                                },
+                                            ),
+                                        )
+                                    }
+                                }
+                            }
+                        },
+                    )
+                    GroupDivider()
+                    ToggleRow(
+                        title = stringResource(R.string.jiten_separate_popup_page),
+                        checked = settings.jitenPopupMode == JitenPopupMode.Paged,
+                        enabled = settings.jitenEnabled,
+                        supportingText = stringResource(R.string.jiten_separate_popup_page_description),
+                    ) { separate ->
+                        onSettingsChange {
+                            it.copy(
+                                jitenPopupMode = if (separate) JitenPopupMode.Paged else JitenPopupMode.Integrated,
+                            )
+                        }
+                    }
+                    listOf(
+                        "new" to R.string.jiten_state_new,
+                        "young" to R.string.jiten_state_young,
+                        "mature" to R.string.jiten_state_mature,
+                        "due" to R.string.jiten_state_due,
+                    ).forEach { (state, label) ->
+                        GroupDivider()
+                        ToggleRow(
+                            title = stringResource(label),
+                            checked = state in settings.jitenVisibleStates,
+                            enabled = settings.jitenEnabled,
+                        ) { checked ->
+                            onSettingsChange { current ->
+                                current.copy(
+                                    jitenVisibleStates = current.jitenVisibleStates.toMutableSet().apply {
+                                        if (checked) add(state) else remove(state)
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
                 SectionLabel(stringResource(R.string.dictionary_settings_import))
                 SettingsGroup {
                     ToggleRow(
@@ -1529,6 +1626,7 @@ private fun ToggleRow(
     title: String,
     checked: Boolean,
     supportingText: String? = null,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit,
 ) {
     ListItem(
@@ -1539,6 +1637,7 @@ private fun ToggleRow(
             HoshiSwitch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
+                enabled = enabled,
             )
         },
     )

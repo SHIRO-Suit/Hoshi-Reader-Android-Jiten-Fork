@@ -12,6 +12,7 @@ Historical release notes before v1.1.0 live in [CHANGELOG_ARCHIVE.md](CHANGELOG_
 
 - Added reader in-book search with chapter-grouped, punctuation-preserving results, progress percentages, and a unified Go to panel for search, chapters, highlights, and character jumps.
 - Add optional AnkiConnect API key support for servers that require authenticated requests.
+- Added optional Jiten vocabulary parsing, configurable reader markers, and swipeable dictionary/Jiten lookup details with vocabulary actions.
 
 ### Changed
 

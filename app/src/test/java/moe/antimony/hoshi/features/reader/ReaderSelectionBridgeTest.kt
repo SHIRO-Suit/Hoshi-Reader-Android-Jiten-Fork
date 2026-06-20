@@ -17,6 +17,8 @@ class ReaderSelectionBridgeTest {
                     "height": 18.0
                 },
                 "normalizedOffset": 42,
+                "jitenWordId": 123,
+                "jitenReadingIndex": 2,
                 "futureField": "ignored"
             }
         """.trimIndent()
@@ -32,6 +34,8 @@ class ReaderSelectionBridgeTest {
                     height = 18.0,
                 ),
                 normalizedOffset = 42,
+                jitenWordId = 123,
+                jitenReadingIndex = 2,
             ),
             ReaderSelectionBridgePayload.fromJson(payload),
         )

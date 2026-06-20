@@ -61,6 +61,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import moe.antimony.hoshi.R
+import moe.antimony.hoshi.features.dictionary.DictionarySettings
+import moe.antimony.hoshi.features.dictionary.JitenMarkerStyle
+import moe.antimony.hoshi.features.dictionary.JitenPopupMode
 import moe.antimony.hoshi.features.settings.SettingsDetailScaffold
 import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
 import moe.antimony.hoshi.importing.FileImportContent
@@ -78,6 +81,8 @@ internal fun ReaderAppearanceScreen(
     onSettingsChange: (ReaderSettings) -> Unit,
     sasayakiSettings: SasayakiSettings,
     onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
+    jitenSettings: DictionarySettings,
+    onJitenSettingsChange: (DictionarySettings) -> Unit,
     fontManager: ReaderFontManager,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -95,6 +100,8 @@ internal fun ReaderAppearanceScreen(
             onSettingsChange = onSettingsChange,
             sasayakiSettings = sasayakiSettings,
             onSasayakiSettingsChange = onSasayakiSettingsChange,
+            jitenSettings = jitenSettings,
+            onJitenSettingsChange = onJitenSettingsChange,
             fontManager = fontManager,
             contentPadding = PaddingValues(
                 start = 24.dp,
@@ -115,6 +122,8 @@ internal fun ReaderAppearanceSheet(
     onSettingsChange: (ReaderSettings) -> Unit,
     sasayakiSettings: SasayakiSettings,
     onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
+    jitenSettings: DictionarySettings,
+    onJitenSettingsChange: (DictionarySettings) -> Unit,
     fontManager: ReaderFontManager,
     onDismiss: () -> Unit,
 ) {
@@ -133,6 +142,8 @@ internal fun ReaderAppearanceSheet(
             onSettingsChange = onSettingsChange,
             sasayakiSettings = sasayakiSettings,
             onSasayakiSettingsChange = onSasayakiSettingsChange,
+            jitenSettings = jitenSettings,
+            onJitenSettingsChange = onJitenSettingsChange,
             fontManager = fontManager,
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp),
             showTitle = false,
@@ -152,6 +163,8 @@ private fun ReaderAppearanceContent(
     onSettingsChange: (ReaderSettings) -> Unit,
     sasayakiSettings: SasayakiSettings,
     onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
+    jitenSettings: DictionarySettings,
+    onJitenSettingsChange: (DictionarySettings) -> Unit,
     fontManager: ReaderFontManager,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -694,6 +707,71 @@ private fun ReaderAppearanceContent(
                                 onSettingsChange(settings.copy(popupSwipeThreshold = (round(value / 5) * 5).toInt()))
                             },
                         )
+                    }
+                }
+                if (jitenSettings.jitenEnabled) {
+                    AppearanceSection(title = stringResource(R.string.dictionary_settings_jiten), palette = palette) {
+                        val underlineLabel = stringResource(R.string.jiten_marker_underline)
+                        val highlightLabel = stringResource(R.string.reader_highlight_action)
+                        val textColorLabel = stringResource(R.string.reader_appearance_text_color)
+                        SegmentedRow(
+                            label = stringResource(R.string.jiten_marker_style),
+                            options = listOf(underlineLabel, highlightLabel, textColorLabel),
+                            selected = when (jitenSettings.jitenMarkerStyle) {
+                                JitenMarkerStyle.Underline -> underlineLabel
+                                JitenMarkerStyle.Highlight -> highlightLabel
+                                JitenMarkerStyle.TextColor -> textColorLabel
+                            },
+                            onSelected = { selected ->
+                                onJitenSettingsChange(
+                                    jitenSettings.copy(
+                                        jitenMarkerStyle = when (selected) {
+                                            underlineLabel -> JitenMarkerStyle.Underline
+                                            highlightLabel -> JitenMarkerStyle.Highlight
+                                            else -> JitenMarkerStyle.TextColor
+                                        },
+                                    ),
+                                )
+                            },
+                            palette = palette,
+                        )
+                        AppearanceDivider(palette)
+                        SwitchRow(
+                            label = stringResource(R.string.jiten_separate_popup_page),
+                            checked = jitenSettings.jitenPopupMode == JitenPopupMode.Paged,
+                            onCheckedChange = { separate ->
+                                onJitenSettingsChange(
+                                    jitenSettings.copy(
+                                        jitenPopupMode = if (separate) {
+                                            JitenPopupMode.Paged
+                                        } else {
+                                            JitenPopupMode.Integrated
+                                        },
+                                    ),
+                                )
+                            },
+                        )
+                        listOf(
+                            "new" to R.string.jiten_state_new,
+                            "young" to R.string.jiten_state_young,
+                            "mature" to R.string.jiten_state_mature,
+                            "due" to R.string.jiten_state_due,
+                        ).forEach { (state, label) ->
+                            AppearanceDivider(palette)
+                            SwitchRow(
+                                label = stringResource(label),
+                                checked = state in jitenSettings.jitenVisibleStates,
+                                onCheckedChange = { checked ->
+                                    onJitenSettingsChange(
+                                        jitenSettings.copy(
+                                            jitenVisibleStates = jitenSettings.jitenVisibleStates.toMutableSet().apply {
+                                                if (checked) add(state) else remove(state)
+                                            },
+                                        ),
+                                    )
+                                },
+                            )
+                        }
                     }
                 }
                 if (showDone) {

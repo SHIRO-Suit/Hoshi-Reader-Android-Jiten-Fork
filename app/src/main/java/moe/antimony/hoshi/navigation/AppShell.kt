@@ -41,6 +41,7 @@ import moe.antimony.hoshi.features.bookshelf.SettingsDestination
 import moe.antimony.hoshi.features.bookshelf.SettingsTab
 import moe.antimony.hoshi.features.diagnostics.DiagnosticsView
 import moe.antimony.hoshi.features.dictionary.DictionarySearchView
+import moe.antimony.hoshi.features.dictionary.DictionarySettings
 import moe.antimony.hoshi.features.dictionary.DictionaryView
 import moe.antimony.hoshi.features.reader.ReaderAppearanceScreen
 import moe.antimony.hoshi.features.reader.ReaderBehaviorScreen
@@ -100,6 +101,7 @@ fun AppShell(
     var bookshelfRefreshKey by remember { mutableIntStateOf(0) }
     var dictionaryFocusRequestKey by rememberSaveable { mutableIntStateOf(0) }
     var sasayakiSettings by remember { mutableStateOf(SasayakiSettings()) }
+    var dictionarySettings by remember { mutableStateOf(DictionarySettings()) }
 
     LaunchedEffect(sasayakiSettingsRepository) {
         sasayakiSettingsRepository.settings.collect { settings ->
@@ -139,6 +141,7 @@ fun AppShell(
 
     LaunchedEffect(dictionarySettingsRepository) {
         dictionarySettingsRepository.settings.collect { settings ->
+            dictionarySettings = settings
             launchRouteStateHolder.defaultRouteAfterSettingsLoad(
                 readerSettings = currentReaderSettings,
                 dictionarySettings = settings,
@@ -163,6 +166,11 @@ fun AppShell(
                 }
             }
         }
+    }
+
+    fun updateDictionarySettings(settings: DictionarySettings) {
+        dictionarySettings = settings
+        scope.launch { dictionarySettingsRepository.update { settings } }
     }
 
     fun popRoute() {
@@ -269,6 +277,8 @@ fun AppShell(
                     onReaderSettingsChange = currentOnReaderSettingsChange,
                     sasayakiSettings = sasayakiSettings,
                     onSasayakiSettingsChange = ::updateSasayakiSettings,
+                    dictionarySettings = dictionarySettings,
+                    onDictionarySettingsChange = ::updateDictionarySettings,
                     readerFontManager = readerFontManager,
                     onClose = ::popRoute,
                     onBooksRestored = { bookshelfRefreshKey += 1 },
@@ -427,6 +437,8 @@ private fun SettingsDetailDestination(
     onReaderSettingsChange: (ReaderSettings) -> Unit,
     sasayakiSettings: SasayakiSettings,
     onSasayakiSettingsChange: (SasayakiSettings) -> Unit,
+    dictionarySettings: DictionarySettings,
+    onDictionarySettingsChange: (DictionarySettings) -> Unit,
     readerFontManager: ReaderFontManager,
     onClose: () -> Unit,
     onBooksRestored: () -> Unit,
@@ -450,6 +462,8 @@ private fun SettingsDetailDestination(
             onSettingsChange = onReaderSettingsChange,
             sasayakiSettings = sasayakiSettings,
             onSasayakiSettingsChange = onSasayakiSettingsChange,
+            jitenSettings = dictionarySettings,
+            onJitenSettingsChange = onDictionarySettingsChange,
             fontManager = readerFontManager,
             onClose = onClose,
             modifier = Modifier.fillMaxSize(),

@@ -6,6 +6,7 @@ import moe.antimony.hoshi.epub.SasayakiMatch
 import moe.antimony.hoshi.features.audio.AudioSettings
 import moe.antimony.hoshi.features.anki.AnkiMiningContext
 import moe.antimony.hoshi.features.reader.ReaderSelectionData
+import moe.antimony.hoshi.features.jiten.JitenCard
 import java.util.UUID
 
 internal data class LookupPopupOptions(
@@ -61,6 +62,7 @@ internal data class LookupPopupState(
     val popupActionBar: Boolean = false,
     val contentLanguageProfile: ContentLanguageProfile = ContentLanguageProfile.Default,
     val ankiContext: AnkiMiningContext = AnkiMiningContext(sentence = selection.sentence),
+    val jitenCard: JitenCard? = null,
 )
 
 internal fun clearPopupSelectionHighlights(popups: List<LookupPopupItem>): List<LookupPopupItem> =

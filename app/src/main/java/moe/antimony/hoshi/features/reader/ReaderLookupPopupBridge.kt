@@ -24,6 +24,9 @@ import moe.antimony.hoshi.features.dictionary.LookupPopupHtml
 import moe.antimony.hoshi.features.dictionary.LookupPopupItem
 import moe.antimony.hoshi.features.dictionary.LookupPopupLayout
 import moe.antimony.hoshi.features.dictionary.popupSelectionOffsetY
+import moe.antimony.hoshi.features.jiten.JitenCard
+import moe.antimony.hoshi.features.jiten.JitenVocabularyAction
+import moe.antimony.hoshi.features.jiten.JitenVocabularyList
 import java.io.ByteArrayInputStream
 import java.io.File
 
@@ -106,6 +109,7 @@ internal data class ReaderLookupPopupFramePayload(
     val selectionOffsetY: Double,
     val iframeUrl: String,
     val contentKey: String? = null,
+    val jitenCard: JitenCard? = null,
 ) {
     companion object {
         fun fromPopup(
@@ -169,6 +173,7 @@ internal data class ReaderLookupPopupFramePayload(
                     hasSasayakiCue = hasSasayakiCue,
                 ),
                 iframeUrl = iframeUrl,
+                jitenCard = state.jitenCard,
             )
         }
     }
@@ -250,6 +255,15 @@ internal sealed class ReaderLookupPopupBridgeMessage {
         override val popupId: String,
         override val messageId: String?,
         val index: Int,
+    ) : ReaderLookupPopupBridgeMessage()
+
+    data class JitenAction(
+        override val popupId: String,
+        override val messageId: String?,
+        val wordId: Long,
+        val readingIndex: Int,
+        val list: JitenVocabularyList,
+        val action: JitenVocabularyAction,
     ) : ReaderLookupPopupBridgeMessage()
 
     data class ContentReady(
@@ -342,6 +356,17 @@ internal sealed class ReaderLookupPopupBridgeMessage {
                     messageId = messageId ?: return null,
                     index = payload.int("body")?.takeIf { it >= 0 } ?: return null,
                 )
+                "jitenAction" -> {
+                    val body = payload.obj("body") ?: return null
+                    JitenAction(
+                        popupId = popupId,
+                        messageId = messageId,
+                        wordId = body.long("wordId") ?: return null,
+                        readingIndex = body.int("readingIndex") ?: return null,
+                        list = JitenVocabularyList.fromWireName(body.string("list") ?: return null) ?: return null,
+                        action = JitenVocabularyAction.fromWireName(body.string("action") ?: return null) ?: return null,
+                    )
+                }
                 "contentReady" -> ContentReady(popupId, messageId)
                 "popupScrolled" -> PopupScrolled(popupId, messageId)
                 "scrollState" -> {
@@ -377,6 +402,8 @@ private fun JsonObject.toReaderSelectionData(): ReaderSelectionData? {
         ),
         normalizedOffset = int("normalizedOffset"),
         sentenceOffset = int("sentenceOffset"),
+        jitenWordId = long("jitenWordId"),
+        jitenReadingIndex = int("jitenReadingIndex"),
     )
 }
 
@@ -394,6 +421,11 @@ private fun JsonObject.obj(name: String): JsonObject? =
 private fun JsonObject.int(name: String): Int? =
     (this[name] as? JsonPrimitive)
         ?.intOrNull
+
+private fun JsonObject.long(name: String): Long? =
+    (this[name] as? JsonPrimitive)
+        ?.content
+        ?.toLongOrNull()
 
 private fun JsonObject.double(name: String): Double? =
     (this[name] as? JsonPrimitive)
@@ -518,9 +550,11 @@ internal fun lookupPopupAssetResponse(name: String, assets: LookupPopupAssets): 
         "selection.js" -> assets.selectionJs
         "popup.js" -> assets.popupJs
         "reader-popup-host.js" -> assets.readerPopupHostJs
+        "jiten-popup.js" -> assets.jitenPopupJs
+        "jiten-popup.css" -> assets.jitenPopupCss
         else -> return null
     }
-    val mimeType = if (name == "popup.css") "text/css" else "application/javascript"
+    val mimeType = if (name.endsWith(".css")) "text/css" else "application/javascript"
     return LookupPopupAssetResponse(mimeType, content)
 }
 
