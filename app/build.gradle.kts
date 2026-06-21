@@ -18,6 +18,8 @@ val releaseKeyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS").orNull
 val releaseKeyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD").orNull
 val releaseVersionName = providers.gradleProperty("releaseVersionName").orNull
 val releaseVersionCode = providers.gradleProperty("releaseVersionCode").orNull?.toIntOrNull()
+val releaseApplicationId = providers.gradleProperty("releaseApplicationId").orNull
+val releaseAppLabel = providers.gradleProperty("releaseAppLabel").orNull
 if (providers.gradleProperty("releaseVersionCode").isPresent && releaseVersionCode == null) {
     throw GradleException("releaseVersionCode must be an integer.")
 }
@@ -54,7 +56,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "moe.antimony.hoshi"
+        applicationId = releaseApplicationId ?: "moe.antimony.hoshi"
         minSdk = 26
         targetSdk = 36
         versionCode = 10202
@@ -92,7 +94,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            manifestPlaceholders["appLabel"] = "Hoshi Reader"
+            manifestPlaceholders["appLabel"] = releaseAppLabel ?: "Hoshi Reader"
             ndk {
                 abiFilters += listOf("arm64-v8a")
             }
