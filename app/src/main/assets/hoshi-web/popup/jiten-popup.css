@@ -4,14 +4,14 @@
 .hoshi-jiten-popup-indicator:disabled { opacity: .3; }
 .hoshi-jiten-popup-page { box-sizing: border-box; padding: 4px 0 16px; font-family: var(--hoshi-content-font-family); }
 .hoshi-jiten-popup-page.integrated { margin: 0 0 10px; padding: 4px 0 14px; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
-.hoshi-jiten-popup-toolbar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 8px; min-width: 0; margin: 0 0 8px; }
-.hoshi-jiten-popup-section-label { flex: 1 1 auto; padding: 5px 0; color: color-mix(in srgb, currentColor 62%, transparent); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.hoshi-jiten-popup-toolbar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-start; gap: 6px 8px; min-width: 0; margin: 0 0 8px; }
+.hoshi-jiten-popup-section-label { flex: 0 0 auto; padding: 5px 0; color: color-mix(in srgb, currentColor 62%, transparent); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .hoshi-jiten-popup-header { margin: 6px 0 8px; }
 .hoshi-jiten-popup-heading { min-width: 0; padding-top: .45em; line-height: 1.35; overflow: visible; }
 .hoshi-jiten-popup-expression { font-size: 1.5rem; font-weight: 600; }
 .hoshi-jiten-popup-expression ruby { display: inline-ruby; ruby-position: over; }
 .hoshi-jiten-popup-expression rt { display: ruby-text; font-size: .48em; font-weight: 400; line-height: 1; opacity: .8; }
-.hoshi-jiten-popup-actions { display: flex; flex: 0 1 auto; flex-wrap: wrap; justify-content: flex-end; gap: 2px; min-width: 0; max-width: 100%; align-items: center; }
+.hoshi-jiten-popup-actions { display: flex; flex: 1 1 0; flex-wrap: wrap; justify-content: flex-start; gap: 2px; min-width: min(100%, 12rem); max-width: 100%; align-items: center; }
 button.hoshi-jiten-popup-action { appearance: none; padding: 4px 7px; border: 1px solid color-mix(in srgb, currentColor 32%, transparent); border-radius: 7px; color: inherit; background: transparent; font: inherit; font-size: .66rem; line-height: 1.15; white-space: nowrap; }
 button.hoshi-jiten-popup-action:active { background: color-mix(in srgb, currentColor 10%, transparent); }
 button.hoshi-jiten-popup-action.active { color: #6750a4; border-color: #6750a4; background: color-mix(in srgb, #6750a4 14%, transparent); }

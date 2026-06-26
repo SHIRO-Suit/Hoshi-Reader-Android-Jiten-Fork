@@ -856,7 +856,7 @@ fun ReaderWebView(
             setLookupPopups(listOf(popup))
             selectionRects(selectionCount) { rects ->
                 if (stateHolder.lookupPopups.none { it.id == popup.id }) return@selectionRects
-                val displayRects = rects.ifEmpty { listOf(popup.state.selection.rect) }
+                val displayRects = selection.jitenRects.ifEmpty { rects }.ifEmpty { listOf(popup.state.selection.rect) }
                 val anchor = displayRects.firstOrNull()
                 if (anchor != null) {
                     setLookupPopups(

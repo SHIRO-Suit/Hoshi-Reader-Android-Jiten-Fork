@@ -22,6 +22,14 @@ class ReaderSelectionBridgeTest {
                 "jitenTapOffset": 0,
                 "jitenText": "é£Ÿã¹ã‚‹",
                 "jitenConjugations": ["without having to"],
+                "jitenRects": [
+                    {
+                        "x": 10.0,
+                        "y": 20.0,
+                        "width": 30.0,
+                        "height": 14.0
+                    }
+                ],
                 "futureField": "ignored"
             }
         """.trimIndent()
@@ -42,6 +50,14 @@ class ReaderSelectionBridgeTest {
                 jitenTapOffset = 0,
                 jitenText = "é£Ÿã¹ã‚‹",
                 jitenConjugations = listOf("without having to"),
+                jitenRects = listOf(
+                    ReaderSelectionRect(
+                        x = 10.0,
+                        y = 20.0,
+                        width = 30.0,
+                        height = 14.0,
+                    ),
+                ),
             ),
             ReaderSelectionBridgePayload.fromJson(payload),
         )

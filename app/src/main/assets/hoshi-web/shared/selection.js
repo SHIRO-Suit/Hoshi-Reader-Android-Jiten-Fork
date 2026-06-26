@@ -554,7 +554,8 @@ window.hoshiSelection = {
             jitenReadingIndex: jitenWord?.dataset?.readingIndex ? Number(jitenWord.dataset.readingIndex) : null,
             jitenTapOffset,
             jitenText: jitenWord?.textContent || null,
-            jitenConjugations: this.parseJitenConjugations(jitenWord)
+            jitenConjugations: this.parseJitenConjugations(jitenWord),
+            jitenRects: jitenTapOffset === 0 ? this.jitenWordRects(jitenWord) : []
         });
 
         return text;
@@ -580,6 +581,15 @@ window.hoshiSelection = {
         } catch (_) {
             return [];
         }
+    },
+
+    jitenWordRects(element) {
+        if (!element) return [];
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const rects = this.rectsForRange(range);
+        const merged = this.mergeSelectionRects(rects);
+        return this.options.rubyAwareRects ? this.unifyVerticalColumnRects(merged) : merged;
     },
 
     getSelectionRect(x, y) {

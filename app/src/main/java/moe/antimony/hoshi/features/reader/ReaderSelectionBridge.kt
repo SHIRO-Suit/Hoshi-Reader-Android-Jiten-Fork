@@ -44,6 +44,14 @@ internal object ReaderSelectionBridgePayload {
             jitenTapOffset = payload.jitenTapOffset,
             jitenText = payload.jitenText,
             jitenConjugations = payload.jitenConjugations,
+            jitenRects = payload.jitenRects.map { rect ->
+                ReaderSelectionRect(
+                    x = rect.x,
+                    y = rect.y,
+                    width = rect.width,
+                    height = rect.height,
+                )
+            },
         )
     }
 
@@ -78,6 +86,7 @@ internal object ReaderSelectionBridgePayload {
         val jitenTapOffset: Int? = null,
         val jitenText: String? = null,
         val jitenConjugations: List<String> = emptyList(),
+        val jitenRects: List<Rect> = emptyList(),
     )
 
     @Serializable

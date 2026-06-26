@@ -11,6 +11,7 @@ data class ReaderSelectionData(
     val jitenTapOffset: Int? = null,
     val jitenText: String? = null,
     val jitenConjugations: List<String> = emptyList(),
+    val jitenRects: List<ReaderSelectionRect> = emptyList(),
 )
 
 data class ReaderSelectionRect(
