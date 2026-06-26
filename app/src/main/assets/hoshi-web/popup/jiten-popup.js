@@ -122,12 +122,11 @@
     function conjugationDetails(value) {
         const conjugations = (value.conjugations || []).filter(Boolean);
         const container = element('div', 'hoshi-jiten-popup-conjugations');
-        if (value.matchedText && value.matchedText !== value.spelling) {
-            container.append(element('span', 'hoshi-jiten-popup-chip', value.matchedText));
-        }
-        conjugations.forEach(conjugation => {
-            container.append(element('span', 'hoshi-jiten-popup-chip', `conjugation: ${conjugation}`));
-        });
+        if (!conjugations.length) return container;
+        container.append(
+            element('span', 'hoshi-jiten-popup-conjugations-label', 'Conjugations: '),
+            element('span', 'hoshi-jiten-popup-conjugations-value', conjugations.join(' ; ')),
+        );
         return container;
     }
 

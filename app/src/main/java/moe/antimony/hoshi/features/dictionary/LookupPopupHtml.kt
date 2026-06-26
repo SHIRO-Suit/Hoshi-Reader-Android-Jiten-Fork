@@ -298,6 +298,7 @@ internal object LookupPopupHtml {
                             }
                             if (message.type === 'resetPopup') {
                                 window.popupId = null;
+                                document.documentElement.classList.remove('hoshi-popup-full-width');
                                 window.hoshiJitenPopup?.setCard(null);
                                 closeOverlay();
                                 window.hoshiSelection?.clearSelection();
@@ -307,6 +308,7 @@ internal object LookupPopupHtml {
                             }
                             if (message.type === 'renderPopup') {
                                 window.popupId = message.popupId || null;
+                                document.documentElement.classList.toggle('hoshi-popup-full-width', !!message.isFullWidth);
                                 closeOverlay();
                                 window.entryCount = message.entriesCount || 0;
                                 window.hoshiJitenPopup?.setCard(message.jitenCard || null);

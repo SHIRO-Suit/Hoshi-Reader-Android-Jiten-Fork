@@ -133,7 +133,8 @@
             type: 'renderPopup',
             popupId: payload.id,
             entriesCount: payload.entriesCount || 0,
-            initialEntryJson: payload.initialEntryJson || null
+            initialEntryJson: payload.initialEntryJson || null,
+            isFullWidth: !!payload.isFullWidth
         };
         if (payload.jitenCard) message.jitenCard = payload.jitenCard;
         return message;

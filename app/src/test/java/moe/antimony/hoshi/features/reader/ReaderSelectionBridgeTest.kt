@@ -21,7 +21,7 @@ class ReaderSelectionBridgeTest {
                 "jitenReadingIndex": 2,
                 "jitenTapOffset": 0,
                 "jitenText": "é£Ÿã¹ã‚‹",
-                "jitenConjugations": ["without having to"],
+                "jitenConjugations": ["without doing so"],
                 "jitenRects": [
                     {
                         "x": 10.0,
@@ -49,7 +49,7 @@ class ReaderSelectionBridgeTest {
                 jitenReadingIndex = 2,
                 jitenTapOffset = 0,
                 jitenText = "é£Ÿã¹ã‚‹",
-                jitenConjugations = listOf("without having to"),
+                jitenConjugations = listOf("without doing so"),
                 jitenRects = listOf(
                     ReaderSelectionRect(
                         x = 10.0,

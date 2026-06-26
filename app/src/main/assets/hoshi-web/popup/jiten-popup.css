@@ -6,19 +6,24 @@
 .hoshi-jiten-popup-page.integrated { margin: 0 0 10px; padding: 4px 0 14px; border-bottom: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
 .hoshi-jiten-popup-toolbar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-start; gap: 6px 8px; min-width: 0; margin: 0 0 8px; }
 .hoshi-jiten-popup-section-label { flex: 0 0 auto; padding: 5px 0; color: color-mix(in srgb, currentColor 62%, transparent); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+html.hoshi-popup-full-width .hoshi-jiten-popup-toolbar { justify-content: space-between; }
+html.hoshi-popup-full-width .hoshi-jiten-popup-section-label { flex: 1 1 auto; }
 .hoshi-jiten-popup-header { margin: 6px 0 8px; }
 .hoshi-jiten-popup-heading { min-width: 0; padding-top: .45em; line-height: 1.35; overflow: visible; }
 .hoshi-jiten-popup-expression { font-size: 1.5rem; font-weight: 600; }
 .hoshi-jiten-popup-expression ruby { display: inline-ruby; ruby-position: over; }
 .hoshi-jiten-popup-expression rt { display: ruby-text; font-size: .48em; font-weight: 400; line-height: 1; opacity: .8; }
 .hoshi-jiten-popup-actions { display: flex; flex: 1 1 0; flex-wrap: wrap; justify-content: flex-start; gap: 2px; min-width: min(100%, 12rem); max-width: 100%; align-items: center; }
+html.hoshi-popup-full-width .hoshi-jiten-popup-actions { flex: 0 1 auto; justify-content: flex-end; }
 button.hoshi-jiten-popup-action { appearance: none; padding: 4px 7px; border: 1px solid color-mix(in srgb, currentColor 32%, transparent); border-radius: 7px; color: inherit; background: transparent; font: inherit; font-size: .66rem; line-height: 1.15; white-space: nowrap; }
 button.hoshi-jiten-popup-action:active { background: color-mix(in srgb, currentColor 10%, transparent); }
 button.hoshi-jiten-popup-action.active { color: #6750a4; border-color: #6750a4; background: color-mix(in srgb, #6750a4 14%, transparent); }
 button.hoshi-jiten-popup-action.danger { color: #b3261e; border-color: color-mix(in srgb, #b3261e 62%, transparent); }
 button.hoshi-jiten-popup-action.danger.armed { color: white; border-color: #b3261e; background: #b3261e; }
 .hoshi-jiten-popup-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
-.hoshi-jiten-popup-conjugations { display: flex; flex-wrap: wrap; gap: 4px; margin: -2px 0 8px; }
+.hoshi-jiten-popup-conjugations { display: block; margin: -2px 0 10px; padding: .4em; border-radius: .3em; background: rgba(128, 128, 128, .1); font-size: .9em; }
+.hoshi-jiten-popup-conjugations-label { font-weight: 600; }
+.hoshi-jiten-popup-conjugations-value { overflow-wrap: anywhere; }
 .hoshi-jiten-popup-chip { padding: 2px 7px; border-radius: 999px; background: #e5e5e5; background: color-mix(in srgb, currentColor 10%, transparent); font-size: .72rem; }
 .hoshi-jiten-popup-chip.state-new { color: #8a3fd0; }
 .hoshi-jiten-popup-chip.state-young { color: #ad7000; }

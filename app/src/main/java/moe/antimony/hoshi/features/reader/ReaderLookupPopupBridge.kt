@@ -105,6 +105,7 @@ internal data class ReaderLookupPopupFramePayload(
     val sasayakiIsPlaying: Boolean,
     val darkMode: Boolean,
     val eInkMode: Boolean,
+    val isFullWidth: Boolean = false,
     val clearSelectionSignal: Int,
     val selectionOffsetY: Double,
     val iframeUrl: String,
@@ -164,6 +165,7 @@ internal data class ReaderLookupPopupFramePayload(
                 sasayakiIsPlaying = sasayakiIsPlaying,
                 darkMode = state.darkMode,
                 eInkMode = state.eInkMode,
+                isFullWidth = state.isFullWidth,
                 clearSelectionSignal = popup.clearSelectionSignal,
                 selectionOffsetY = popupSelectionOffsetY(
                     frameTopDp = top,

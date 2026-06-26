@@ -577,7 +577,13 @@ window.hoshiSelection = {
         if (!element?.dataset?.conjugations) return [];
         try {
             const conjugations = JSON.parse(element.dataset.conjugations);
-            return Array.isArray(conjugations) ? conjugations.filter(item => typeof item === 'string') : [];
+            return Array.isArray(conjugations)
+                ? conjugations
+                    .filter(item => typeof item === 'string')
+                    .map(item => item.trim())
+                    .filter(item => item && !item.startsWith('('))
+                    .reverse()
+                : [];
         } catch (_) {
             return [];
         }
