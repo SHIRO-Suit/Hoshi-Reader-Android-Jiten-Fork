@@ -543,6 +543,7 @@ window.hoshiSelection = {
         const sentenceContext = this.getSentenceContext(hit.node, hit.offset);
         const normalizedOffset = window.hoshiReader ? this.getNormalizedOffset(hit.node, hit.offset) : null;
         const jitenWord = hitElement?.closest?.('.hoshi-jiten-word');
+        const jitenTapOffset = jitenWord ? this.textOffsetInElement(jitenWord, hit.node, hit.offset) : null;
         this.postTextSelected({
             text,
             sentence: sentenceContext.sentence,
@@ -550,10 +551,35 @@ window.hoshiSelection = {
             normalizedOffset,
             sentenceOffset: sentenceContext.sentenceOffset,
             jitenWordId: jitenWord?.dataset?.wordId ? Number(jitenWord.dataset.wordId) : null,
-            jitenReadingIndex: jitenWord?.dataset?.readingIndex ? Number(jitenWord.dataset.readingIndex) : null
+            jitenReadingIndex: jitenWord?.dataset?.readingIndex ? Number(jitenWord.dataset.readingIndex) : null,
+            jitenTapOffset,
+            jitenText: jitenWord?.textContent || null,
+            jitenConjugations: this.parseJitenConjugations(jitenWord)
         });
 
         return text;
+    },
+
+    textOffsetInElement(element, targetNode, targetOffset) {
+        if (!element || !targetNode || !element.contains(targetNode)) return null;
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        let offset = 0;
+        let node;
+        while ((node = walker.nextNode())) {
+            if (node === targetNode) return offset + targetOffset;
+            offset += node.textContent.length;
+        }
+        return null;
+    },
+
+    parseJitenConjugations(element) {
+        if (!element?.dataset?.conjugations) return [];
+        try {
+            const conjugations = JSON.parse(element.dataset.conjugations);
+            return Array.isArray(conjugations) ? conjugations.filter(item => typeof item === 'string') : [];
+        } catch (_) {
+            return [];
+        }
     },
 
     getSelectionRect(x, y) {

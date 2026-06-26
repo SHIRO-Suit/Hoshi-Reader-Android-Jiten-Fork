@@ -41,6 +41,9 @@ internal object ReaderSelectionBridgePayload {
             sentenceOffset = payload.sentenceOffset,
             jitenWordId = payload.jitenWordId,
             jitenReadingIndex = payload.jitenReadingIndex,
+            jitenTapOffset = payload.jitenTapOffset,
+            jitenText = payload.jitenText,
+            jitenConjugations = payload.jitenConjugations,
         )
     }
 
@@ -72,6 +75,9 @@ internal object ReaderSelectionBridgePayload {
         val sentenceOffset: Int? = null,
         val jitenWordId: Long? = null,
         val jitenReadingIndex: Int? = null,
+        val jitenTapOffset: Int? = null,
+        val jitenText: String? = null,
+        val jitenConjugations: List<String> = emptyList(),
     )
 
     @Serializable

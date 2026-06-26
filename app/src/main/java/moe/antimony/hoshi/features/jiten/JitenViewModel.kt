@@ -60,7 +60,14 @@ internal class JitenViewModel @Inject constructor(
                 },
             )
         }
-        mergeCards(mapOf((card.wordId to card.readingIndex) to updated))
+        mergeCards(
+            mapOf(
+                (card.wordId to card.readingIndex) to updated.copy(
+                    matchedText = null,
+                    conjugations = emptyList(),
+                ),
+            ),
+        )
         updated
     }
 

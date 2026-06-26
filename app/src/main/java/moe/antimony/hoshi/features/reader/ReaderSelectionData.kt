@@ -8,6 +8,9 @@ data class ReaderSelectionData(
     val sentenceOffset: Int? = null,
     val jitenWordId: Long? = null,
     val jitenReadingIndex: Int? = null,
+    val jitenTapOffset: Int? = null,
+    val jitenText: String? = null,
+    val jitenConjugations: List<String> = emptyList(),
 )
 
 data class ReaderSelectionRect(

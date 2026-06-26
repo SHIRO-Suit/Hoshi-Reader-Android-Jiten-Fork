@@ -19,6 +19,9 @@ class ReaderSelectionBridgeTest {
                 "normalizedOffset": 42,
                 "jitenWordId": 123,
                 "jitenReadingIndex": 2,
+                "jitenTapOffset": 0,
+                "jitenText": "é£Ÿã¹ã‚‹",
+                "jitenConjugations": ["without having to"],
                 "futureField": "ignored"
             }
         """.trimIndent()
@@ -36,6 +39,9 @@ class ReaderSelectionBridgeTest {
                 normalizedOffset = 42,
                 jitenWordId = 123,
                 jitenReadingIndex = 2,
+                jitenTapOffset = 0,
+                jitenText = "é£Ÿã¹ã‚‹",
+                jitenConjugations = listOf("without having to"),
             ),
             ReaderSelectionBridgePayload.fromJson(payload),
         )

@@ -96,6 +96,8 @@ data class JitenCard(
     val pitchAccents: List<Int> = emptyList(),
     val wordWithReading: String? = null,
     val deckIds: List<Long> = emptyList(),
+    val matchedText: String? = null,
+    val conjugations: List<String> = emptyList(),
 )
 
 @Serializable

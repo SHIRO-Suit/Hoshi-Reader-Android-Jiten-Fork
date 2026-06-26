@@ -71,6 +71,9 @@
         if (card.frequencyRank > 0) meta.append(element('span', 'hoshi-jiten-popup-chip', `#${card.frequencyRank}`));
         if (meta.childNodes.length) container.append(meta);
 
+        const conjugations = conjugationDetails(card);
+        if (conjugations.childNodes.length) container.append(conjugations);
+
         const pitches = pitchDiagrams(card.reading, card.pitchAccents || []);
         if (pitches.childNodes.length) container.append(pitches);
 
@@ -114,6 +117,18 @@
             return [ruby];
         }
         return nodes;
+    }
+
+    function conjugationDetails(value) {
+        const conjugations = (value.conjugations || []).filter(Boolean);
+        const container = element('div', 'hoshi-jiten-popup-conjugations');
+        if (value.matchedText && value.matchedText !== value.spelling) {
+            container.append(element('span', 'hoshi-jiten-popup-chip', value.matchedText));
+        }
+        conjugations.forEach(conjugation => {
+            container.append(element('span', 'hoshi-jiten-popup-chip', `conjugation: ${conjugation}`));
+        });
+        return container;
     }
 
     function groupMeanings(meanings) {

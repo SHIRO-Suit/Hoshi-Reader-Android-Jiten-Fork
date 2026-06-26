@@ -18,6 +18,7 @@ button.hoshi-jiten-popup-action.active { color: #6750a4; border-color: #6750a4; 
 button.hoshi-jiten-popup-action.danger { color: #b3261e; border-color: color-mix(in srgb, #b3261e 62%, transparent); }
 button.hoshi-jiten-popup-action.danger.armed { color: white; border-color: #b3261e; background: #b3261e; }
 .hoshi-jiten-popup-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+.hoshi-jiten-popup-conjugations { display: flex; flex-wrap: wrap; gap: 4px; margin: -2px 0 8px; }
 .hoshi-jiten-popup-chip { padding: 2px 7px; border-radius: 999px; background: #e5e5e5; background: color-mix(in srgb, currentColor 10%, transparent); font-size: .72rem; }
 .hoshi-jiten-popup-chip.state-new { color: #8a3fd0; }
 .hoshi-jiten-popup-chip.state-young { color: #ad7000; }

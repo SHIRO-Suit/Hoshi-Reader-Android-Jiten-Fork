@@ -464,7 +464,13 @@ fun ReaderWebView(
         )?.let { (popup, highlightCount) ->
             popup.copy(
                 state = popup.state.copy(
-                    jitenCard = jitenViewModel.card(selection.jitenWordId, selection.jitenReadingIndex),
+                    jitenCard = jitenViewModel
+                        .card(selection.jitenWordId, selection.jitenReadingIndex)
+                        ?.takeIf { selection.jitenTapOffset == 0 }
+                        ?.copy(
+                            matchedText = selection.jitenText,
+                            conjugations = selection.jitenConjugations,
+                        ),
                 ),
                 sasayakiCue = sasayakiCueForSelection(selection),
             ) to highlightCount

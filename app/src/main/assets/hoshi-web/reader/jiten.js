@@ -61,6 +61,7 @@
             span.textContent = text.slice(token.start, token.end);
             span.dataset.wordId = String(token.wordId);
             span.dataset.readingIndex = String(token.readingIndex);
+            span.dataset.conjugations = JSON.stringify(token.conjugations || []);
             updateElement(span, token.card?.cardState || []);
             fragment.append(span);
             cursor = token.end;
