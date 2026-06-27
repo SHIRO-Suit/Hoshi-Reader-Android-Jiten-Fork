@@ -1,4 +1,6 @@
 (function () {
+    const kanjiPattern = /[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005]/;
+    const kanjiSegmentPattern = /[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005]+|[^\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\u3005]+/g;
     const popupMode = window.hoshiJitenPopupMode === 'integrated' ? 'integrated' : 'paged';
     let card = null;
     let page = 'dictionary';
@@ -96,6 +98,8 @@
     }
 
     function readingNodes(value) {
+        const segmented = rubyNodes(value);
+        if (segmented.length) return segmented;
         const annotated = value.wordWithReading || value.spelling || '';
         const regex = /([^\u3040-\u30ff]+)\[(.+?)\]/g;
         const nodes = [];
@@ -110,13 +114,176 @@
             nodes.push(ruby);
             lastIndex = regex.lastIndex;
         }
-        if (lastIndex < annotated.length) nodes.push(document.createTextNode(annotated.slice(lastIndex)));
-        if (!hasRuby && value.reading && value.reading !== value.spelling) {
-            const ruby = document.createElement('ruby');
-            ruby.append(document.createTextNode(value.spelling), element('rt', null, cleanReading(value.reading)));
-            return [ruby];
+        if (hasRuby) {
+            if (lastIndex < annotated.length) nodes.push(document.createTextNode(annotated.slice(lastIndex)));
+            return nodes;
         }
-        return nodes;
+        return spellingReadingNodes(value);
+    }
+
+    function rubyNodes(value) {
+        const baseText = value.matchedText || value.spelling || '';
+        const rubies = Array.isArray(value.rubies) ? value.rubies : [];
+        if (!baseText || !rubies.length) return [];
+        const nodes = [];
+        let cursor = 0;
+        let hasRuby = false;
+        rubies
+            .map(ruby => ({
+                text: cleanReading(ruby?.text || ''),
+                start: Number(ruby?.start),
+                end: Number(ruby?.end)
+            }))
+            .filter(ruby =>
+                ruby.text &&
+                Number.isFinite(ruby.start) &&
+                Number.isFinite(ruby.end) &&
+                ruby.start >= 0 &&
+                ruby.end > ruby.start &&
+                ruby.end <= baseText.length
+            )
+            .sort((a, b) => a.start - b.start)
+            .forEach(rubyInfo => {
+                if (rubyInfo.start < cursor) return;
+                if (rubyInfo.start > cursor) nodes.push(document.createTextNode(baseText.slice(cursor, rubyInfo.start)));
+                const base = baseText.slice(rubyInfo.start, rubyInfo.end);
+                hasRuby = appendRubySegment(nodes, base, rubyInfo.text) || hasRuby;
+                cursor = rubyInfo.end;
+            });
+        if (cursor < baseText.length) nodes.push(document.createTextNode(baseText.slice(cursor)));
+        return hasRuby ? nodes : [];
+    }
+
+    function appendRubySegment(nodes, base, reading) {
+        if (!shouldShowRuby(base, reading)) {
+            nodes.push(document.createTextNode(base));
+            return false;
+        }
+        const firstKanaIndex = [...base].findIndex(isKana);
+        if (firstKanaIndex < 0) {
+            nodes.push(rubyElement(base, reading));
+            return true;
+        }
+        let attached = false;
+        let buffer = '';
+        let bufferIsKana = null;
+        const flush = () => {
+            if (!buffer) return;
+            if (!bufferIsKana && !attached) {
+                nodes.push(rubyElement(buffer, reading));
+                attached = true;
+            } else {
+                nodes.push(document.createTextNode(buffer));
+            }
+            buffer = '';
+        };
+        [...base].forEach(char => {
+            const charIsKana = isKana(char);
+            if (buffer && charIsKana !== bufferIsKana) flush();
+            buffer += char;
+            bufferIsKana = charIsKana;
+        });
+        flush();
+        return attached;
+    }
+
+    function rubyElement(base, reading) {
+        const ruby = document.createElement('ruby');
+        ruby.append(document.createTextNode(base), element('rt', null, reading));
+        return ruby;
+    }
+
+    function shouldShowRuby(base, reading) {
+        if (!base || !reading) return false;
+        if ([...base].every(isKana)) return false;
+        return true;
+    }
+
+    function isKana(char) {
+        return /^[\u3040-\u30ffー]$/.test(char);
+    }
+
+    function spellingReadingNodes(value) {
+        const expression = value.spelling || value.matchedText || '';
+        const reading = cleanReading(value.reading || '');
+        if (!expression) return [];
+        return segmentFurigana(expression, reading).map(([text, furigana]) =>
+            furigana ? rubyElement(text, furigana) : document.createTextNode(text)
+        );
+    }
+
+    function segmentFurigana(expression, reading) {
+        if (!reading || reading === expression) return [[expression, '']];
+        const groups = (expression.match(kanjiSegmentPattern) || []).map(text => {
+            const isKanaGroup = !kanjiPattern.test(text[0]);
+            return {
+                isKana: isKanaGroup,
+                text,
+                textNormalized: isKanaGroup ? toHiragana(text) : null
+            };
+        });
+        const segments = segmentizeFurigana(reading, toHiragana(reading), groups, 0);
+        return segments ? segments.map(segment => [segment.text, segment.reading]) : [[expression, reading]];
+    }
+
+    function segmentizeFurigana(reading, readingNormalized, groups, groupsStart) {
+        const groupCount = groups.length - groupsStart;
+        if (groupCount <= 0) return reading.length === 0 ? [] : null;
+
+        const group = groups[groupsStart];
+        if (group.isKana) {
+            const textLength = group.text.length;
+            if (group.textNormalized !== null && readingNormalized.startsWith(group.textNormalized)) {
+                const segments = segmentizeFurigana(
+                    reading.substring(textLength),
+                    readingNormalized.substring(textLength),
+                    groups,
+                    groupsStart + 1
+                );
+                if (segments !== null) {
+                    segments.unshift(...kanaFuriganaSegments(group.text, reading.substring(0, textLength)));
+                    return segments;
+                }
+            }
+            return null;
+        }
+
+        let result = null;
+        for (let i = reading.length; i >= group.text.length; --i) {
+            const segments = segmentizeFurigana(
+                reading.substring(i),
+                readingNormalized.substring(i),
+                groups,
+                groupsStart + 1
+            );
+            if (segments !== null) {
+                if (result !== null) return null;
+                segments.unshift({ text: group.text, reading: reading.substring(0, i) });
+                result = segments;
+            }
+            if (groupCount === 1) break;
+        }
+        return result;
+    }
+
+    function kanaFuriganaSegments(text, reading) {
+        if (reading === text) return [{ text, reading: '' }];
+        const segments = [];
+        let start = 0;
+        let state = reading[0] === text[0];
+        for (let i = 1; i < text.length; ++i) {
+            const newState = reading[i] === text[i];
+            if (state === newState) continue;
+            segments.push({ text: text.substring(start, i), reading: state ? '' : reading.substring(start, i) });
+            state = newState;
+            start = i;
+        }
+        segments.push({ text: text.substring(start), reading: state ? '' : reading.substring(start) });
+        return segments;
+    }
+
+    function toHiragana(text) {
+        return text.replace(/[\u30A1-\u30F6]/g, char => String.fromCharCode(char.charCodeAt(0) - 0x60));
     }
 
     function conjugationDetails(value) {

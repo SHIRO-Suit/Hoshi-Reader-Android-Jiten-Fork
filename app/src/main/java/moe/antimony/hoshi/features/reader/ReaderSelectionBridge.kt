@@ -4,6 +4,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import moe.antimony.hoshi.features.jiten.JitenRuby
 import org.json.JSONArray
 
 internal class ReaderSelectionBridge(
@@ -44,6 +45,7 @@ internal object ReaderSelectionBridgePayload {
             jitenTapOffset = payload.jitenTapOffset,
             jitenText = payload.jitenText,
             jitenConjugations = payload.jitenConjugations,
+            jitenRubies = payload.jitenRubies,
             jitenRects = payload.jitenRects.map { rect ->
                 ReaderSelectionRect(
                     x = rect.x,
@@ -86,6 +88,7 @@ internal object ReaderSelectionBridgePayload {
         val jitenTapOffset: Int? = null,
         val jitenText: String? = null,
         val jitenConjugations: List<String> = emptyList(),
+        val jitenRubies: List<JitenRuby> = emptyList(),
         val jitenRects: List<Rect> = emptyList(),
     )
 

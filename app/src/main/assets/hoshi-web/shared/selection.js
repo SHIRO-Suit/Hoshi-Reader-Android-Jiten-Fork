@@ -598,6 +598,7 @@ window.hoshiSelection = {
             jitenTapOffset,
             jitenText: jitenWord?.textContent || null,
             jitenConjugations: this.parseJitenConjugations(jitenWord),
+            jitenRubies: this.parseJitenRubies(jitenWord),
             jitenRects: jitenTapOffset === 0 ? this.jitenWordRects(jitenWord) : []
         });
 
@@ -626,6 +627,33 @@ window.hoshiSelection = {
                     .map(item => item.trim())
                     .filter(item => item && !item.startsWith('('))
                     .reverse()
+                : [];
+        } catch (_) {
+            return [];
+        }
+    },
+
+    parseJitenRubies(element) {
+        if (!element?.dataset?.rubies) return [];
+        try {
+            const rubies = JSON.parse(element.dataset.rubies);
+            return Array.isArray(rubies)
+                ? rubies
+                    .filter(ruby => ruby && typeof ruby.text === 'string')
+                    .map(ruby => ({
+                        text: ruby.text,
+                        start: Number(ruby.start),
+                        end: Number(ruby.end),
+                        length: Number(ruby.length)
+                    }))
+                    .filter(ruby =>
+                        ruby.text &&
+                        Number.isFinite(ruby.start) &&
+                        Number.isFinite(ruby.end) &&
+                        Number.isFinite(ruby.length) &&
+                        ruby.start >= 0 &&
+                        ruby.end > ruby.start
+                    )
                 : [];
         } catch (_) {
             return [];

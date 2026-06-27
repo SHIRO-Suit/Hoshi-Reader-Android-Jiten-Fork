@@ -44,6 +44,27 @@
         else delete element.dataset.hoshiJitenState;
     }
 
+    function relativeRubies(token) {
+        const tokenStart = Number(token.start);
+        const tokenEnd = Number(token.end);
+        if (!Array.isArray(token.rubies) || !Number.isFinite(tokenStart) || !Number.isFinite(tokenEnd)) return [];
+        return token.rubies
+            .map(ruby => ({
+                text: String(ruby?.text || ''),
+                start: Number(ruby?.start) - tokenStart,
+                end: Number(ruby?.end) - tokenStart,
+                length: Number(ruby?.length)
+            }))
+            .filter(ruby =>
+                ruby.text &&
+                Number.isFinite(ruby.start) &&
+                Number.isFinite(ruby.end) &&
+                ruby.start >= 0 &&
+                ruby.end > ruby.start &&
+                ruby.end <= tokenEnd - tokenStart
+            );
+    }
+
     function wrapNode(node, tokens) {
         if (!node?.parentNode || !Array.isArray(tokens) || tokens.length === 0) return;
         const text = node.data;
@@ -62,6 +83,7 @@
             span.dataset.wordId = String(token.wordId);
             span.dataset.readingIndex = String(token.readingIndex);
             span.dataset.conjugations = JSON.stringify(token.conjugations || []);
+            span.dataset.rubies = JSON.stringify(relativeRubies(token));
             updateElement(span, token.card?.cardState || []);
             fragment.append(span);
             cursor = token.end;

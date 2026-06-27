@@ -98,6 +98,7 @@ data class JitenCard(
     val deckIds: List<Long> = emptyList(),
     val matchedText: String? = null,
     val conjugations: List<String> = emptyList(),
+    val rubies: List<JitenRuby> = emptyList(),
 )
 
 @Serializable

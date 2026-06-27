@@ -65,6 +65,7 @@ internal class JitenViewModel @Inject constructor(
                 (card.wordId to card.readingIndex) to updated.copy(
                     matchedText = null,
                     conjugations = emptyList(),
+                    rubies = emptyList(),
                 ),
             ),
         )

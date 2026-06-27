@@ -518,6 +518,7 @@ fun ReaderWebView(
                         ?.copy(
                             matchedText = selection.jitenText,
                             conjugations = selection.jitenConjugations,
+                            rubies = selection.jitenRubies,
                         ),
                 ),
                 sasayakiCue = sasayakiCueForSelection(selection),

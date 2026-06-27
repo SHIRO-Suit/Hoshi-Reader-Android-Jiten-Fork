@@ -1,5 +1,7 @@
 package moe.antimony.hoshi.features.reader
 
+import moe.antimony.hoshi.features.jiten.JitenRuby
+
 data class ReaderSelectionData(
     val text: String,
     val sentence: String,
@@ -11,6 +13,7 @@ data class ReaderSelectionData(
     val jitenTapOffset: Int? = null,
     val jitenText: String? = null,
     val jitenConjugations: List<String> = emptyList(),
+    val jitenRubies: List<JitenRuby> = emptyList(),
     val jitenRects: List<ReaderSelectionRect> = emptyList(),
 )
 

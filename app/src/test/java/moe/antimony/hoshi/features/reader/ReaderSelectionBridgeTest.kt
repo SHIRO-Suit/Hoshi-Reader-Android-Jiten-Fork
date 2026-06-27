@@ -1,5 +1,6 @@
 package moe.antimony.hoshi.features.reader
 
+import moe.antimony.hoshi.features.jiten.JitenRuby
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -22,6 +23,14 @@ class ReaderSelectionBridgeTest {
                 "jitenTapOffset": 0,
                 "jitenText": "é£Ÿã¹ã‚‹",
                 "jitenConjugations": ["without doing so"],
+                "jitenRubies": [
+                    {
+                        "text": "ta",
+                        "start": 0,
+                        "end": 1,
+                        "length": 1
+                    }
+                ],
                 "jitenRects": [
                     {
                         "x": 10.0,
@@ -50,6 +59,14 @@ class ReaderSelectionBridgeTest {
                 jitenTapOffset = 0,
                 jitenText = "é£Ÿã¹ã‚‹",
                 jitenConjugations = listOf("without doing so"),
+                jitenRubies = listOf(
+                    JitenRuby(
+                        text = "ta",
+                        start = 0,
+                        end = 1,
+                        length = 1,
+                    ),
+                ),
                 jitenRects = listOf(
                     ReaderSelectionRect(
                         x = 10.0,
