@@ -597,4 +597,22 @@
     <string name="sasayaki_no_file_selected">No file selected</string>
     <string name="sasayaki_search_window">Search Window</string>
     <string name="sasayaki_matching">Matching...</string>
+    <string name="sasayaki_current_match">Current Match</string>
+    <string name="sasayaki_match_rate">Match Rate</string>
+    <string name="dictionary_settings_jiten">Jiten</string>
+    <string name="jiten_use_service">Use Jiten</string>
+    <string name="jiten_use_service_description">Parse reader text with your Jiten account and show vocabulary states.</string>
+    <string name="jiten_api_key">API key</string>
+    <string name="jiten_api_key_placeholder">Paste your Jiten API key</string>
+    <string name="jiten_marker_style">Word marker</string>
+    <string name="jiten_marker_underline">Underline</string>
+    <string name="jiten_separate_popup_page">Separate Jiten page</string>
+    <string name="jiten_separate_popup_page_description">Show Jiten as a swipeable second page instead of above dictionary definitions.</string>
+    <string name="jiten_state_new">New</string>
+    <string name="jiten_state_young">Young</string>
+    <string name="jiten_state_mature">Mature</string>
+    <string name="jiten_state_due">Due</string>
+    <string name="jiten_parse_failed">Jiten parsing failed: %1$s</string>
+    <string name="jiten_invalid_response">Jiten returned an unsupported response.</string>
+    <string name="jiten_request_failed">Could not contact Jiten.</string>
 </resources>

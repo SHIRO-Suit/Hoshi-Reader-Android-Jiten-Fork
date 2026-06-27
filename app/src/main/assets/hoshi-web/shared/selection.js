@@ -585,15 +585,60 @@ window.hoshiSelection = {
 
         const sentenceContext = this.getSentenceContext(hit.node, hit.offset);
         const normalizedOffset = window.hoshiReader ? this.getNormalizedOffset(hit.node, hit.offset) : null;
+        const jitenWord = hitElement?.closest?.('.hoshi-jiten-word');
+        const jitenTapOffset = jitenWord ? this.textOffsetInElement(jitenWord, hit.node, hit.offset) : null;
         this.postTextSelected({
             text,
             sentence: sentenceContext.sentence,
             rect: this.getSelectionRect(rectX, rectY),
             normalizedOffset,
-            sentenceOffset: sentenceContext.sentenceOffset
+            sentenceOffset: sentenceContext.sentenceOffset,
+            jitenWordId: jitenWord?.dataset?.wordId ? Number(jitenWord.dataset.wordId) : null,
+            jitenReadingIndex: jitenWord?.dataset?.readingIndex ? Number(jitenWord.dataset.readingIndex) : null,
+            jitenTapOffset,
+            jitenText: jitenWord?.textContent || null,
+            jitenConjugations: this.parseJitenConjugations(jitenWord),
+            jitenRects: jitenTapOffset === 0 ? this.jitenWordRects(jitenWord) : []
         });
 
         return text;
+    },
+
+    textOffsetInElement(element, targetNode, targetOffset) {
+        if (!element || !targetNode || !element.contains(targetNode)) return null;
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        let offset = 0;
+        let node;
+        while ((node = walker.nextNode())) {
+            if (node === targetNode) return offset + targetOffset;
+            offset += node.textContent.length;
+        }
+        return null;
+    },
+
+    parseJitenConjugations(element) {
+        if (!element?.dataset?.conjugations) return [];
+        try {
+            const conjugations = JSON.parse(element.dataset.conjugations);
+            return Array.isArray(conjugations)
+                ? conjugations
+                    .filter(item => typeof item === 'string')
+                    .map(item => item.trim())
+                    .filter(item => item && !item.startsWith('('))
+                    .reverse()
+                : [];
+        } catch (_) {
+            return [];
+        }
+    },
+
+    jitenWordRects(element) {
+        if (!element) return [];
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        const rects = this.rectsForRange(range);
+        const merged = this.mergeSelectionRects(rects);
+        return this.options.rubyAwareRects ? this.unifyVerticalColumnRects(merged) : merged;
     },
 
     getSelectionRect(x, y) {

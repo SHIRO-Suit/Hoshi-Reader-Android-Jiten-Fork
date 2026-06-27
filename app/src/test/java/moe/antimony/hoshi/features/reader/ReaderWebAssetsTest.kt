@@ -22,11 +22,14 @@ class ReaderWebAssetsTest {
             "hoshi-web/reader/reader-vn-content-stream.js",
             "hoshi-web/reader/reader-vn-range-map.js",
             "hoshi-web/reader/highlights.js",
+            "hoshi-web/reader/jiten.js",
             "hoshi-web/reader/reader.css",
             "hoshi-web/popup/popup.js",
             "hoshi-web/popup/popup.css",
             "hoshi-web/popup/iframe.html",
             "hoshi-web/popup/reader-popup-host.js",
+            "hoshi-web/popup/jiten-popup.js",
+            "hoshi-web/popup/jiten-popup.css",
             "hoshi-web/popup/icons/close.svg",
         )
 

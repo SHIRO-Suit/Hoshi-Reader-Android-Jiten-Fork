@@ -108,6 +108,32 @@ html:not([data-hoshi-reader-eink-mode="true"]) .hoshi-sasayaki-cue.hoshi-sasayak
 [data-hoshi-visual-novel-unrevealed] {
     visibility: hidden !important;
 }
+.hoshi-jiten-word[data-hoshi-jiten-state="new"] { --hoshi-jiten-color: #a566ef; --hoshi-jiten-fill: rgba(165, 102, 239, 0.24); }
+.hoshi-jiten-word[data-hoshi-jiten-state="young"] { --hoshi-jiten-color: #d08700; --hoshi-jiten-fill: rgba(208, 135, 0, 0.24); }
+.hoshi-jiten-word[data-hoshi-jiten-state="mature"] { --hoshi-jiten-color: #4b8d7f; --hoshi-jiten-fill: rgba(75, 141, 127, 0.24); }
+.hoshi-jiten-word[data-hoshi-jiten-state="due"] { --hoshi-jiten-color: #ff4500; --hoshi-jiten-fill: rgba(255, 69, 0, 0.24); }
+.hoshi-jiten-word[data-hoshi-jiten-state="mastered"] { --hoshi-jiten-color: #6f7782; --hoshi-jiten-fill: rgba(111, 119, 130, 0.2); }
+.hoshi-jiten-word[data-hoshi-jiten-state="blacklisted"] { --hoshi-jiten-color: #777; --hoshi-jiten-fill: rgba(119, 119, 119, 0.2); }
+.hoshi-jiten-word[data-hoshi-jiten-state="redundant"] { --hoshi-jiten-color: #4b9fff; --hoshi-jiten-fill: rgba(75, 159, 255, 0.18); }
+html[data-hoshi-jiten-marker="underline"] .hoshi-jiten-word[data-hoshi-jiten-visible="true"] {
+    text-decoration-line: underline;
+    text-decoration-color: var(--hoshi-jiten-color);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+    text-underline-position: under left;
+}
+html[data-hoshi-jiten-marker="highlight"] .hoshi-jiten-word[data-hoshi-jiten-visible="true"] {
+    background-color: var(--hoshi-jiten-fill);
+    border-radius: 2px;
+}
+html[data-hoshi-jiten-marker="textColor"] .hoshi-jiten-word[data-hoshi-jiten-visible="true"] {
+    color: var(--hoshi-jiten-color);
+}
+rt .hoshi-jiten-word,
+rp .hoshi-jiten-word {
+    background: transparent !important;
+    text-decoration: none !important;
+}
 __HOSHI_HIGHLIGHT_COLOR_CSS__
 a {
     color: rgba(66, 108, 245, 1) !important;

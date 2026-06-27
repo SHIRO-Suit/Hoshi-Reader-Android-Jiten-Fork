@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.SystemClock
 import android.webkit.WebView
+import android.widget.Toast
 import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
@@ -28,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -42,6 +44,7 @@ import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -49,6 +52,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import moe.antimony.hoshi.LocalHoshiUiDependencies
+import moe.antimony.hoshi.R
 import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.epub.BookEntry
 import moe.antimony.hoshi.epub.EpubBook
@@ -76,6 +80,7 @@ import moe.antimony.hoshi.features.dictionary.createLookupPopupItem
 import moe.antimony.hoshi.features.dictionary.dismissPopupAt
 import moe.antimony.hoshi.features.dictionary.openPopupExternalLink
 import moe.antimony.hoshi.features.dictionary.withLookupPopupVisualOptions
+import moe.antimony.hoshi.features.jiten.JitenViewModel
 import moe.antimony.hoshi.features.sasayaki.BookSasayakiPlaybackRepository
 import moe.antimony.hoshi.features.sasayaki.SasayakiAudioRepository
 import moe.antimony.hoshi.features.sasayaki.SasayakiAudiobookChapter
@@ -113,6 +118,7 @@ fun ReaderWebView(
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     val context = LocalContext.current
+    val resources = LocalResources.current
     val appContainer = LocalHoshiUiDependencies.current
     val scope = rememberCoroutineScope()
     val fontManager = appContainer.readerFontManager
@@ -121,6 +127,7 @@ fun ReaderWebView(
     }
     val dictionaryRepository = appContainer.dictionaryRepository
     val dictionarySettingsRepository = appContainer.dictionarySettingsRepository
+    val jitenViewModel: JitenViewModel = hiltViewModel()
     val audioSettingsRepository = appContainer.audioSettingsRepository
     val sasayakiSettingsRepository = appContainer.sasayakiSettingsRepository
     val sasayakiPlaybackServiceRuntime = appContainer.sasayakiPlaybackServiceRuntime
@@ -503,7 +510,18 @@ fun ReaderWebView(
                 contentLanguageProfile = popupContentLanguageProfile,
             ),
         )?.let { (popup, highlightCount) ->
-            popup.copy(sasayakiCue = sasayakiCueForSelection(selection)) to highlightCount
+            popup.copy(
+                state = popup.state.copy(
+                    jitenCard = jitenViewModel
+                        .card(selection.jitenWordId, selection.jitenReadingIndex)
+                        ?.takeIf { selection.jitenTapOffset == 0 }
+                        ?.copy(
+                            matchedText = selection.jitenText,
+                            conjugations = selection.jitenConjugations,
+                        ),
+                ),
+                sasayakiCue = sasayakiCueForSelection(selection),
+            ) to highlightCount
         }
     fun lookupChildPopup(selection: ReaderSelectionData): Pair<LookupPopupItem, Int>? =
         createLookupPopupItem(
@@ -606,6 +624,10 @@ fun ReaderWebView(
         }
         sasayakiPlayer?.autoScroll = settings.autoScroll
         sasayakiPlayer?.readerSkipButtonAction = settings.readerSkipButtonAction
+    }
+    fun updateJitenSettings(settings: DictionarySettings) {
+        dictionarySettings = settings
+        scope.launch { dictionarySettingsRepository.update { settings } }
     }
     fun goToNextChapter(): Boolean {
         if (!stateHolder.canAcceptReaderNavigationInput()) return false
@@ -791,6 +813,43 @@ fun ReaderWebView(
                 val body = entry?.let(LookupPopupHtml::entryJsonString) ?: "null"
                 replyReaderPopupMessage(message.popupId, message.messageId ?: return, body)
             }
+            is ReaderLookupPopupBridgeMessage.JitenAction -> {
+                val card = popupById(message.popupId)?.state?.jitenCard
+                    ?.takeIf { it.wordId == message.wordId && it.readingIndex == message.readingIndex }
+                    ?: return
+                scope.launch {
+                    val updated = try {
+                        jitenViewModel.updateVocabularyState(
+                            card = card,
+                            list = message.list,
+                            action = message.action,
+                            apiKey = dictionarySettings.jitenApiKey,
+                            endpoint = dictionarySettings.jitenApiEndpoint,
+                        )
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        Toast.makeText(context, resources.getString(R.string.jiten_request_failed), Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    setLookupPopups(
+                        stateHolder.lookupPopups.map { popup ->
+                            if (popup.id == message.popupId) {
+                                popup.copy(state = popup.state.copy(jitenCard = updated))
+                            } else {
+                                popup
+                            }
+                        },
+                    )
+                    val statesJson = updated.cardState.joinToString(prefix = "[", postfix = "]") { state ->
+                        readerJavaScriptStringLiteral(state.wireName)
+                    }
+                    webView?.evaluateJavascript(
+                        "window.hoshiJiten?.updateCardState(${updated.wordId}, ${updated.readingIndex}, $statesJson);",
+                        null,
+                    )
+                }
+            }
             is ReaderLookupPopupBridgeMessage.PopupScrolled -> {
                 val index = popupIndex(message.popupId).takeIf { it >= 0 } ?: return
                 setLookupPopups(closeChildPopupsForScrolledParent(stateHolder.lookupPopups, index))
@@ -860,7 +919,7 @@ fun ReaderWebView(
             setLookupPopups(listOf(popup))
             selectionRects(selectionCount) { rects ->
                 if (stateHolder.lookupPopups.none { it.id == popup.id }) return@selectionRects
-                val displayRects = rects.ifEmpty { listOf(popup.state.selection.rect) }
+                val displayRects = selection.jitenRects.ifEmpty { rects }.ifEmpty { listOf(popup.state.selection.rect) }
                 val anchor = displayRects.firstOrNull()
                 if (anchor != null) {
                     setLookupPopups(
@@ -1695,6 +1754,27 @@ fun ReaderWebView(
                         },
                         scanNonJapaneseText = dictionarySettings.scanNonJapaneseText,
                         selectionScanLength = readerSelectionMaxLength(dictionarySettings),
+                        dictionarySettings = dictionarySettings,
+                        onJitenParse = { texts ->
+                            jitenViewModel.parseJson(
+                                texts = texts,
+                                apiKey = dictionarySettings.jitenApiKey,
+                                endpoint = dictionarySettings.jitenApiEndpoint,
+                            )
+                        },
+                        onJitenError = { error ->
+                            val message = when (error) {
+                                ReaderJitenError.InvalidResponse -> resources.getString(R.string.jiten_invalid_response)
+                                is ReaderJitenError.RequestFailed -> error.details?.let { details ->
+                                    resources.getString(R.string.jiten_parse_failed, details)
+                                } ?: resources.getString(R.string.jiten_request_failed)
+                            }
+                            Toast.makeText(
+                                context,
+                                message,
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        },
                         contentLanguageProfile = popupContentLanguageProfile,
                         readerSettings = effectiveSettings,
                         chapterHighlightsJson = ReaderHighlights.chapterHighlightsJson(
@@ -1834,6 +1914,8 @@ fun ReaderWebView(
                 },
                 sasayakiSettings = sasayakiSettings,
                 onSasayakiSettingsChange = ::updateSasayakiSettings,
+                jitenSettings = dictionarySettings,
+                onJitenSettingsChange = ::updateJitenSettings,
                 fontManager = fontManager,
                 onDismiss = stateHolder::dismissAppearance,
             )

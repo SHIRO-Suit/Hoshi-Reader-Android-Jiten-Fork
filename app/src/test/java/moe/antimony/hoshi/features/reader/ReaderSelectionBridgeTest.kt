@@ -17,6 +17,19 @@ class ReaderSelectionBridgeTest {
                     "height": 18.0
                 },
                 "normalizedOffset": 42,
+                "jitenWordId": 123,
+                "jitenReadingIndex": 2,
+                "jitenTapOffset": 0,
+                "jitenText": "é£Ÿã¹ã‚‹",
+                "jitenConjugations": ["without doing so"],
+                "jitenRects": [
+                    {
+                        "x": 10.0,
+                        "y": 20.0,
+                        "width": 30.0,
+                        "height": 14.0
+                    }
+                ],
                 "futureField": "ignored"
             }
         """.trimIndent()
@@ -32,6 +45,19 @@ class ReaderSelectionBridgeTest {
                     height = 18.0,
                 ),
                 normalizedOffset = 42,
+                jitenWordId = 123,
+                jitenReadingIndex = 2,
+                jitenTapOffset = 0,
+                jitenText = "é£Ÿã¹ã‚‹",
+                jitenConjugations = listOf("without doing so"),
+                jitenRects = listOf(
+                    ReaderSelectionRect(
+                        x = 10.0,
+                        y = 20.0,
+                        width = 30.0,
+                        height = 14.0,
+                    ),
+                ),
             ),
             ReaderSelectionBridgePayload.fromJson(payload),
         )

@@ -12,14 +12,25 @@ internal data class AppVersion(
     private val major: Int,
     private val minor: Int,
     private val patch: Int,
+    private val jitenBuild: Int? = null,
 ) : Comparable<AppVersion> {
     override fun compareTo(other: AppVersion): Int =
-        compareValuesBy(this, other, AppVersion::major, AppVersion::minor, AppVersion::patch)
+        compareValuesBy(
+            this,
+            other,
+            AppVersion::major,
+            AppVersion::minor,
+            AppVersion::patch,
+            { it.jitenBuild ?: 0 },
+        )
 
-    override fun toString(): String = "$major.$minor.$patch"
+    override fun toString(): String = buildString {
+        append("$major.$minor.$patch")
+        jitenBuild?.let { append("-jiten.$it") }
+    }
 
     companion object {
-        private val VersionRegex = Regex("""^v?(\d+)\.(\d+)\.(\d+)$""")
+        private val VersionRegex = Regex("""^v?(\d+)\.(\d+)\.(\d+)(?:-jiten\.(\d+))?$""")
 
         fun parse(raw: String): AppVersion? {
             val match = VersionRegex.matchEntire(raw.trim()) ?: return null
@@ -27,6 +38,7 @@ internal data class AppVersion(
                 major = match.groupValues[1].toInt(),
                 minor = match.groupValues[2].toInt(),
                 patch = match.groupValues[3].toInt(),
+                jitenBuild = match.groupValues[4].takeIf(String::isNotEmpty)?.toInt(),
             )
         }
     }
@@ -200,7 +212,7 @@ internal class GitHubReleaseUpdateRepository private constructor(
 
     companion object {
         const val LatestReleaseUrl =
-            "https://api.github.com/repos/HuangAntimony/Hoshi-Reader-Android/releases/latest"
+            "https://api.github.com/repos/SHIRO-Suit/Hoshi-Reader-Android/releases/latest"
     }
 }
 

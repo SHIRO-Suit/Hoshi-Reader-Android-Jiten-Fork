@@ -12,7 +12,7 @@ class GitHubReleaseUpdateRepositoryTest {
             """
             {
               "tag_name": "v0.3.5",
-              "html_url": "https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/tag/v0.3.5",
+              "html_url": "https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/tag/v0.3.5",
               "assets": [
                 {
                   "name": "Hoshi-Reader-v0.3.5.apk",
@@ -41,14 +41,14 @@ class GitHubReleaseUpdateRepositoryTest {
     fun fallsBackToMirroredLatestReleaseAndPrefersMirroredDownloads() = runBlocking {
         val client = FakeGitHubHttpClient(
             responses = mapOf(
-                "https://ghproxy.vip/https://api.github.com/repos/HuangAntimony/Hoshi-Reader-Android/releases/latest" to """
+                "https://ghproxy.vip/https://api.github.com/repos/SHIRO-Suit/Hoshi-Reader-Android/releases/latest" to """
                     {
                       "tag_name": "v0.3.5",
-                      "html_url": "https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/tag/v0.3.5",
+                      "html_url": "https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/tag/v0.3.5",
                       "assets": [
                         {
                           "name": "Hoshi-Reader-v0.3.5.apk",
-                          "browser_download_url": "https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk"
+                          "browser_download_url": "https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk"
                         }
                       ]
                     }
@@ -65,15 +65,15 @@ class GitHubReleaseUpdateRepositoryTest {
         assertEquals(
             listOf(
                 GitHubReleaseUpdateRepository.LatestReleaseUrl,
-                "https://ghproxy.vip/https://api.github.com/repos/HuangAntimony/Hoshi-Reader-Android/releases/latest",
+                "https://ghproxy.vip/https://api.github.com/repos/SHIRO-Suit/Hoshi-Reader-Android/releases/latest",
             ),
             client.requestedUrls.take(2),
         )
         assertEquals(
-            "https://gh-proxy.com/https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
+            "https://gh-proxy.com/https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
             update.downloadUrl,
         )
-        assertTrue(update.fallbackDownloadUrls.contains("https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk"))
+        assertTrue(update.fallbackDownloadUrls.contains("https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk"))
     }
 
     @Test
@@ -83,11 +83,11 @@ class GitHubReleaseUpdateRepositoryTest {
                 GitHubReleaseUpdateRepository.LatestReleaseUrl to """
                     {
                       "tag_name": "v0.3.5",
-                      "html_url": "https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/tag/v0.3.5",
+                      "html_url": "https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/tag/v0.3.5",
                       "assets": [
                         {
                           "name": "Hoshi-Reader-v0.3.5.apk",
-                          "browser_download_url": "https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk"
+                          "browser_download_url": "https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk"
                         }
                       ]
                     }
@@ -100,10 +100,10 @@ class GitHubReleaseUpdateRepositoryTest {
 
         requireNotNull(update)
         assertEquals(
-            "https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
+            "https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
             update.downloadUrl,
         )
-        assertTrue(update.fallbackDownloadUrls.contains("https://gh-proxy.com/https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk"))
+        assertTrue(update.fallbackDownloadUrls.contains("https://gh-proxy.com/https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk"))
     }
 
     @Test
@@ -112,21 +112,21 @@ class GitHubReleaseUpdateRepositoryTest {
             versionName = "0.3.5",
             releaseUrl = "https://example.com/releases/tag/v0.3.5",
             assetName = "Hoshi-Reader-v0.3.5.apk",
-            downloadUrl = "https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
+            downloadUrl = "https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
             fallbackDownloadUrls = listOf(
-                "https://gh-proxy.com/https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
-                "https://gh.llkk.cc/https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
+                "https://gh-proxy.com/https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
+                "https://gh.llkk.cc/https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
             ),
             sha256 = null,
         )
 
         assertEquals(update.downloadUrl, update.downloadUrlAfterFailed(null))
         assertEquals(
-            "https://gh-proxy.com/https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
+            "https://gh-proxy.com/https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
             update.downloadUrlAfterFailed(update.downloadUrl),
         )
         assertEquals(
-            "https://gh.llkk.cc/https://github.com/HuangAntimony/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
+            "https://gh.llkk.cc/https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/download/v0.3.5/Hoshi-Reader-v0.3.5.apk",
             update.downloadUrlAfterFailed(update.fallbackDownloadUrls.first()),
         )
     }
@@ -236,6 +236,29 @@ class GitHubReleaseUpdateRepositoryTest {
         assertTrue(AppVersion.parse("v0.10.0")!! > AppVersion.parse("0.9.9")!!)
         assertTrue(AppVersion.parse("0.3.4")!! == AppVersion.parse("v0.3.4")!!)
         assertTrue(AppVersion.parse("0.3.4")!! < AppVersion.parse("0.3.5")!!)
+    }
+
+    @Test
+    fun parsesAndSelectsJitenForkReleaseVersions() {
+        val release = GitHubRelease(
+            tagName = "v1.2.2-jiten.10209",
+            htmlUrl = "https://github.com/SHIRO-Suit/Hoshi-Reader-Android/releases/tag/v1.2.2-jiten.10209",
+            assets = listOf(
+                GitHubReleaseAsset(
+                    name = "Hoshi-Reader-v1.2.2-jiten.10209.apk",
+                    browserDownloadUrl = "https://example.com/Hoshi-Reader-v1.2.2-jiten.10209.apk",
+                    digest = null,
+                ),
+            ),
+        )
+
+        val update = release.availableUpdateOrNull(currentVersionName = "1.2.2-jiten.10208")
+
+        requireNotNull(update)
+        assertEquals("1.2.2-jiten.10209", update.versionName)
+        assertEquals("Hoshi-Reader-v1.2.2-jiten.10209.apk", update.assetName)
+        assertTrue(AppVersion.parse("1.2.2-jiten.10209")!! > AppVersion.parse("1.2.2-jiten.10208")!!)
+        assertTrue(AppVersion.parse("1.2.3-jiten.1")!! > AppVersion.parse("1.2.2-jiten.10209")!!)
     }
 
     private fun splitAbiRelease(): GitHubRelease =

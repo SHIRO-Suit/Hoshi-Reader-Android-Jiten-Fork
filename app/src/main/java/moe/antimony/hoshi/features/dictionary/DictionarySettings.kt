@@ -56,6 +56,29 @@ enum class DictionaryUpdateInterval(
     }
 }
 
+enum class JitenMarkerStyle(val rawValue: String) {
+    Underline("underline"),
+    Highlight("highlight"),
+    TextColor("textColor"),
+    ;
+
+    companion object {
+        fun fromRawValue(value: String?): JitenMarkerStyle =
+            entries.firstOrNull { it.rawValue == value } ?: Underline
+    }
+}
+
+enum class JitenPopupMode(val rawValue: String) {
+    Paged("paged"),
+    Integrated("integrated"),
+    ;
+
+    companion object {
+        fun fromRawValue(value: String?): JitenPopupMode =
+            entries.firstOrNull { it.rawValue == value } ?: Paged
+    }
+}
+
 data class DictionarySettings(
     val autoUpdateDictionaries: Boolean = true,
     val dictionaryUpdateInterval: DictionaryUpdateInterval = DictionaryUpdateInterval.Weekly,
@@ -74,17 +97,36 @@ data class DictionarySettings(
     val compactPitchAccents: Boolean = true,
     val lowRamDictionaryImport: Boolean = false,
     val customCSS: String = "",
+    val jitenEnabled: Boolean = false,
+    val jitenApiKey: String = "",
+    val jitenApiEndpoint: String = DEFAULT_JITEN_API_ENDPOINT,
+    val jitenMarkerStyle: JitenMarkerStyle = JitenMarkerStyle.Underline,
+    val jitenPopupMode: JitenPopupMode = JitenPopupMode.Paged,
+    val jitenVisibleStates: Set<String> = DEFAULT_JITEN_VISIBLE_STATES,
 ) {
-    fun normalized(): DictionarySettings = copy(
-        maxResults = maxResults.coerceIn(MIN_MAX_RESULTS, MAX_MAX_RESULTS),
-        scanLength = scanLength.coerceIn(MIN_SCAN_LENGTH, MAX_SCAN_LENGTH),
-    )
+    fun normalized(): DictionarySettings {
+        val normalizedJitenEndpoint = jitenApiEndpoint.trim().trimEnd('/')
+        return copy(
+            maxResults = maxResults.coerceIn(MIN_MAX_RESULTS, MAX_MAX_RESULTS),
+            scanLength = scanLength.coerceIn(MIN_SCAN_LENGTH, MAX_SCAN_LENGTH),
+            jitenApiKey = jitenApiKey.trim(),
+            jitenApiEndpoint = when (normalizedJitenEndpoint) {
+                "", LEGACY_JITEN_API_ENDPOINT -> DEFAULT_JITEN_API_ENDPOINT
+                else -> normalizedJitenEndpoint
+            },
+            jitenVisibleStates = jitenVisibleStates.intersect(JITEN_CONFIGURABLE_STATES),
+        )
+    }
 
     companion object {
         const val MIN_MAX_RESULTS = 1
         const val MAX_MAX_RESULTS = 50
         const val MIN_SCAN_LENGTH = 1
         const val MAX_SCAN_LENGTH = 64
+        const val DEFAULT_JITEN_API_ENDPOINT = "https://api.jiten.moe/api"
+        private const val LEGACY_JITEN_API_ENDPOINT = "https://api.jiten.moe"
+        val JITEN_CONFIGURABLE_STATES = setOf("new", "young", "mature", "due")
+        val DEFAULT_JITEN_VISIBLE_STATES = setOf("new", "young", "due")
     }
 }
 
@@ -128,6 +170,16 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
         compactPitchAccents = preferences.getBoolean(KEY_COMPACT_PITCH_ACCENTS, true),
         lowRamDictionaryImport = preferences.getBoolean(KEY_LOW_RAM_DICTIONARY_IMPORT, false),
         customCSS = preferences.getString(KEY_CUSTOM_CSS, "").orEmpty(),
+        jitenEnabled = preferences.getBoolean(KEY_JITEN_ENABLED, false),
+        jitenApiKey = preferences.getString(KEY_JITEN_API_KEY, "").orEmpty(),
+        jitenApiEndpoint = preferences.getString(KEY_JITEN_API_ENDPOINT, null)
+            ?: DictionarySettings.DEFAULT_JITEN_API_ENDPOINT,
+        jitenMarkerStyle = JitenMarkerStyle.fromRawValue(preferences.getString(KEY_JITEN_MARKER_STYLE, null)),
+        jitenPopupMode = JitenPopupMode.fromRawValue(preferences.getString(KEY_JITEN_POPUP_MODE, null)),
+        jitenVisibleStates = preferences.getStringSet(
+            KEY_JITEN_VISIBLE_STATES,
+            DictionarySettings.DEFAULT_JITEN_VISIBLE_STATES,
+        ).orEmpty(),
     ).normalized()
 
     fun save(settings: DictionarySettings) {
@@ -156,6 +208,12 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
             .putBoolean(KEY_COMPACT_PITCH_ACCENTS, normalized.compactPitchAccents)
             .putBoolean(KEY_LOW_RAM_DICTIONARY_IMPORT, normalized.lowRamDictionaryImport)
             .putString(KEY_CUSTOM_CSS, normalized.customCSS)
+            .putBoolean(KEY_JITEN_ENABLED, normalized.jitenEnabled)
+            .putString(KEY_JITEN_API_KEY, normalized.jitenApiKey)
+            .putString(KEY_JITEN_API_ENDPOINT, normalized.jitenApiEndpoint)
+            .putString(KEY_JITEN_MARKER_STYLE, normalized.jitenMarkerStyle.rawValue)
+            .putString(KEY_JITEN_POPUP_MODE, normalized.jitenPopupMode.rawValue)
+            .putStringSet(KEY_JITEN_VISIBLE_STATES, normalized.jitenVisibleStates)
             .apply()
     }
 
@@ -178,6 +236,12 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
         const val KEY_COMPACT_PITCH_ACCENTS = "compactPitchAccents"
         const val KEY_LOW_RAM_DICTIONARY_IMPORT = "lowRamDictionaryImport"
         const val KEY_CUSTOM_CSS = "customCSS"
+        const val KEY_JITEN_ENABLED = "jitenEnabled"
+        const val KEY_JITEN_API_KEY = "jitenApiKey"
+        const val KEY_JITEN_API_ENDPOINT = "jitenApiEndpoint"
+        const val KEY_JITEN_MARKER_STYLE = "jitenMarkerStyle"
+        const val KEY_JITEN_POPUP_MODE = "jitenPopupMode"
+        const val KEY_JITEN_VISIBLE_STATES = "jitenVisibleStates"
     }
 }
 
@@ -312,6 +376,14 @@ class DictionarySettingsRepository(
             compactPitchAccents = this[KEY_COMPACT_PITCH_ACCENTS] ?: true,
             lowRamDictionaryImport = this[KEY_LOW_RAM_DICTIONARY_IMPORT] ?: false,
             customCSS = this[KEY_CUSTOM_CSS].orEmpty(),
+            jitenEnabled = this[KEY_JITEN_ENABLED] ?: false,
+            jitenApiKey = this[KEY_JITEN_API_KEY].orEmpty(),
+            jitenApiEndpoint = this[KEY_JITEN_API_ENDPOINT]
+                ?: DictionarySettings.DEFAULT_JITEN_API_ENDPOINT,
+            jitenMarkerStyle = JitenMarkerStyle.fromRawValue(this[KEY_JITEN_MARKER_STYLE]),
+            jitenPopupMode = JitenPopupMode.fromRawValue(this[KEY_JITEN_POPUP_MODE]),
+            jitenVisibleStates = this[KEY_JITEN_VISIBLE_STATES]
+                ?: DictionarySettings.DEFAULT_JITEN_VISIBLE_STATES,
         ).normalized()
     }
 
@@ -339,6 +411,12 @@ class DictionarySettingsRepository(
         this[KEY_COMPACT_PITCH_ACCENTS] = normalized.compactPitchAccents
         this[KEY_LOW_RAM_DICTIONARY_IMPORT] = normalized.lowRamDictionaryImport
         this[KEY_CUSTOM_CSS] = normalized.customCSS
+        this[KEY_JITEN_ENABLED] = normalized.jitenEnabled
+        this[KEY_JITEN_API_KEY] = normalized.jitenApiKey
+        this[KEY_JITEN_API_ENDPOINT] = normalized.jitenApiEndpoint
+        this[KEY_JITEN_MARKER_STYLE] = normalized.jitenMarkerStyle.rawValue
+        this[KEY_JITEN_POPUP_MODE] = normalized.jitenPopupMode.rawValue
+        this[KEY_JITEN_VISIBLE_STATES] = normalized.jitenVisibleStates
     }
 
     private fun MutablePreferences.writeGlobalDictionarySettings(settings: DictionarySettings) {
@@ -352,6 +430,12 @@ class DictionarySettingsRepository(
             this[KEY_LAST_DICTIONARY_UPDATE_EPOCH_MILLIS] = lastUpdate
         }
         this[KEY_LOW_RAM_DICTIONARY_IMPORT] = normalized.lowRamDictionaryImport
+        this[KEY_JITEN_ENABLED] = normalized.jitenEnabled
+        this[KEY_JITEN_API_KEY] = normalized.jitenApiKey
+        this[KEY_JITEN_API_ENDPOINT] = normalized.jitenApiEndpoint
+        this[KEY_JITEN_MARKER_STYLE] = normalized.jitenMarkerStyle.rawValue
+        this[KEY_JITEN_POPUP_MODE] = normalized.jitenPopupMode.rawValue
+        this[KEY_JITEN_VISIBLE_STATES] = normalized.jitenVisibleStates
     }
 
     private suspend fun profileDictionarySettingsOrMigrate(globalSettings: DictionarySettings): ProfileDictionarySettings =
@@ -421,6 +505,12 @@ class DictionarySettingsRepository(
         private val KEY_COMPACT_PITCH_ACCENTS = booleanPreferencesKey("compactPitchAccents")
         private val KEY_LOW_RAM_DICTIONARY_IMPORT = booleanPreferencesKey("lowRamDictionaryImport")
         private val KEY_CUSTOM_CSS = stringPreferencesKey("customCSS")
+        private val KEY_JITEN_ENABLED = booleanPreferencesKey("jitenEnabled")
+        private val KEY_JITEN_API_KEY = stringPreferencesKey("jitenApiKey")
+        private val KEY_JITEN_API_ENDPOINT = stringPreferencesKey("jitenApiEndpoint")
+        private val KEY_JITEN_MARKER_STYLE = stringPreferencesKey("jitenMarkerStyle")
+        private val KEY_JITEN_POPUP_MODE = stringPreferencesKey("jitenPopupMode")
+        private val KEY_JITEN_VISIBLE_STATES = stringSetPreferencesKey("jitenVisibleStates")
         private val json = Json {
             prettyPrint = true
             encodeDefaults = true
