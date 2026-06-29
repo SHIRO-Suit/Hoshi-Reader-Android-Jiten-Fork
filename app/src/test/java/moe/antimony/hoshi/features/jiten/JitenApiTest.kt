@@ -91,6 +91,30 @@ class JitenApiTest {
         assertTrue(transport.body.contains("\"state\":\"forget-add\""))
     }
 
+    @Test
+    fun reviewUsesJitenReaderRatingContractAndRefreshesState() = runBlocking {
+        val transport = RecordingTransport(
+            responseBodies = listOf(
+                "",
+                """{"result":[[2]],"decks":[[123]]}""",
+            ),
+        )
+
+        val state = JitenApi(transport).review(
+            wordId = 42,
+            readingIndex = 1,
+            rating = JitenReviewRating.Good,
+            apiKey = "secret",
+        )
+
+        assertTrue(transport.requests[0].url.endsWith("/srs/review"))
+        assertTrue(transport.requests[0].body.contains("\"rating\":3"))
+        assertTrue(transport.requests[1].url.endsWith("/reader/lookup-vocabulary"))
+        assertTrue(transport.requests[1].body.contains("\"words\":[[42,1]]"))
+        assertEquals(listOf(JitenCardState.Mature), state.states)
+        assertEquals(listOf(123L), state.deckIds)
+    }
+
     @Test(expected = JitenApiException::class)
     fun exposesServerErrorMessage() {
         runBlocking {
@@ -105,11 +129,13 @@ class JitenApiTest {
 
     private class RecordingTransport(
         private val statusCode: Int = 200,
-        private val responseBody: String,
+        private val responseBody: String = "",
+        private val responseBodies: List<String> = listOf(responseBody),
     ) : JitenHttpTransport {
         var url: String = ""
         var headers: Map<String, String> = emptyMap()
         var body: String = ""
+        val requests = mutableListOf<RecordedRequest>()
 
         override suspend fun post(
             url: String,
@@ -119,7 +145,15 @@ class JitenApiTest {
             this.url = url
             this.headers = headers
             this.body = body.decodeToString()
-            return JitenHttpResponse(statusCode, responseBody.encodeToByteArray())
+            requests += RecordedRequest(url, headers, this.body)
+            val response = responseBodies.getOrElse(requests.lastIndex) { responseBodies.lastOrNull().orEmpty() }
+            return JitenHttpResponse(statusCode, response.encodeToByteArray())
         }
     }
+
+    private data class RecordedRequest(
+        val url: String,
+        val headers: Map<String, String>,
+        val body: String,
+    )
 }

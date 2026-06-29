@@ -851,6 +851,42 @@ fun ReaderWebView(
                     )
                 }
             }
+            is ReaderLookupPopupBridgeMessage.JitenReview -> {
+                val card = popupById(message.popupId)?.state?.jitenCard
+                    ?.takeIf { it.wordId == message.wordId && it.readingIndex == message.readingIndex }
+                    ?: return
+                scope.launch {
+                    val updated = try {
+                        jitenViewModel.review(
+                            card = card,
+                            rating = message.rating,
+                            apiKey = dictionarySettings.jitenApiKey,
+                            endpoint = dictionarySettings.jitenApiEndpoint,
+                        )
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        Toast.makeText(context, resources.getString(R.string.jiten_request_failed), Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
+                    setLookupPopups(
+                        stateHolder.lookupPopups.map { popup ->
+                            if (popup.id == message.popupId) {
+                                popup.copy(state = popup.state.copy(jitenCard = updated))
+                            } else {
+                                popup
+                            }
+                        },
+                    )
+                    val statesJson = updated.cardState.joinToString(prefix = "[", postfix = "]") { state ->
+                        readerJavaScriptStringLiteral(state.wireName)
+                    }
+                    webView?.evaluateJavascript(
+                        "window.hoshiJiten?.updateCardState(${updated.wordId}, ${updated.readingIndex}, $statesJson);",
+                        null,
+                    )
+                }
+            }
             is ReaderLookupPopupBridgeMessage.PopupScrolled -> {
                 val index = popupIndex(message.popupId).takeIf { it >= 0 } ?: return
                 setLookupPopups(closeChildPopupsForScrolledParent(stateHolder.lookupPopups, index))

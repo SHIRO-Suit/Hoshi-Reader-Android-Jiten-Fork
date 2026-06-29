@@ -1,6 +1,7 @@
 package moe.antimony.hoshi.features.dictionary
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.Lifecycle
@@ -92,7 +93,13 @@ internal class DictionaryAutoUpdateScheduler @Inject constructor(
 
     fun onAppForeground() {
         appScope.launch(ioDispatcher) {
-            enqueueIfDue()
+            try {
+                enqueueIfDue()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Throwable) {
+                Log.w("HoshiDictionaryUpdate", "Dictionary auto-update foreground check failed", error)
+            }
         }
     }
 

@@ -25,6 +25,7 @@ import moe.antimony.hoshi.features.dictionary.LookupPopupItem
 import moe.antimony.hoshi.features.dictionary.LookupPopupLayout
 import moe.antimony.hoshi.features.dictionary.popupSelectionOffsetY
 import moe.antimony.hoshi.features.jiten.JitenCard
+import moe.antimony.hoshi.features.jiten.JitenReviewRating
 import moe.antimony.hoshi.features.jiten.JitenVocabularyAction
 import moe.antimony.hoshi.features.jiten.JitenVocabularyList
 import java.io.ByteArrayInputStream
@@ -268,6 +269,14 @@ internal sealed class ReaderLookupPopupBridgeMessage {
         val action: JitenVocabularyAction,
     ) : ReaderLookupPopupBridgeMessage()
 
+    data class JitenReview(
+        override val popupId: String,
+        override val messageId: String?,
+        val wordId: Long,
+        val readingIndex: Int,
+        val rating: JitenReviewRating,
+    ) : ReaderLookupPopupBridgeMessage()
+
     data class ContentReady(
         override val popupId: String,
         override val messageId: String?,
@@ -367,6 +376,16 @@ internal sealed class ReaderLookupPopupBridgeMessage {
                         readingIndex = body.int("readingIndex") ?: return null,
                         list = JitenVocabularyList.fromWireName(body.string("list") ?: return null) ?: return null,
                         action = JitenVocabularyAction.fromWireName(body.string("action") ?: return null) ?: return null,
+                    )
+                }
+                "jitenReview" -> {
+                    val body = payload.obj("body") ?: return null
+                    JitenReview(
+                        popupId = popupId,
+                        messageId = messageId,
+                        wordId = body.long("wordId") ?: return null,
+                        readingIndex = body.int("readingIndex") ?: return null,
+                        rating = JitenReviewRating.fromWireName(body.string("rating") ?: return null) ?: return null,
                     )
                 }
                 "contentReady" -> ContentReady(popupId, messageId)

@@ -140,11 +140,41 @@ enum class JitenVocabularyAction(val wireName: String) {
     }
 }
 
+enum class JitenReviewRating(val wireName: String, val wireValue: Int) {
+    Again("again", 1),
+    Hard("hard", 2),
+    Good("good", 3),
+    Easy("easy", 4),
+    ;
+
+    companion object {
+        fun fromWireName(value: String): JitenReviewRating? = entries.firstOrNull { it.wireName == value }
+    }
+}
+
 @Serializable
 internal data class JitenSetVocabularyStateRequest(
     val wordId: Long,
     val readingIndex: Int,
     val state: String,
+)
+
+@Serializable
+internal data class JitenReviewRequest(
+    val wordId: Long,
+    val readingIndex: Int,
+    val rating: Int,
+)
+
+@Serializable
+internal data class JitenLookupVocabularyRequest(
+    val words: List<List<Long>>,
+)
+
+@Serializable
+internal data class JitenLookupVocabularyResponse(
+    val result: List<List<Int>?> = emptyList(),
+    val decks: List<List<Long>?> = emptyList(),
 )
 
 @Serializable

@@ -79,6 +79,17 @@ enum class JitenPopupMode(val rawValue: String) {
     }
 }
 
+enum class JitenReviewButtonMode(val rawValue: String) {
+    FourGrades("fourGrades"),
+    PassFail("passFail"),
+    ;
+
+    companion object {
+        fun fromRawValue(value: String?): JitenReviewButtonMode =
+            entries.firstOrNull { it.rawValue == value } ?: PassFail
+    }
+}
+
 data class DictionarySettings(
     val autoUpdateDictionaries: Boolean = true,
     val dictionaryUpdateInterval: DictionaryUpdateInterval = DictionaryUpdateInterval.Weekly,
@@ -103,6 +114,9 @@ data class DictionarySettings(
     val jitenMarkerStyle: JitenMarkerStyle = JitenMarkerStyle.Underline,
     val jitenPopupMode: JitenPopupMode = JitenPopupMode.Paged,
     val jitenVisibleStates: Set<String> = DEFAULT_JITEN_VISIBLE_STATES,
+    val jitenShowMiningActions: Boolean = true,
+    val jitenShowReviewActions: Boolean = false,
+    val jitenReviewButtonMode: JitenReviewButtonMode = JitenReviewButtonMode.PassFail,
 ) {
     fun normalized(): DictionarySettings {
         val normalizedJitenEndpoint = jitenApiEndpoint.trim().trimEnd('/')
@@ -180,6 +194,11 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
             KEY_JITEN_VISIBLE_STATES,
             DictionarySettings.DEFAULT_JITEN_VISIBLE_STATES,
         ).orEmpty(),
+        jitenShowMiningActions = preferences.getBooleanOrDefault(KEY_JITEN_SHOW_MINING_ACTIONS, true),
+        jitenShowReviewActions = preferences.getBooleanOrDefault(KEY_JITEN_SHOW_REVIEW_ACTIONS, false),
+        jitenReviewButtonMode = JitenReviewButtonMode.fromRawValue(
+            preferences.getStringOrNull(KEY_JITEN_REVIEW_BUTTON_MODE),
+        ),
     ).normalized()
 
     fun save(settings: DictionarySettings) {
@@ -214,6 +233,9 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
             .putString(KEY_JITEN_MARKER_STYLE, normalized.jitenMarkerStyle.rawValue)
             .putString(KEY_JITEN_POPUP_MODE, normalized.jitenPopupMode.rawValue)
             .putStringSet(KEY_JITEN_VISIBLE_STATES, normalized.jitenVisibleStates)
+            .putBoolean(KEY_JITEN_SHOW_MINING_ACTIONS, normalized.jitenShowMiningActions)
+            .putBoolean(KEY_JITEN_SHOW_REVIEW_ACTIONS, normalized.jitenShowReviewActions)
+            .putString(KEY_JITEN_REVIEW_BUTTON_MODE, normalized.jitenReviewButtonMode.rawValue)
             .apply()
     }
 
@@ -242,6 +264,9 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
         const val KEY_JITEN_MARKER_STYLE = "jitenMarkerStyle"
         const val KEY_JITEN_POPUP_MODE = "jitenPopupMode"
         const val KEY_JITEN_VISIBLE_STATES = "jitenVisibleStates"
+        const val KEY_JITEN_SHOW_MINING_ACTIONS = "jitenShowMiningActions"
+        const val KEY_JITEN_SHOW_REVIEW_ACTIONS = "jitenShowReviewActions"
+        const val KEY_JITEN_REVIEW_BUTTON_MODE = "jitenReviewButtonMode"
     }
 }
 
@@ -384,6 +409,9 @@ class DictionarySettingsRepository(
             jitenPopupMode = JitenPopupMode.fromRawValue(this[KEY_JITEN_POPUP_MODE]),
             jitenVisibleStates = this[KEY_JITEN_VISIBLE_STATES]
                 ?: DictionarySettings.DEFAULT_JITEN_VISIBLE_STATES,
+            jitenShowMiningActions = getOrDefault(KEY_JITEN_SHOW_MINING_ACTIONS, true),
+            jitenShowReviewActions = getOrDefault(KEY_JITEN_SHOW_REVIEW_ACTIONS, false),
+            jitenReviewButtonMode = JitenReviewButtonMode.fromRawValue(getOrNull(KEY_JITEN_REVIEW_BUTTON_MODE)),
         ).normalized()
     }
 
@@ -417,6 +445,9 @@ class DictionarySettingsRepository(
         this[KEY_JITEN_MARKER_STYLE] = normalized.jitenMarkerStyle.rawValue
         this[KEY_JITEN_POPUP_MODE] = normalized.jitenPopupMode.rawValue
         this[KEY_JITEN_VISIBLE_STATES] = normalized.jitenVisibleStates
+        this[KEY_JITEN_SHOW_MINING_ACTIONS] = normalized.jitenShowMiningActions
+        this[KEY_JITEN_SHOW_REVIEW_ACTIONS] = normalized.jitenShowReviewActions
+        this[KEY_JITEN_REVIEW_BUTTON_MODE] = normalized.jitenReviewButtonMode.rawValue
     }
 
     private fun MutablePreferences.writeGlobalDictionarySettings(settings: DictionarySettings) {
@@ -436,6 +467,9 @@ class DictionarySettingsRepository(
         this[KEY_JITEN_MARKER_STYLE] = normalized.jitenMarkerStyle.rawValue
         this[KEY_JITEN_POPUP_MODE] = normalized.jitenPopupMode.rawValue
         this[KEY_JITEN_VISIBLE_STATES] = normalized.jitenVisibleStates
+        this[KEY_JITEN_SHOW_MINING_ACTIONS] = normalized.jitenShowMiningActions
+        this[KEY_JITEN_SHOW_REVIEW_ACTIONS] = normalized.jitenShowReviewActions
+        this[KEY_JITEN_REVIEW_BUTTON_MODE] = normalized.jitenReviewButtonMode.rawValue
     }
 
     private suspend fun profileDictionarySettingsOrMigrate(globalSettings: DictionarySettings): ProfileDictionarySettings =
@@ -511,6 +545,9 @@ class DictionarySettingsRepository(
         private val KEY_JITEN_MARKER_STYLE = stringPreferencesKey("jitenMarkerStyle")
         private val KEY_JITEN_POPUP_MODE = stringPreferencesKey("jitenPopupMode")
         private val KEY_JITEN_VISIBLE_STATES = stringSetPreferencesKey("jitenVisibleStates")
+        private val KEY_JITEN_SHOW_MINING_ACTIONS = booleanPreferencesKey("jitenShowMiningActions")
+        private val KEY_JITEN_SHOW_REVIEW_ACTIONS = booleanPreferencesKey("jitenShowReviewActions")
+        private val KEY_JITEN_REVIEW_BUTTON_MODE = stringPreferencesKey("jitenReviewButtonMode")
         private val json = Json {
             prettyPrint = true
             encodeDefaults = true
@@ -518,6 +555,18 @@ class DictionarySettingsRepository(
         }
     }
 }
+
+private fun android.content.SharedPreferences.getBooleanOrDefault(key: String, defaultValue: Boolean): Boolean =
+    runCatching { getBoolean(key, defaultValue) }.getOrDefault(defaultValue)
+
+private fun android.content.SharedPreferences.getStringOrNull(key: String): String? =
+    runCatching { getString(key, null) }.getOrNull()
+
+private fun Preferences.getOrDefault(key: Preferences.Key<Boolean>, defaultValue: Boolean): Boolean =
+    runCatching { this[key] }.getOrNull() ?: defaultValue
+
+private fun Preferences.getOrNull(key: Preferences.Key<String>): String? =
+    runCatching { this[key] }.getOrNull()
 
 @Serializable
 private data class ProfileDictionarySettings(

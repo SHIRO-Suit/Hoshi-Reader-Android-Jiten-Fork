@@ -198,6 +198,9 @@ internal object LookupPopupHtml {
                     window.deduplicatePitchAccents = ${normalizedSettings.deduplicatePitchAccents};
                     window.compactPitchAccents = ${normalizedSettings.compactPitchAccents};
                     window.hoshiJitenPopupMode = ${JsonPrimitive(normalizedSettings.jitenPopupMode.rawValue)};
+                    window.hoshiJitenShowMiningActions = ${normalizedSettings.jitenShowMiningActions};
+                    window.hoshiJitenShowReviewActions = ${normalizedSettings.jitenShowReviewActions};
+                    window.hoshiJitenReviewButtonMode = ${JsonPrimitive(normalizedSettings.jitenReviewButtonMode.rawValue)};
                     window.audioSources = ${audioSourcesJson(audioSettings)};
                     window.audioRequestEndpoint = "https://appassets.androidplatform.net/audio";
                     window.dictionaryMediaRequestEndpoint = "https://appassets.androidplatform.net/image";

@@ -64,6 +64,7 @@ import moe.antimony.hoshi.R
 import moe.antimony.hoshi.features.dictionary.DictionarySettings
 import moe.antimony.hoshi.features.dictionary.JitenMarkerStyle
 import moe.antimony.hoshi.features.dictionary.JitenPopupMode
+import moe.antimony.hoshi.features.dictionary.JitenReviewButtonMode
 import moe.antimony.hoshi.features.settings.SettingsDetailScaffold
 import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
 import moe.antimony.hoshi.importing.FileImportContent
@@ -764,6 +765,40 @@ private fun ReaderAppearanceContent(
                                 )
                             },
                         )
+                        AppearanceDivider(palette)
+                        SwitchRow(
+                            label = stringResource(R.string.jiten_show_mining_actions),
+                            checked = jitenSettings.jitenShowMiningActions,
+                            onCheckedChange = { checked ->
+                                onJitenSettingsChange(jitenSettings.copy(jitenShowMiningActions = checked))
+                            },
+                        )
+                        AppearanceDivider(palette)
+                        SwitchRow(
+                            label = stringResource(R.string.jiten_show_review_actions),
+                            checked = jitenSettings.jitenShowReviewActions,
+                            onCheckedChange = { checked ->
+                                onJitenSettingsChange(jitenSettings.copy(jitenShowReviewActions = checked))
+                            },
+                        )
+                        if (jitenSettings.jitenShowReviewActions) {
+                            AppearanceDivider(palette)
+                            SwitchRow(
+                                label = stringResource(R.string.jiten_review_mode_pass_fail),
+                                checked = jitenSettings.jitenReviewButtonMode == JitenReviewButtonMode.PassFail,
+                                onCheckedChange = { passFail ->
+                                    onJitenSettingsChange(
+                                        jitenSettings.copy(
+                                            jitenReviewButtonMode = if (passFail) {
+                                                JitenReviewButtonMode.PassFail
+                                            } else {
+                                                JitenReviewButtonMode.FourGrades
+                                            },
+                                        ),
+                                    )
+                                },
+                            )
+                        }
                         listOf(
                             "new" to R.string.jiten_state_new,
                             "young" to R.string.jiten_state_young,

@@ -58,6 +58,47 @@ class JitenApi internal constructor(
         )
     }
 
+    suspend fun review(
+        wordId: Long,
+        readingIndex: Int,
+        rating: JitenReviewRating,
+        apiKey: String,
+        endpoint: String = DictionarySettings.DEFAULT_JITEN_API_ENDPOINT,
+    ): JitenCardStateResult {
+        post(
+            endpoint = endpoint,
+            path = "srs/review",
+            apiKey = apiKey,
+            body = json.encodeToString(
+                JitenReviewRequest(
+                    wordId = wordId,
+                    readingIndex = readingIndex,
+                    rating = rating.wireValue,
+                ),
+            ),
+        )
+        return lookupCardState(wordId, readingIndex, apiKey, endpoint)
+    }
+
+    suspend fun lookupCardState(
+        wordId: Long,
+        readingIndex: Int,
+        apiKey: String,
+        endpoint: String = DictionarySettings.DEFAULT_JITEN_API_ENDPOINT,
+    ): JitenCardStateResult {
+        val response = post(
+            endpoint = endpoint,
+            path = "reader/lookup-vocabulary",
+            apiKey = apiKey,
+            body = json.encodeToString(JitenLookupVocabularyRequest(listOf(listOf(wordId, readingIndex.toLong())))),
+        )
+        val decoded = json.decodeFromString<JitenLookupVocabularyResponse>(response)
+        return JitenCardStateResult(
+            states = decoded.result.firstOrNull().toCardStates(),
+            deckIds = decoded.decks.firstOrNull().orEmpty(),
+        )
+    }
+
     private suspend fun post(endpoint: String, path: String, apiKey: String, body: String): String {
         val normalizedKey = apiKey.trim()
         require(normalizedKey.isNotEmpty()) { "Jiten API key is not configured." }
@@ -90,6 +131,11 @@ class JitenApi internal constructor(
         }
     }
 }
+
+data class JitenCardStateResult(
+    val states: List<JitenCardState>,
+    val deckIds: List<Long>,
+)
 
 private fun JitenWireParseResult.toParseResult(): JitenParseResult {
     val cards = vocabulary.associate { item ->
@@ -157,6 +203,9 @@ private fun jitenCardState(state: Int): JitenCardState? = when (state) {
     6 -> JitenCardState.Redundant
     else -> null
 }
+
+private fun List<Int>?.toCardStates(): List<JitenCardState> =
+    orEmpty().mapNotNull(::jitenCardState).ifEmpty { listOf(JitenCardState.New) }
 
 class JitenApiException(val statusCode: Int, message: String) : IOException(message)
 

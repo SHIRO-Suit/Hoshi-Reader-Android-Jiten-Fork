@@ -393,12 +393,44 @@
 
     function actionBar() {
         const actions = element('div', 'hoshi-jiten-popup-actions');
-        actions.append(
+        const reviewable = !card?.cardState?.includes('redundant');
+        if (reviewable && window.hoshiJitenShowReviewActions) {
+            actions.append(reviewActions());
+        }
+        if (reviewable && window.hoshiJitenShowMiningActions) {
+            actions.append(miningActions());
+        }
+        return actions;
+    }
+
+    function miningActions() {
+        const group = element('div', 'hoshi-jiten-popup-action-group mining');
+        group.append(
             actionButton('Never forget', 'neverForget', 'mastered'),
             actionButton('Blacklist', 'blacklist', 'blacklisted'),
             forgetButton(),
         );
-        return actions;
+        return group;
+    }
+
+    function reviewActions() {
+        const group = element('div', 'hoshi-jiten-popup-action-group review');
+        const twoPoint = window.hoshiJitenReviewButtonMode === 'passFail';
+        const buttons = twoPoint
+            ? [
+                ['Fail', 'again', 'fail'],
+                ['Pass', 'good', 'pass'],
+            ]
+            : [
+                ['Again', 'again', 'again'],
+                ['Hard', 'hard', 'hard'],
+                ['Good', 'good', 'good'],
+                ['Easy', 'easy', 'easy'],
+            ];
+        buttons.forEach(([label, rating, className]) => {
+            group.append(reviewButton(label, rating, className));
+        });
+        return group;
     }
 
     function textButton(label, className = '') {
@@ -419,6 +451,19 @@
                 readingIndex: card.readingIndex,
                 list,
                 action: active ? 'remove' : 'add'
+            });
+        });
+        return button;
+    }
+
+    function reviewButton(label, rating, className) {
+        const button = textButton(label, `review ${className}`);
+        button.addEventListener('click', () => {
+            button.disabled = true;
+            window.HoshiAndroidPopup.postMessage('jitenReview', {
+                wordId: card.wordId,
+                readingIndex: card.readingIndex,
+                rating
             });
         });
         return button;

@@ -608,6 +608,11 @@
     <string name="jiten_marker_underline">Underline</string>
     <string name="jiten_separate_popup_page">Separate Jiten page</string>
     <string name="jiten_separate_popup_page_description">Show Jiten as a swipeable second page instead of above dictionary definitions.</string>
+    <string name="jiten_show_mining_actions">Show mining controls</string>
+    <string name="jiten_show_review_actions">Show review controls</string>
+    <string name="jiten_review_mode">Review buttons</string>
+    <string name="jiten_review_mode_four_grades">Again / Hard / Good / Easy</string>
+    <string name="jiten_review_mode_pass_fail">Pass/fail mode</string>
     <string name="jiten_state_new">New</string>
     <string name="jiten_state_young">Young</string>
     <string name="jiten_state_mature">Mature</string>

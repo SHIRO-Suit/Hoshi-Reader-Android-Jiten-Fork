@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jiten popup preview</title>
+  <link rel="stylesheet" href="../app/src/main/assets/hoshi-web/popup/popup.css">
+  <link rel="stylesheet" href="../app/src/main/assets/hoshi-web/popup/jiten-popup.css">
+  <style>
+    body {
+      min-height: 100vh;
+      padding: 24px;
+      background: #f4f1ec;
+      color: #24211f;
+    }
+
+    .preview-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      max-width: 720px;
+      margin: 0 auto 16px;
+      font: 14px/1.4 system-ui, sans-serif;
+    }
+
+    .preview-controls label {
+      display: inline-flex;
+      gap: 5px;
+      align-items: center;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: #ffffffcc;
+      box-shadow: 0 1px 4px #0001;
+    }
+
+    .preview-popup {
+      max-width: 360px;
+      margin: 0 auto;
+      padding: 12px 10px;
+      border-radius: 14px;
+      background: #fff;
+      box-shadow: 0 12px 40px #0002;
+    }
+
+    html.hoshi-popup-full-width .preview-popup {
+      max-width: 720px;
+    }
+
+    .entry {
+      border-top: 1px solid #0001;
+      margin-top: 10px;
+      padding-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <form class="preview-controls">
+    <label><input id="fullWidth" type="checkbox"> full width</label>
+    <label><input id="reviewActions" type="checkbox" checked> review</label>
+    <label><input id="miningActions" type="checkbox" checked> mining</label>
+    <label><input id="passFail" type="checkbox" checked> pass/fail</label>
+    <label><input id="integrated" type="checkbox" checked> integrated</label>
+  </form>
+
+  <main class="preview-popup">
+    <div id="entries-container">
+      <article class="entry">
+        <div class="entry-header">
+          <div class="expression-scroll">
+            <span class="expression">見る</span>
+          </div>
+        </div>
+        <ol>
+          <li>to see; to look; to watch</li>
+          <li>to examine; to judge</li>
+        </ol>
+      </article>
+    </div>
+  </main>
+
+  <script>
+    const controls = {
+      fullWidth: document.getElementById('fullWidth'),
+      reviewActions: document.getElementById('reviewActions'),
+      miningActions: document.getElementById('miningActions'),
+      passFail: document.getElementById('passFail'),
+      integrated: document.getElementById('integrated')
+    };
+
+    Object.entries(controls).forEach(([key, input]) => {
+      const value = localStorage.getItem(`jitenPopupPreview.${key}`);
+      if (value != null) input.checked = value === 'true';
+    });
+
+    const sampleCard = {
+      wordId: 12345,
+      readingIndex: 0,
+      spelling: '写真を撮らずに',
+      matchedText: '写真を撮らずに',
+      reading: 'しゃしんをとらずに',
+      cardState: ['new'],
+      frequencyRank: 2540,
+      pitchAccents: [2],
+      conjugations: ['without doing so'],
+      meanings: [
+        {
+          partsOfSpeech: ['v5r', 'vt'],
+          glosses: ['to take a picture', 'to photograph']
+        },
+        {
+          partsOfSpeech: ['exp'],
+          glosses: ['without taking a photo']
+        }
+      ]
+    };
+
+    window.HoshiAndroidPopup = {
+      postMessage(name, payload) {
+        console.log('[HoshiAndroidPopup]', name, payload);
+      }
+    };
+
+    function setConfig() {
+      document.documentElement.classList.toggle('hoshi-popup-full-width', controls.fullWidth.checked);
+      window.hoshiJitenShowReviewActions = controls.reviewActions.checked;
+      window.hoshiJitenShowMiningActions = controls.miningActions.checked;
+      window.hoshiJitenReviewButtonMode = controls.passFail.checked ? 'passFail' : 'fourGrades';
+      window.hoshiJitenPopupMode = controls.integrated.checked ? 'integrated' : 'paged';
+    }
+
+    setConfig();
+  </script>
+  <script src="../app/src/main/assets/hoshi-web/popup/jiten-popup.js"></script>
+  <script>
+    function render() {
+      setConfig();
+      window.hoshiJitenPopup.setCard(sampleCard);
+      window.hoshiJitenPopup.setPage('jiten');
+    }
+
+    Object.entries(controls).forEach(([key, input]) => {
+      input.addEventListener('change', () => {
+        localStorage.setItem(`jitenPopupPreview.${key}`, String(input.checked));
+        location.reload();
+      });
+    });
+    render();
+  </script>
+</body>
+</html>

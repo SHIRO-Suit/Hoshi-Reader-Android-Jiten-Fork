@@ -72,6 +72,29 @@ internal class JitenViewModel @Inject constructor(
         updated
     }
 
+    suspend fun review(
+        card: JitenCard,
+        rating: JitenReviewRating,
+        apiKey: String,
+        endpoint: String,
+    ): JitenCard = withContext(defaultDispatcher) {
+        val state = api.review(card.wordId, card.readingIndex, rating, apiKey, endpoint)
+        val updated = card.copy(
+            cardState = state.states,
+            deckIds = state.deckIds,
+        )
+        mergeCards(
+            mapOf(
+                (card.wordId to card.readingIndex) to updated.copy(
+                    matchedText = null,
+                    conjugations = emptyList(),
+                    rubies = emptyList(),
+                ),
+            ),
+        )
+        updated
+    }
+
     @Synchronized
     private fun mergeCards(cards: Map<Pair<Long, Int>, JitenCard>) {
         cardsById += cards

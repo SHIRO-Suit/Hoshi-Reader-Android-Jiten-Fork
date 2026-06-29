@@ -462,6 +462,7 @@ fun DictionarySearchView(
                 )
             }
             is ReaderLookupPopupBridgeMessage.JitenAction -> Unit
+            is ReaderLookupPopupBridgeMessage.JitenReview -> Unit
             is ReaderLookupPopupBridgeMessage.ContentReady -> Unit
             is ReaderLookupPopupBridgeMessage.PopupScrolled -> {
                 if (message.popupId == DictionarySearchRootPopupId) {

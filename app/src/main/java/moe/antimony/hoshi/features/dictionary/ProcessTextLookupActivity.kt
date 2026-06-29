@@ -404,6 +404,7 @@ private fun ProcessTextLookupOverlay(
                     )
                 }
                 is ReaderLookupPopupBridgeMessage.JitenAction -> Unit
+                is ReaderLookupPopupBridgeMessage.JitenReview -> Unit
                 is ReaderLookupPopupBridgeMessage.PopupScrolled -> {
                     val index = popupIndex(message.popupId).takeIf { it >= 0 } ?: return
                     setIframePopups(closeChildPopupsForScrolledParent(popups, index))
