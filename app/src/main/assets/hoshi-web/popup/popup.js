@@ -1190,19 +1190,24 @@ function appendKanjiListSection(parent, title, values, className = 'kanji-inline
     const items = (values || []).filter(Boolean);
     if (!items.length) return;
     const section = el('section', { className: `kanji-field-section ${className}` });
-    section.appendChild(el('h4', { className: 'kanji-field-title', textContent: title }));
+    const header = el('div', { className: 'kanji-field-title-row' });
+    header.appendChild(el('h4', { className: 'kanji-field-title', textContent: title }));
+    section.appendChild(header);
     const list = el('div', { className: 'kanji-field-values' });
     const limit = options.limit || items.length;
     const renderItem = options.renderItem || ((value) => createKanjiChip(value));
-    items.slice(0, limit).forEach(value => list.appendChild(renderItem(value)));
+    const hiddenItems = [];
+    items.forEach((value, index) => {
+        const item = renderItem(value);
+        if (index >= limit) {
+            item.hidden = true;
+            hiddenItems.push(item);
+        }
+        list.appendChild(item);
+    });
     section.appendChild(list);
-    if (items.length > limit) {
-        const details = el('details', { className: 'kanji-show-more' });
-        details.appendChild(el('summary', { className: 'kanji-details-link', textContent: `Show ${items.length - limit} more` }));
-        const more = el('div', { className: 'kanji-field-values' });
-        items.slice(limit).forEach(value => more.appendChild(renderItem(value)));
-        details.appendChild(more);
-        section.appendChild(details);
+    if (hiddenItems.length) {
+        header.appendChild(createKanjiToggleButton(`Show ${hiddenItems.length} more`, 'Show less', hiddenItems));
     }
     parent.appendChild(section);
 }
@@ -1266,17 +1271,54 @@ function combinationRuby(value) {
     return chip;
 }
 
+function createKanjiToggleButton(showText, hideText, targets) {
+    const items = Array.isArray(targets) ? targets : [targets];
+    const button = el('button', { className: 'kanji-details-link', textContent: showText });
+    button.type = 'button';
+    button.addEventListener('click', () => {
+        const nextHidden = !items.some(item => item.hidden);
+        items.forEach(item => {
+            item.hidden = nextHidden;
+        });
+        button.textContent = nextHidden ? showText : hideText;
+        button.setAttribute('aria-expanded', String(!nextHidden));
+    });
+    button.setAttribute('aria-expanded', 'false');
+    return button;
+}
+
+function createKanjiSummaryMeta(frequency, tags) {
+    const values = tags.filter(Boolean);
+    if (!frequency && !values.length) return null;
+    const tagText = values.join(' ');
+    const className = [
+        'kanji-summary-meta',
+        frequency && tagText.length > 8 ? 'stacked' : '',
+    ].filter(Boolean).join(' ');
+    const meta = el('div', { className });
+    if (frequency) {
+        meta.appendChild(el('span', { className: 'kanji-summary-frequency', textContent: `#${frequency}` }));
+    }
+    if (frequency && tagText) {
+        meta.appendChild(el('span', { className: 'kanji-summary-meta-separator', 'aria-hidden': 'true' }));
+    }
+    if (tagText) {
+        meta.appendChild(el('span', { className: 'kanji-summary-tags-text', textContent: tagText }));
+    }
+    return meta;
+}
+
 function createCombinedKanjiEntrySection(entry, character) {
     const section = el('section', { className: 'kanji-entry-section combined renshuu-style' });
     const summary = el('div', { className: 'kanji-summary-card' });
     const characterColumn = el('div', { className: 'kanji-summary-character' });
     const info = el('div', { className: 'kanji-summary-info' });
     const frequency = findKanjiStat(entry, 'Frequency', 'freq');
+    const tags = parseTags(entry.tags);
 
     characterColumn.appendChild(el('div', { className: 'kanji-summary-glyph', textContent: character }));
-    if (frequency) {
-        characterColumn.appendChild(el('div', { className: 'kanji-summary-frequency', textContent: `#${frequency}` }));
-    }
+    const meta = createKanjiSummaryMeta(frequency, tags);
+    if (meta) characterColumn.appendChild(meta);
 
     [
         createKanjiInfoLine('Kunyomi', entry.kunyomi, 'reading-line'),
@@ -1291,13 +1333,6 @@ function createCombinedKanjiEntrySection(entry, character) {
         ),
         createKanjiInfoLine('Parts', (entry.components || []).join(' ')),
     ].filter(Boolean).forEach(node => info.appendChild(node));
-
-    const tags = parseTags(entry.tags);
-    if (tags.length) {
-        const tagLine = el('div', { className: 'kanji-summary-minor-tags' });
-        tags.forEach(tag => tagLine.appendChild(el('span', { textContent: tag })));
-        info.appendChild(tagLine);
-    }
 
     summary.append(characterColumn, info);
     section.appendChild(summary);
@@ -1316,29 +1351,43 @@ function createCombinedKanjiEntrySection(entry, character) {
     appendKanjiListSection(section, 'Radical meanings', entry.radicalMeanings);
     appendKanjiListSection(section, 'Examples', entry.radicalExamples);
 
-    const defaultStats = visibleKanjiStats(entry);
-    if (defaultStats.length) {
-        section.appendChild(createKanjiStatsList(defaultStats));
-    }
-
-    const extraStats = hiddenKanjiStats(entry);
-    if (extraStats.length) {
-        const details = el('details', { className: 'kanji-extra-stats' });
-        details.appendChild(el('summary', { className: 'kanji-details-link', textContent: 'Show hidden stats' }));
-        details.appendChild(createKanjiStatsList(extraStats));
-        section.appendChild(details);
-    }
+    appendKanjiStatsSection(section, visibleKanjiStats(entry), hiddenKanjiStats(entry));
 
     return section;
 }
 
+function appendKanjiStatsSection(parent, defaultStats, extraStats = []) {
+    if (!defaultStats.length && !extraStats.length) return;
+    const section = el('section', { className: 'kanji-field-section kanji-stats-section' });
+    const header = el('div', { className: 'kanji-field-title-row' });
+    header.appendChild(el('h4', { className: 'kanji-field-title', textContent: 'Stats' }));
+    const list = el('dl', { className: 'kanji-stats' });
+    defaultStats.forEach(stat => list.appendChild(createKanjiStatItem(stat)));
+    if (extraStats.length) {
+        const hiddenItems = extraStats.map(stat => {
+            const item = createKanjiStatItem(stat);
+            item.hidden = true;
+            list.appendChild(item);
+            return item;
+        });
+        header.appendChild(createKanjiToggleButton('Show hidden', 'Hide', hiddenItems));
+    }
+    section.appendChild(header);
+    section.appendChild(list);
+    parent.appendChild(section);
+}
+
 function createKanjiStatsList(stats) {
     const list = el('dl', { className: 'kanji-stats' });
-    stats.forEach(stat => {
-        list.appendChild(el('dt', { textContent: stat.name }));
-        list.appendChild(el('dd', { textContent: stat.value }));
-    });
+    stats.forEach(stat => list.appendChild(createKanjiStatItem(stat)));
     return list;
+}
+
+function createKanjiStatItem(stat) {
+    const item = el('div', { className: 'kanji-stat' });
+    item.appendChild(el('dt', { textContent: stat.name }));
+    item.appendChild(el('dd', { textContent: stat.value }));
+    return item;
 }
 
 function createRawKanjiEntrySection(entry) {
@@ -1375,19 +1424,7 @@ function createRawKanjiEntrySection(entry) {
         section.appendChild(list);
     }
 
-    if (entry.stats?.length) {
-        const defaultStats = visibleKanjiStats(entry);
-        if (defaultStats.length) {
-            section.appendChild(createKanjiStatsList(defaultStats));
-        }
-        const extraStats = hiddenKanjiStats(entry);
-        if (extraStats.length) {
-            const details = el('details', { className: 'kanji-extra-stats' });
-            details.appendChild(el('summary', { className: 'kanji-details-link', textContent: 'Show hidden stats' }));
-            details.appendChild(createKanjiStatsList(extraStats));
-            section.appendChild(details);
-        }
-    }
+    appendKanjiStatsSection(section, visibleKanjiStats(entry), hiddenKanjiStats(entry));
 
     return section;
 }
@@ -2088,6 +2125,10 @@ function navigate(origin, destination) {
 
 window.navigateBack = () => navigate(backStack, forwardStack);
 window.navigateForward = () => navigate(forwardStack, backStack);
+window.hoshiPopupNavigationState = () => ({
+    backCount: backStack.length,
+    forwardCount: forwardStack.length,
+});
 
 function applyHoshiPopupThemeOverrides(root = document) {
     const colorScheme = document.documentElement.dataset.hoshiColorScheme;

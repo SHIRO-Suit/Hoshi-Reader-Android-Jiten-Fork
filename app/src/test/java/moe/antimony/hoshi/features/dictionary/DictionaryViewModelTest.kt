@@ -736,6 +736,8 @@ private class FakeDictionaryRepository(
         rebuildCount += 1
     }
 
+    override suspend fun lookupKanji(character: String) = null
+
     override suspend fun updateSettings(transform: (DictionarySettings) -> DictionarySettings) {
         val next = transform(settingsFlow.value).normalized()
         settingsFlow.value = next

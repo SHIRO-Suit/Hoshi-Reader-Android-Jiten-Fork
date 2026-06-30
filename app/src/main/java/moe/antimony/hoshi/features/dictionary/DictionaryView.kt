@@ -1,7 +1,13 @@
 package moe.antimony.hoshi.features.dictionary
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.view.MotionEvent
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
 import androidx.compose.animation.core.Animatable
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -67,6 +73,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.DataObject
@@ -82,6 +89,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,11 +107,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.text.DateFormat
 import java.util.Date
 import moe.antimony.hoshi.LocalHoshiUiDependencies
@@ -120,6 +130,7 @@ import moe.antimony.hoshi.importing.importDisplayName
 import moe.antimony.hoshi.ui.HoshiBlockingProgressOverlay
 import moe.antimony.hoshi.ui.asString
 import moe.antimony.hoshi.ui.hoshiTextFieldCursorBrush
+import moe.antimony.hoshi.webview.applyHoshiWebViewSecurityDefaults
 import kotlin.math.roundToInt
 
 private val DictionarySwitchColor = Color(0xFF34C759)
@@ -332,6 +343,7 @@ fun DictionaryView(
                 showScanNonJapaneseText = scanNonJapaneseTextSettingVisible(
                     profileState.effectiveContentLanguageProfile,
                 ),
+                lookupKanjiPreviewJson = dictionaryViewModel::kanjiPreviewJson,
                 onSettingsChange = dictionaryViewModel::updateSettings,
                 onClose = { destination = null },
                 modifier = modifier,
@@ -1284,6 +1296,305 @@ private fun List<String>.moveItem(from: Int, to: Int): List<String> =
         add(to, removeAt(from))
     }
 
+private val KanjiPreviewPresets = listOf(
+    "口" to "Simple",
+    "見" to "Common",
+    "派" to "Detailed",
+    "鬱" to "Dense",
+)
+
+@Composable
+private fun KanjiSettingsPreview(
+    settings: DictionarySettings,
+    kanjiDictionaries: List<DictionaryInfo>,
+    lookupKanjiPreviewJson: suspend (String, DictionarySettings) -> String?,
+) {
+    var selectedKanji by remember { mutableStateOf(KanjiPreviewPresets.first().first) }
+    var previewJson by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    val normalizedSettings = settings.normalized()
+
+    LaunchedEffect(selectedKanji, normalizedSettings, kanjiDictionaries) {
+        if (kanjiDictionaries.none { it.isEnabled }) {
+            previewJson = null
+            loading = false
+            return@LaunchedEffect
+        }
+        loading = true
+        previewJson = lookupKanjiPreviewJson(selectedKanji, normalizedSettings)
+        loading = false
+    }
+
+    SectionLabel("Kanji preview")
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Preview the real kanji popup with the current combined-mode priorities and hidden-stat settings.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                KanjiPreviewPresets.forEach { (kanji, label) ->
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { selectedKanji = kanji },
+                        enabled = selectedKanji != kanji,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                        ) {
+                            Text(
+                                text = kanji,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+            when {
+                loading -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(96.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+                previewJson == null -> {
+                    Text(
+                        text = if (kanjiDictionaries.none { it.isEnabled }) {
+                            "Enable at least one kanji dictionary to preview."
+                        } else {
+                            "No kanji result for $selectedKanji with the enabled dictionaries."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                else -> {
+                    KanjiPopupPreviewWebView(
+                        kanjiJson = requireNotNull(previewJson),
+                        settings = normalizedSettings,
+                        lookupKanjiPreviewJson = lookupKanjiPreviewJson,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private class KanjiPreviewJavascriptBridge(
+    private val settingsProvider: () -> DictionarySettings,
+    private val lookupKanjiPreviewJsonProvider: () -> suspend (String, DictionarySettings) -> String?,
+    private val onNavigationStateChange: (Boolean, Boolean) -> Unit,
+) {
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    @JavascriptInterface
+    fun lookupKanji(character: String): String =
+        runBlocking {
+            lookupKanjiPreviewJsonProvider()(character, settingsProvider())
+        }.orEmpty()
+
+    @JavascriptInterface
+    fun updateNavigationState(backCount: Int, forwardCount: Int) {
+        mainHandler.post {
+            onNavigationStateChange(backCount > 0, forwardCount > 0)
+        }
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
+@Composable
+private fun KanjiPopupPreviewWebView(
+    kanjiJson: String,
+    settings: DictionarySettings,
+    lookupKanjiPreviewJson: suspend (String, DictionarySettings) -> String?,
+) {
+    val context = LocalContext.current
+    val assets = remember(context) { LookupPopupAssets.load(context) }
+    val currentSettings by rememberUpdatedState(settings)
+    val currentLookupKanjiPreviewJson by rememberUpdatedState(lookupKanjiPreviewJson)
+    var canNavigateBack by remember { mutableStateOf(false) }
+    var canNavigateForward by remember { mutableStateOf(false) }
+    val bridge = remember {
+        KanjiPreviewJavascriptBridge(
+            settingsProvider = { currentSettings },
+            lookupKanjiPreviewJsonProvider = { currentLookupKanjiPreviewJson },
+            onNavigationStateChange = { back, forward ->
+                canNavigateBack = back
+                canNavigateForward = forward
+            },
+        )
+    }
+    val document = remember(assets, settings) {
+        LookupPopupHtml.renderIframeDocument(
+            assets = assets,
+            settings = settings,
+            swipeToDismiss = false,
+            popupScale = 0.94,
+        )
+    }
+    val html = remember(document, kanjiJson) {
+        document.replace(
+            "</body>",
+            """
+                <script>
+                    window.addEventListener('load', function() {
+                        requestAnimationFrame(function() {
+                            function notifyNavigationState() {
+                                if (!window.hoshiPopupNavigationState) {
+                                    window.HoshiKanjiPreviewBridge.updateNavigationState(0, 0);
+                                    return;
+                                }
+                                var state = window.hoshiPopupNavigationState();
+                                window.HoshiKanjiPreviewBridge.updateNavigationState(state.backCount || 0, state.forwardCount || 0);
+                            }
+                            window.hoshiKanjiPreviewNotifyNavigationState = notifyNavigationState;
+                            var originalPostMessage = window.HoshiAndroidPopup.postMessage;
+                            window.HoshiAndroidPopup.postMessage = function(name, body) {
+                                var result = originalPostMessage.apply(this, arguments);
+                                if (name === 'navigationPush') {
+                                    setTimeout(notifyNavigationState, 0);
+                                }
+                                return result;
+                            };
+                            window.HoshiAndroidPopup.requestMessage = function(name, body) {
+                                if (name !== 'lookupKanji') {
+                                    return Promise.resolve(null);
+                                }
+                                try {
+                                    var json = window.HoshiKanjiPreviewBridge.lookupKanji(String(body || ''));
+                                    return Promise.resolve(json ? JSON.parse(json) : null);
+                                } catch (e) {
+                                    console.warn('Kanji preview lookup failed', e);
+                                    return Promise.resolve(null);
+                                }
+                            };
+                            renderKanjiPage($kanjiJson);
+                            notifyNavigationState();
+                        });
+                    });
+                </script>
+            </body>
+            """.trimIndent(),
+        )
+    }
+    var previewWebView by remember { mutableStateOf<WebView?>(null) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                modifier = Modifier.size(32.dp),
+                enabled = canNavigateBack,
+                onClick = {
+                    previewWebView?.evaluateJavascript(
+                        "window.navigateBack && window.navigateBack(); window.hoshiKanjiPreviewNotifyNavigationState && window.hoshiKanjiPreviewNotifyNavigationState();",
+                        null,
+                    )
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = stringResource(R.string.action_back),
+                )
+            }
+            IconButton(
+                modifier = Modifier.size(32.dp),
+                enabled = canNavigateForward,
+                onClick = {
+                    previewWebView?.evaluateJavascript(
+                        "window.navigateForward && window.navigateForward(); window.hoshiKanjiPreviewNotifyNavigationState && window.hoshiKanjiPreviewNotifyNavigationState();",
+                        null,
+                    )
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = "Forward",
+                )
+            }
+        }
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(360.dp),
+            factory = { viewContext ->
+                WebView(viewContext).apply {
+                    previewWebView = this
+                    applyHoshiWebViewSecurityDefaults()
+                    addJavascriptInterface(bridge, "HoshiKanjiPreviewBridge")
+                    isNestedScrollingEnabled = true
+                    isVerticalScrollBarEnabled = true
+                    isHorizontalScrollBarEnabled = false
+                    setOnTouchListener { view, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN,
+                            MotionEvent.ACTION_MOVE ->
+                                view.parent?.requestDisallowInterceptTouchEvent(true)
+                            MotionEvent.ACTION_UP,
+                            MotionEvent.ACTION_CANCEL ->
+                                view.parent?.requestDisallowInterceptTouchEvent(false)
+                        }
+                        false
+                    }
+                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    tag = html
+                    loadDataWithBaseURL(
+                        "https://appassets.androidplatform.net/popup/kanji-preview.html",
+                        html,
+                        "text/html",
+                        "UTF-8",
+                        null,
+                    )
+                }
+            },
+            update = { webView ->
+                previewWebView = webView
+                if (webView.tag != html) {
+                    webView.tag = html
+                    webView.loadDataWithBaseURL(
+                        "https://appassets.androidplatform.net/popup/kanji-preview.html",
+                        html,
+                        "text/html",
+                        "UTF-8",
+                        null,
+                    )
+                }
+            },
+        )
+    }
+}
+
 @Composable
 private fun HoshiIconBackButton(onClick: () -> Unit) {
     IconButton(onClick = onClick) {
@@ -1309,6 +1620,7 @@ private fun DictionarySettingsView(
     termDictionaries: List<DictionaryInfo>,
     kanjiDictionaries: List<DictionaryInfo>,
     showScanNonJapaneseText: Boolean,
+    lookupKanjiPreviewJson: suspend (String, DictionarySettings) -> String?,
     onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1540,6 +1852,11 @@ private fun DictionarySettingsView(
                         )
                     }
                 }
+                KanjiSettingsPreview(
+                    settings = settings,
+                    kanjiDictionaries = kanjiDictionaries,
+                    lookupKanjiPreviewJson = lookupKanjiPreviewJson,
+                )
                 SectionLabel(stringResource(R.string.dictionary_settings_import))
                 SettingsGroup {
                     ToggleRow(

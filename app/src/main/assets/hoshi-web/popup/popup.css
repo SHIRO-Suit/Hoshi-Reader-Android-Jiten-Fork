@@ -448,8 +448,12 @@ body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
     font-size: 1.05rem;
 }
 
-.kanji-summary-frequency {
-    display: inline-block;
+.kanji-summary-meta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    column-gap: 5px;
+    max-width: 100%;
     margin-top: 15px;
     padding: 3px 10px;
     border: 1px solid color-mix(in srgb, currentColor 13%, transparent);
@@ -459,6 +463,39 @@ body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
     font-size: 12px;
     font-weight: 700;
     line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+
+.kanji-summary-meta.stacked {
+    display: inline-grid;
+    gap: 3px;
+    padding-block: 4px;
+}
+
+.kanji-summary-meta-separator::before {
+    content: "";
+}
+
+.kanji-summary-meta-separator::after {
+    content: "";
+}
+
+.kanji-summary-meta:not(.stacked) .kanji-summary-meta-separator {
+    width: 1px;
+    height: .9em;
+    background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.kanji-summary-meta.stacked .kanji-summary-meta-separator {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.kanji-summary-meta.stacked .kanji-summary-meta-separator::before,
+.kanji-summary-meta.stacked .kanji-summary-meta-separator::after {
+    content: "";
 }
 
 .kanji-info-line {
@@ -488,10 +525,19 @@ body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
 .kanji-summary-minor-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 7px;
+    justify-content: center;
+    gap: 4px;
     margin-top: 5px;
     color: color-mix(in srgb, currentColor 70%, transparent);
-    font-size: .82rem;
+    font-size: .74rem;
+}
+
+.kanji-summary-minor-tags > span {
+    max-width: 100%;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, currentColor 6%, transparent);
+    overflow-wrap: anywhere;
 }
 
 .kanji-summary-meanings {
@@ -546,6 +592,19 @@ body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
+}
+
+.kanji-field-title-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 3px;
+    width: 100%;
+}
+
+.kanji-field-title-row .kanji-field-title {
+    margin: 0;
 }
 
 .kanji-field-values {
@@ -608,8 +667,9 @@ body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
     opacity: .72;
 }
 
-.kanji-show-more .kanji-field-values {
-    margin-top: 5px;
+.kanji-field-value[hidden],
+.kanji-stat[hidden] {
+    display: none;
 }
 
 .kanji-raw-entries {
@@ -617,19 +677,25 @@ body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
 }
 
 .kanji-details-link {
-    width: fit-content;
-    margin: 6px 0 0;
+    appearance: none;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: #064f9e;
-    font-size: .95rem;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.kanji-details-link::-webkit-details-marker {
-    display: none;
-}
-
-.kanji-extra-stats {
-    margin-top: 4px;
+.kanji-field-title-row .kanji-details-link {
+    margin-left: auto;
+    text-align: right;
 }
 
 .kanji-tags {
@@ -657,19 +723,31 @@ body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
 }
 
 .kanji-stats {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-    gap: 3px 8px;
-    margin: 7px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    margin: 0;
     font-size: 13px;
 }
 
-.kanji-stats > dt {
+.kanji-stat {
+    display: inline-grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 4px;
+    align-items: baseline;
+    max-width: 100%;
+    width: max-content;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.kanji-stat > dt {
     color: color-mix(in srgb, currentColor 62%, transparent);
     font-weight: 600;
 }
 
-.kanji-stats > dd {
+.kanji-stat > dd {
     min-width: 0;
     margin: 0;
     overflow-wrap: anywhere;
