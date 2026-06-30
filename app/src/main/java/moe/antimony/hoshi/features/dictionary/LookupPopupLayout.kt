@@ -80,13 +80,10 @@ data class LookupPopupLayout(
     }
 
     private fun useVerticalSidePlacement(): Boolean =
-        isVertical && !isFullWidth && verticalSidePlacementWidth() >= minReadableSidePlacementWidth()
+        isVertical && !isFullWidth && verticalSidePlacementWidth() >= maxWidth
 
     private fun verticalSidePlacementWidth(): Double =
         minOf(maxOf(spaceLeft(), spaceRight()) - screenBorderPadding, maxWidth)
-
-    private fun minReadableSidePlacementWidth(): Double =
-        minOf(maxWidth, minReadableSidePlacementWidth)
 
     private fun spaceLeft(): Double = selectionRect.x - popupPadding
     private fun spaceRight(): Double = screenWidth - selectionRect.x - selectionRect.width - popupPadding
@@ -101,6 +98,5 @@ data class LookupPopupLayout(
     private companion object {
         const val popupPadding = 4.0
         const val screenBorderPadding = 6.0
-        const val minReadableSidePlacementWidth = 260.0
     }
 }

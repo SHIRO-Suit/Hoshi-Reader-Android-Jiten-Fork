@@ -27,7 +27,7 @@ import java.io.File
 
 class LookupPopupTest {
     @Test
-    fun verticalLayoutChoosesLargerSideLikeIosPopupLayout() {
+    fun verticalLayoutPrefersAboveOrBelowWhenSideCannotFitConfiguredWidth() {
         val layout = LookupPopupLayout(
             selectionRect = ReaderSelectionRect(x = 100.0, y = 200.0, width = 20.0, height = 30.0),
             screenWidth = 400.0,
@@ -39,10 +39,10 @@ class LookupPopupTest {
 
         val result = layout.calculate()
 
-        assertEquals(270.0, result.width, 0.0)
+        assertEquals(320.0, result.width, 0.0)
         assertEquals(250.0, result.height, 0.0)
-        assertEquals(259.0, result.centerX, 0.0)
-        assertEquals(325.0, result.centerY, 0.0)
+        assertEquals(234.0, result.centerX, 0.0)
+        assertEquals(359.0, result.centerY, 0.0)
     }
 
     @Test
@@ -120,7 +120,7 @@ class LookupPopupTest {
     }
 
     @Test
-    fun verticalLayoutUsesIosClampWhenPopupIsTallerThanAvailableHeight() {
+    fun verticalLayoutClampsAboveOrBelowWhenPopupIsTallerThanAvailableHeight() {
         val layout = LookupPopupLayout(
             selectionRect = ReaderSelectionRect(x = 100.0, y = 0.0, width = 20.0, height = 30.0),
             screenWidth = 400.0,
@@ -132,7 +132,7 @@ class LookupPopupTest {
 
         val result = layout.calculate()
 
-        assertEquals(131.0, result.centerY, 0.0)
+        assertEquals(136.3111114501953, result.centerY, 0.0)
     }
 
     @Test
