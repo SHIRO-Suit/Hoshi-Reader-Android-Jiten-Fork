@@ -1435,6 +1435,10 @@ function createKanjiEntrySection(entry, character) {
 
 function hideJitenPopupPageForKanji() {
     document.body.classList.add('hoshi-kanji-page-active');
+    window.hoshiJitenPopup?.suspendForKanjiPage?.();
+    document.querySelectorAll('.hoshi-jiten-popup-page, .hoshi-jiten-popup-switcher').forEach(node => {
+        node.remove();
+    });
 }
 
 function renderKanjiPage(result) {
@@ -2087,11 +2091,15 @@ function snapshot() {
         lookupEntries: window.lookupEntries,
         entryCount: window.entryCount,
         kanjiPageActive: document.body.classList.contains('hoshi-kanji-page-active'),
+        jitenPopup: window.hoshiJitenPopup?.snapshot?.() || null,
     };
 }
 
 function restore(snapshot) {
     document.body.classList.toggle('hoshi-kanji-page-active', Boolean(snapshot.kanjiPageActive));
+    if (snapshot.kanjiPageActive) {
+        window.hoshiJitenPopup?.suspendForKanjiPage?.();
+    }
     flushPendingHistoryRestore();
     const container = document.getElementById('entries-container');
     const nodes = [...snapshot.nodes];
@@ -2110,6 +2118,9 @@ function restore(snapshot) {
     audioUrls = {};
     selectedDictionaries = {};
     applyHoshiPopupThemeOverrides(container);
+    if (!snapshot.kanjiPageActive) {
+        window.hoshiJitenPopup?.restore?.(snapshot.jitenPopup || null);
+    }
     requestAnimationFrame(() => {
         document.scrollingElement.scrollTop = snapshot.scrollTop;
     });

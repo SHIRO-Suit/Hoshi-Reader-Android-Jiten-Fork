@@ -56,3 +56,7 @@ button.hoshi-jiten-popup-action.review.easy { color: #006a6a; border-color: colo
 .hoshi-jiten-popup-pos { display: flex; flex-wrap: wrap; gap: 3px 9px; opacity: .68; font-size: .72rem; }
 .hoshi-jiten-popup-pos span { text-decoration: underline; text-underline-offset: 2px; }
 html[data-hoshi-color-scheme="dark"] { --hoshi-jiten-pitch-particle: #222; }
+body.hoshi-kanji-page-active .hoshi-jiten-popup-page,
+body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
+    display: none !important;
+}

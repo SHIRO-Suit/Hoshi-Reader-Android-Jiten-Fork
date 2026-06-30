@@ -307,6 +307,7 @@ internal object LookupPopupHtml {
                             if (message.type === 'resetPopup') {
                                 window.popupId = null;
                                 document.documentElement.classList.remove('hoshi-popup-full-width');
+                                document.body.classList.remove('hoshi-kanji-page-active');
                                 window.hoshiJitenPopup?.setCard(null);
                                 closeOverlay();
                                 window.hoshiSelection?.clearSelection();
@@ -317,9 +318,9 @@ internal object LookupPopupHtml {
                             if (message.type === 'renderPopup') {
                                 window.popupId = message.popupId || null;
                                 document.documentElement.classList.toggle('hoshi-popup-full-width', !!message.isFullWidth);
+                                document.body.classList.remove('hoshi-kanji-page-active');
                                 closeOverlay();
                                 window.entryCount = message.entriesCount || 0;
-                                window.hoshiJitenPopup?.setCard(message.jitenCard || null);
                                 var initialEntries = [];
                                 if (message.initialEntryJson) {
                                     try {
@@ -335,6 +336,7 @@ internal object LookupPopupHtml {
                                     window.hoshiPopupObserveContentReady?.();
                                     window.renderPopup();
                                 }
+                                window.hoshiJitenPopup?.setCard(message.jitenCard || null);
                                 requestAnimationFrame(window.hoshiPostPopupScrollState);
                                 return;
                             }

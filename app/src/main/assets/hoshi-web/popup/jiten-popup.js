@@ -12,7 +12,25 @@
         return node;
     }
 
+    function isKanjiPageActive() {
+        return document.body.classList.contains('hoshi-kanji-page-active');
+    }
+
+    function hideForKanjiPage() {
+        const entries = document.getElementById('entries-container');
+        const jitenPage = document.getElementById('hoshi-jiten-popup-page');
+        const switcher = document.getElementById('hoshi-jiten-popup-switcher');
+        if (entries) entries.hidden = false;
+        if (jitenPage) jitenPage.hidden = true;
+        if (switcher) switcher.hidden = true;
+        page = 'dictionary';
+    }
+
     function ensureLayout() {
+        if (isKanjiPageActive()) {
+            hideForKanjiPage();
+            return;
+        }
         const entries = document.getElementById('entries-container');
         if (!entries?.parentNode) return;
         const switchers = [...document.querySelectorAll('.hoshi-jiten-popup-switcher')];
@@ -49,6 +67,10 @@
     }
 
     function renderCard() {
+        if (isKanjiPageActive()) {
+            hideForKanjiPage();
+            return;
+        }
         ensureLayout();
         const container = document.getElementById('hoshi-jiten-popup-page');
         if (!container) return;
@@ -570,6 +592,10 @@
     }
 
     function setPage(next) {
+        if (isKanjiPageActive()) {
+            hideForKanjiPage();
+            return;
+        }
         const entries = document.getElementById('entries-container');
         const jitenPage = document.getElementById('hoshi-jiten-popup-page');
         if (popupMode === 'integrated') {
@@ -595,6 +621,10 @@
     function setCard(next) {
         const sameCard = card && next && card.wordId === next.wordId && card.readingIndex === next.readingIndex;
         card = next || null;
+        if (isKanjiPageActive()) {
+            hideForKanjiPage();
+            return;
+        }
         renderCard();
         setPage(sameCard ? page : 'dictionary');
     }
@@ -605,10 +635,35 @@
         return true;
     }
 
+    function snapshot() {
+        return {
+            card,
+            page
+        };
+    }
+
+    function restore(snapshot) {
+        card = snapshot?.card || null;
+        page = snapshot?.page || 'dictionary';
+        if (isKanjiPageActive()) {
+            hideForKanjiPage();
+            return;
+        }
+        renderCard();
+        setPage(page);
+    }
+
+    function suspendForKanjiPage() {
+        hideForKanjiPage();
+    }
+
     window.hoshiJitenPopup = {
         hasCard: () => popupMode === 'paged' && !!card,
         setCard,
         setPage,
-        navigate
+        navigate,
+        snapshot,
+        restore,
+        suspendForKanjiPage
     };
 })();
