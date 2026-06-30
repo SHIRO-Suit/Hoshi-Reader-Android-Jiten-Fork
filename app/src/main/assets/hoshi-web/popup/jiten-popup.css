@@ -1,4 +1,6 @@
 .hoshi-jiten-popup-switcher { display: flex; justify-content: center; gap: 6px; height: 18px; align-items: center; }
+.hoshi-jiten-popup-switcher[hidden],
+.hoshi-jiten-popup-page[hidden] { display: none !important; }
 .hoshi-jiten-popup-indicator { width: 24px; height: 3px; padding: 0; border: 0; border-radius: 3px; background: #b0b0b0; background: color-mix(in srgb, currentColor 24%, transparent); }
 .hoshi-jiten-popup-indicator.active { background: #555; background: color-mix(in srgb, currentColor 78%, transparent); }
 .hoshi-jiten-popup-indicator:disabled { opacity: .3; }

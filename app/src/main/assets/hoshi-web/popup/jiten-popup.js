@@ -38,6 +38,13 @@
         switchers.slice(1).forEach(node => node.remove());
         pages.slice(1).forEach(node => node.remove());
 
+        if (!card) {
+            switchers.forEach(node => node.remove());
+            pages.forEach(node => node.remove());
+            entries.hidden = false;
+            return;
+        }
+
         let jitenPage = pages[0];
         if (!jitenPage) {
             jitenPage = element('section', 'hoshi-jiten-popup-page');
@@ -75,7 +82,6 @@
         const container = document.getElementById('hoshi-jiten-popup-page');
         if (!container) return;
         container.replaceChildren();
-        if (!card) return;
 
         const toolbar = element('div', 'hoshi-jiten-popup-toolbar');
         toolbar.append(element('div', 'hoshi-jiten-popup-section-label', 'Jiten'), actionBar());
