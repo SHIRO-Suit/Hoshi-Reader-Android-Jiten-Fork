@@ -50,6 +50,8 @@ Because Android treats it as a separate app, it also has separate app storage. T
   - Never forget,
   - Blacklist,
   - Forget.
+  - Review with 4 buttons or with Pass/fail mode
+- Toggle visibility of review actions, mining action or both
 
 ## Kanji Features
 
