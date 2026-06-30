@@ -31,7 +31,7 @@ internal fun dictionarySearchRootFramePayload(
         entriesCount = results.size,
         initialEntryJson = results.firstOrNull()?.let(LookupPopupHtml::entryJsonString),
         popupActionBar = false,
-        actionBarVisible = false,
+        actionBarVisible = rootHistory.backCount > 0 || rootHistory.forwardCount > 0,
         backCount = rootHistory.backCount,
         forwardCount = rootHistory.forwardCount,
         sasayakiVisible = false,

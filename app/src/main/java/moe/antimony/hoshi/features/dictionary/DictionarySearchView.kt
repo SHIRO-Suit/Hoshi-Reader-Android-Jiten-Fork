@@ -522,7 +522,9 @@ fun DictionarySearchView(
                 }
             }
             is ReaderLookupPopupBridgeMessage.NavigationPush -> {
-                if (message.popupId != DictionarySearchRootPopupId) {
+                if (message.popupId == DictionarySearchRootPopupId) {
+                    searchViewModel.recordLookupRedirected(1)
+                } else {
                     val current = childHistories[message.popupId] ?: ReaderPopupHistoryCounts()
                     childHistories = childHistories + (
                         message.popupId to current.copy(
