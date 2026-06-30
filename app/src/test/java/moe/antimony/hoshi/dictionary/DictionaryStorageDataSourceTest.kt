@@ -57,6 +57,7 @@ class DictionaryStorageDataSourceTest {
             assertTrue(configText.contains("\"termDictionaries\""))
             assertTrue(configText.contains("\"frequencyDictionaries\""))
             assertTrue(configText.contains("\"pitchDictionaries\""))
+            assertTrue(configText.contains("\"kanjiDictionaries\""))
             assertFalse(configText.contains("term_dictionaries"))
         }
     }

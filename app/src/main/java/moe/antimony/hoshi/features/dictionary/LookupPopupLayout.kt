@@ -21,30 +21,31 @@ data class LookupPopupLayout(
     val bottomInset: Double = 0.0,
 ) {
     fun calculate(): LookupPopupFrame {
-        val width = width()
-        val height = height()
+        val sidePlacement = useVerticalSidePlacement()
+        val width = width(sidePlacement)
+        val height = height(sidePlacement)
         return LookupPopupFrame(
             width = width,
             height = height,
-            centerX = centerX(width),
-            centerY = centerY(height),
+            centerX = centerX(width, sidePlacement),
+            centerY = centerY(height, sidePlacement),
         )
     }
 
-    private fun width(): Double {
+    private fun width(sidePlacement: Boolean): Double {
         if (isFullWidth) return screenWidth - screenBorderPadding * 2
-        if (isVertical) return minOf(maxOf(spaceLeft(), spaceRight()) - screenBorderPadding, maxWidth)
+        if (isVertical && sidePlacement) return verticalSidePlacementWidth()
         return minOf(screenWidth - screenBorderPadding * 2, maxWidth)
     }
 
-    private fun height(): Double {
-        if (isVertical || isFullWidth) return maxHeight
+    private fun height(sidePlacement: Boolean): Double {
+        if ((isVertical && sidePlacement) || isFullWidth) return maxHeight
         return minOf(maxOf(spaceAbove(), spaceBelow()) - screenBorderPadding, maxHeight)
     }
 
-    private fun centerX(width: Double): Double {
+    private fun centerX(width: Double, sidePlacement: Boolean): Double {
         if (isFullWidth) return width / 2 + screenBorderPadding
-        if (isVertical) {
+        if (isVertical && sidePlacement) {
             val raw = if (showOnRight()) {
                 selectionRect.x + selectionRect.width + popupPadding + width / 2
             } else {
@@ -56,9 +57,9 @@ data class LookupPopupLayout(
         return clampLikeIos(raw, width / 2 + screenBorderPadding, screenWidth - width / 2 - screenBorderPadding)
     }
 
-    private fun centerY(height: Double): Double {
+    private fun centerY(height: Double, sidePlacement: Boolean): Double {
         if (isFullWidth) return screenHeight - height / 2 - screenBorderPadding
-        if (isVertical) {
+        if (isVertical && sidePlacement) {
             val raw = selectionRect.y + height / 2
             return clampLikeIos(
                 raw,
@@ -78,6 +79,15 @@ data class LookupPopupLayout(
         )
     }
 
+    private fun useVerticalSidePlacement(): Boolean =
+        isVertical && !isFullWidth && verticalSidePlacementWidth() >= minReadableSidePlacementWidth()
+
+    private fun verticalSidePlacementWidth(): Double =
+        minOf(maxOf(spaceLeft(), spaceRight()) - screenBorderPadding, maxWidth)
+
+    private fun minReadableSidePlacementWidth(): Double =
+        minOf(maxWidth, minReadableSidePlacementWidth)
+
     private fun spaceLeft(): Double = selectionRect.x - popupPadding
     private fun spaceRight(): Double = screenWidth - selectionRect.x - selectionRect.width - popupPadding
     private fun spaceAbove(): Double = selectionRect.y - topInset - popupPadding
@@ -91,5 +101,6 @@ data class LookupPopupLayout(
     private companion object {
         const val popupPadding = 4.0
         const val screenBorderPadding = 6.0
+        const val minReadableSidePlacementWidth = 260.0
     }
 }

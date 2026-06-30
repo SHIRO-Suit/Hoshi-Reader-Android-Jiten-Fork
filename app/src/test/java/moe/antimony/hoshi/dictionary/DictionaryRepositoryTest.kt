@@ -812,6 +812,7 @@ class DictionaryRepositoryTest {
             termPaths: Array<String>,
             freqPaths: Array<String>,
             pitchPaths: Array<String>,
+            kanjiPaths: Array<String>,
         ) {
             rebuildCount += 1
             this.termPaths = termPaths

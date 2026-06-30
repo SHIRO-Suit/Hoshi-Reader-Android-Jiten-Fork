@@ -63,6 +63,24 @@ class LookupPopupTest {
     }
 
     @Test
+    fun verticalLayoutFallsBackAboveOrBelowWhenSidePopupWouldBeTooNarrow() {
+        val layout = LookupPopupLayout(
+            selectionRect = ReaderSelectionRect(x = 190.0, y = 300.0, width = 20.0, height = 30.0),
+            screenWidth = 400.0,
+            screenHeight = 800.0,
+            maxWidth = 320.0,
+            maxHeight = 250.0,
+            isVertical = true,
+        )
+
+        val result = layout.calculate()
+
+        assertEquals(320.0, result.width, 0.0)
+        assertEquals(250.0, result.height, 0.0)
+        assertTrue(result.centerY - result.height / 2 > 330.0)
+    }
+
+    @Test
     fun horizontalLayoutAppearsBelowSelectionWhenThereIsRoom() {
         val layout = LookupPopupLayout(
             selectionRect = ReaderSelectionRect(x = 100.0, y = 100.0, width = 20.0, height = 30.0),

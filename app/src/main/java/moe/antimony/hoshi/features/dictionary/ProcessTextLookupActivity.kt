@@ -395,6 +395,19 @@ private fun ProcessTextLookupOverlay(
                     }
                     replyIframeMessage(message.popupId, messageId, results.size.toString())
                 }
+                is ReaderLookupPopupBridgeMessage.LookupKanji -> {
+                    val result = dependencies.dictionaryRepository.lookupKanji(message.character)
+                    replyIframeMessage(
+                        popupId = message.popupId,
+                        messageId = message.messageId ?: return,
+                        bodyJson = result?.let {
+                            LookupPopupHtml.kanjiResultJsonString(
+                                it,
+                                popupById(message.popupId)?.state?.dictionarySettings ?: DictionarySettings(),
+                            )
+                        } ?: "null",
+                    )
+                }
                 is ReaderLookupPopupBridgeMessage.GetEntry -> {
                     val entry = popupById(message.popupId)?.state?.results?.getOrNull(message.index)
                     replyIframeMessage(
@@ -427,8 +440,17 @@ private fun ProcessTextLookupOverlay(
                                 backCount = current.backCount + 1,
                                 forwardCount = current.forwardCount - 1,
                             )
-                            )
+                        )
                     }
+                }
+                is ReaderLookupPopupBridgeMessage.NavigationPush -> {
+                    val current = popupHistories[message.popupId] ?: ReaderPopupHistoryCounts()
+                    popupHistories = popupHistories + (
+                        message.popupId to current.copy(
+                            backCount = current.backCount + 1,
+                            forwardCount = 0,
+                        )
+                        )
                 }
                 is ReaderLookupPopupBridgeMessage.ContentReady,
                 is ReaderLookupPopupBridgeMessage.ScrollState,

@@ -161,6 +161,7 @@
     <string name="dictionary_type_term">Term</string>
     <string name="dictionary_type_frequency">Frequency</string>
     <string name="dictionary_type_pitch">Pitch</string>
+    <string name="dictionary_type_kanji">Kanji</string>
     <string name="dictionary_custom_css">Custom CSS</string>
     <string name="dictionary_import_action">Import Dictionary</string>
     <string name="dictionary_delete_action">Delete Dictionary</string>
@@ -615,4 +616,19 @@
     <string name="jiten_parse_failed">Jiten parsing failed: %1$s</string>
     <string name="jiten_invalid_response">Jiten returned an unsupported response.</string>
     <string name="jiten_request_failed">Could not contact Jiten.</string>
+    <string name="kanji_combined_mode">Combined kanji mode</string>
+    <string name="kanji_combined_mode_description">Merge kanji dictionary fields into one normalized page when possible.</string>
+    <string name="kanji_dictionary_configure">Configure kanji dictionary</string>
+    <string name="kanji_dictionary_configure_title">Configure %1$s</string>
+    <string name="kanji_dictionary_configure_description">Choose optional stats to show by default for this dictionary. Fields already mapped into the kanji layout are omitted when known.</string>
+    <string name="kanji_no_optional_stats">No optional stats are known for this dictionary yet.</string>
+    <string name="kanji_priority_title">%1$s priority</string>
+    <string name="kanji_priority_description">The first dictionary with data for this field wins; later dictionaries are fallbacks.</string>
+    <string name="kanji_priority_no_dictionaries">No kanji dictionaries imported</string>
+    <string name="kanji_field_onyomi">Onyomi</string>
+    <string name="kanji_field_kunyomi">Kunyomi</string>
+    <string name="kanji_field_definitions">Meanings</string>
+    <string name="kanji_field_strokes">Strokes</string>
+    <string name="kanji_field_radicals">Radicals</string>
+    <string name="kanji_field_components">Components</string>
 </resources>

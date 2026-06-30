@@ -453,6 +453,15 @@ fun DictionarySearchView(
                 }
                 replyIframeMessage(message.popupId, messageId, results.size.toString())
             }
+            is ReaderLookupPopupBridgeMessage.LookupKanji -> {
+                val result = dictionaryRepository.lookupKanji(message.character)
+                replyIframeMessage(
+                    popupId = message.popupId,
+                    messageId = message.messageId ?: return,
+                    bodyJson = result?.let { LookupPopupHtml.kanjiResultJsonString(it, uiState.dictionarySettings) }
+                        ?: "null",
+                )
+            }
             is ReaderLookupPopupBridgeMessage.GetEntry -> {
                 val entry = searchViewModel.entryForPopup(message.popupId, message.index)
                 replyIframeMessage(
@@ -509,6 +518,17 @@ fun DictionarySearchView(
                             )
                             )
                     }
+                }
+            }
+            is ReaderLookupPopupBridgeMessage.NavigationPush -> {
+                if (message.popupId != DictionarySearchRootPopupId) {
+                    val current = childHistories[message.popupId] ?: ReaderPopupHistoryCounts()
+                    childHistories = childHistories + (
+                        message.popupId to current.copy(
+                            backCount = current.backCount + 1,
+                            forwardCount = 0,
+                        )
+                        )
                 }
             }
             is ReaderLookupPopupBridgeMessage.SasayakiReplayCue,

@@ -1070,6 +1070,375 @@ function renderStructuredContent(parent, node, language = null, dictName = null,
     parent.appendChild(element);
 }
 
+const KANJI_CHARACTER_PATTERN = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3005]/;
+const KANJI_TEXT_SPLIT_PATTERN = /([\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u3005])/g;
+
+function shouldLinkifyKanjiTextNode(node) {
+    const parent = node?.parentElement;
+    if (!parent || !KANJI_CHARACTER_PATTERN.test(node.textContent || '')) {
+        return false;
+    }
+    return !parent.closest('a, button, rt, rp, .hoshi-kanji-link, .overlay');
+}
+
+function createKanjiLink(character) {
+    const button = el('button', {
+        className: 'hoshi-kanji-link',
+        textContent: character,
+        'aria-label': `Open kanji ${character}`
+    });
+    button.type = 'button';
+    button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openKanjiPage(character);
+    });
+    return button;
+}
+
+function linkifyKanjiText(root) {
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            return shouldLinkifyKanjiTextNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+    });
+    const nodes = [];
+    while (walker.nextNode()) {
+        nodes.push(walker.currentNode);
+    }
+    nodes.forEach(node => {
+        const parts = node.textContent.split(KANJI_TEXT_SPLIT_PATTERN).filter(part => part.length > 0);
+        const fragment = document.createDocumentFragment();
+        parts.forEach(part => {
+            if (KANJI_CHARACTER_PATTERN.test(part)) {
+                fragment.appendChild(createKanjiLink(part));
+            } else {
+                fragment.appendChild(document.createTextNode(part));
+            }
+        });
+        node.replaceWith(fragment);
+    });
+}
+
+async function openKanjiPage(character) {
+    if (!KANJI_CHARACTER_PATTERN.test(character || '')) {
+        return;
+    }
+    const result = await webkit.messageHandlers.lookupKanji.postMessage(character);
+    if (!result?.entries?.length) {
+        return;
+    }
+    flushPendingHistoryRestore();
+    backStack.push(snapshot());
+    forwardStack.length = 0;
+    window.HoshiAndroidPopup?.postMessage?.('navigationPush', null);
+    renderKanjiPage(result);
+}
+
+function createKanjiReadingColumn(label, value) {
+    const column = el('div', { className: 'kanji-reading-column' });
+    column.appendChild(el('div', { className: 'kanji-reading-label', textContent: label }));
+    column.appendChild(el('div', { className: 'kanji-reading-value', textContent: value || '—' }));
+    return column;
+}
+
+function appendKanjiListSection(parent, title, values, className = 'kanji-inline-list') {
+    const items = (values || []).filter(Boolean);
+    if (!items.length) return;
+    const section = el('section', { className: `kanji-field-section ${className}` });
+    section.appendChild(el('h4', { className: 'kanji-field-title', textContent: title }));
+    const list = el('div', { className: 'kanji-field-values' });
+    items.forEach(value => list.appendChild(el('span', { className: 'kanji-field-value', textContent: value })));
+    section.appendChild(list);
+    parent.appendChild(section);
+}
+
+function splitKanjiListValue(value) {
+    return String(value || '')
+        .replace(/\u3000/g, ' ')
+        .split(/\s+/)
+        .map(item => item.trim())
+        .filter(Boolean);
+}
+
+function createKanjiChip(value, className = '') {
+    const chip = el('span', { className: `kanji-field-value ${className}`.trim(), textContent: value });
+    linkifyKanjiText(chip);
+    return chip;
+}
+
+function createKanjiReadingBlocks(value) {
+    const container = el('div', { className: 'kanji-reading-value' });
+    const items = splitKanjiListValue(value);
+    if (!items.length) {
+        container.textContent = '—';
+        return container;
+    }
+    items.forEach(item => container.appendChild(createKanjiChip(item, 'kanji-reading-chip')));
+    return container;
+}
+
+function createKanjiReadingColumn(label, value) {
+    const column = el('div', { className: 'kanji-reading-column' });
+    column.appendChild(el('div', { className: 'kanji-reading-label', textContent: label }));
+    column.appendChild(createKanjiReadingBlocks(value));
+    return column;
+}
+
+function appendKanjiListSection(parent, title, values, className = 'kanji-inline-list', options = {}) {
+    const items = (values || []).filter(Boolean);
+    if (!items.length) return;
+    const section = el('section', { className: `kanji-field-section ${className}` });
+    section.appendChild(el('h4', { className: 'kanji-field-title', textContent: title }));
+    const list = el('div', { className: 'kanji-field-values' });
+    const limit = options.limit || items.length;
+    const renderItem = options.renderItem || ((value) => createKanjiChip(value));
+    items.slice(0, limit).forEach(value => list.appendChild(renderItem(value)));
+    section.appendChild(list);
+    if (items.length > limit) {
+        const details = el('details', { className: 'kanji-show-more' });
+        details.appendChild(el('summary', { className: 'kanji-details-link', textContent: `Show ${items.length - limit} more` }));
+        const more = el('div', { className: 'kanji-field-values' });
+        items.slice(limit).forEach(value => more.appendChild(renderItem(value)));
+        details.appendChild(more);
+        section.appendChild(details);
+    }
+    parent.appendChild(section);
+}
+
+function findKanjiStat(entry, ...names) {
+    const wanted = names.map(name => name.toLowerCase());
+    return (entry.stats || []).find(stat => wanted.includes((stat.name || '').toLowerCase()))?.value || '';
+}
+
+function visibleKanjiStats(entry) {
+    const promoted = new Set(['strokes', 'frequency']);
+    return (entry.stats || []).filter(stat => {
+        const name = (stat.name || '').toLowerCase();
+        return stat.showByDefault && !promoted.has(name);
+    });
+}
+
+window.hoshiLinkifyKanjiText = linkifyKanjiText;
+
+function hiddenKanjiStats(entry) {
+    return (entry.stats || []).filter(stat => !stat.showByDefault);
+}
+
+function createKanjiInfoLine(label, value, className = '') {
+    if (!value) return null;
+    const row = el('div', { className: `kanji-info-line ${className}`.trim() });
+    row.appendChild(el('span', { className: 'kanji-info-label', textContent: `${label}:` }));
+    if (className.includes('reading-line')) {
+        const items = splitKanjiListValue(value);
+        if (!items.length) {
+            row.appendChild(el('span', { className: 'kanji-info-value', textContent: '—' }));
+        } else {
+            items.forEach(item => row.appendChild(createKanjiChip(item, 'kanji-reading-chip')));
+        }
+        return row;
+    }
+    const valueNode = el('span', { className: 'kanji-info-value' });
+    valueNode.textContent = value;
+    linkifyKanjiText(valueNode);
+    row.appendChild(valueNode);
+    return row;
+}
+
+function combinationRuby(value) {
+    const parts = String(value || '').trim().split(/\u3000+|\s{2,}/).map(part => part.trim()).filter(Boolean);
+    if (!parts.length) return createKanjiChip(value, 'kanji-combination-chip');
+    const expression = parts[0];
+    const readings = parts.slice(1);
+    const reading = readings.join(' | ');
+    const chip = el('span', { className: 'kanji-field-value kanji-combination-chip' });
+    if (reading && KANJI_CHARACTER_PATTERN.test(expression)) {
+        const ruby = document.createElement('ruby');
+        const base = el('span', { className: 'kanji-combination-base', textContent: expression });
+        linkifyKanjiText(base);
+        ruby.append(base, el('rt', { textContent: reading }));
+        chip.appendChild(ruby);
+    } else {
+        chip.textContent = value;
+        linkifyKanjiText(chip);
+    }
+    return chip;
+}
+
+function createCombinedKanjiEntrySection(entry, character) {
+    const section = el('section', { className: 'kanji-entry-section combined renshuu-style' });
+    const summary = el('div', { className: 'kanji-summary-card' });
+    const characterColumn = el('div', { className: 'kanji-summary-character' });
+    const info = el('div', { className: 'kanji-summary-info' });
+    const frequency = findKanjiStat(entry, 'Frequency', 'freq');
+
+    characterColumn.appendChild(el('div', { className: 'kanji-summary-glyph', textContent: character }));
+    if (frequency) {
+        characterColumn.appendChild(el('div', { className: 'kanji-summary-frequency', textContent: `#${frequency}` }));
+    }
+
+    [
+        createKanjiInfoLine('Kunyomi', entry.kunyomi, 'reading-line'),
+        createKanjiInfoLine('Onyomi', entry.onyomi, 'reading-line'),
+        createKanjiInfoLine('Strokes', findKanjiStat(entry, 'Strokes', 'strokes')),
+        createKanjiInfoLine(
+            'Radical',
+            [
+                (entry.radicals || []).join(' '),
+                (entry.radicalReadings || []).join(' '),
+            ].filter(Boolean).join(' · '),
+        ),
+        createKanjiInfoLine('Parts', (entry.components || []).join(' ')),
+    ].filter(Boolean).forEach(node => info.appendChild(node));
+
+    const tags = parseTags(entry.tags);
+    if (tags.length) {
+        const tagLine = el('div', { className: 'kanji-summary-minor-tags' });
+        tags.forEach(tag => tagLine.appendChild(el('span', { textContent: tag })));
+        info.appendChild(tagLine);
+    }
+
+    summary.append(characterColumn, info);
+    section.appendChild(summary);
+
+    if (entry.definitions?.length) {
+        const meanings = el('div', { className: 'kanji-summary-meanings' });
+        meanings.textContent = entry.definitions.join(', ');
+        section.appendChild(meanings);
+    }
+
+    appendKanjiListSection(section, 'Reading hints', entry.readingHints);
+    appendKanjiListSection(section, 'Combinations', entry.combinations, 'kanji-combinations', {
+        limit: 18,
+        renderItem: combinationRuby,
+    });
+    appendKanjiListSection(section, 'Radical meanings', entry.radicalMeanings);
+    appendKanjiListSection(section, 'Examples', entry.radicalExamples);
+
+    const defaultStats = visibleKanjiStats(entry);
+    if (defaultStats.length) {
+        section.appendChild(createKanjiStatsList(defaultStats));
+    }
+
+    const extraStats = hiddenKanjiStats(entry);
+    if (extraStats.length) {
+        const details = el('details', { className: 'kanji-extra-stats' });
+        details.appendChild(el('summary', { className: 'kanji-details-link', textContent: 'Show hidden stats' }));
+        details.appendChild(createKanjiStatsList(extraStats));
+        section.appendChild(details);
+    }
+
+    return section;
+}
+
+function createKanjiStatsList(stats) {
+    const list = el('dl', { className: 'kanji-stats' });
+    stats.forEach(stat => {
+        list.appendChild(el('dt', { textContent: stat.name }));
+        list.appendChild(el('dd', { textContent: stat.value }));
+    });
+    return list;
+}
+
+function createRawKanjiEntrySection(entry) {
+    const section = el('section', { className: `kanji-entry-section${entry.combined ? ' combined' : ''}` });
+    section.appendChild(el('h3', { className: 'kanji-entry-dictionary', textContent: entry.dictionary || 'Kanji dictionary' }));
+
+    const readings = el('div', { className: 'kanji-readings' });
+    readings.appendChild(createKanjiReadingColumn('On', entry.onyomi));
+    readings.appendChild(createKanjiReadingColumn('Kun', entry.kunyomi));
+    section.appendChild(readings);
+
+    appendKanjiListSection(section, 'Components', entry.components);
+    appendKanjiListSection(section, 'Reading hints', entry.readingHints);
+    appendKanjiListSection(section, 'Combinations', entry.combinations, 'kanji-combinations', {
+        limit: 18,
+        renderItem: combinationRuby,
+    });
+    appendKanjiListSection(section, 'Radicals', entry.radicals);
+    appendKanjiListSection(section, 'Radical meanings', entry.radicalMeanings);
+    appendKanjiListSection(section, 'Radical readings', entry.radicalReadings);
+    appendKanjiListSection(section, 'Examples', entry.radicalExamples);
+
+    const tags = parseTags(entry.tags);
+    const tagsRow = createGlossaryTags(tags, 'kanji-tags');
+    if (tagsRow) {
+        section.appendChild(tagsRow);
+    }
+
+    if (entry.definitions?.length) {
+        const list = el('ol', { className: 'kanji-definitions' });
+        entry.definitions.forEach(definition => {
+            list.appendChild(el('li', { textContent: definition }));
+        });
+        section.appendChild(list);
+    }
+
+    if (entry.stats?.length) {
+        const defaultStats = visibleKanjiStats(entry);
+        if (defaultStats.length) {
+            section.appendChild(createKanjiStatsList(defaultStats));
+        }
+        const extraStats = hiddenKanjiStats(entry);
+        if (extraStats.length) {
+            const details = el('details', { className: 'kanji-extra-stats' });
+            details.appendChild(el('summary', { className: 'kanji-details-link', textContent: 'Show hidden stats' }));
+            details.appendChild(createKanjiStatsList(extraStats));
+            section.appendChild(details);
+        }
+    }
+
+    return section;
+}
+
+function createKanjiEntrySection(entry, character) {
+    return entry.combined ? createCombinedKanjiEntrySection(entry, character) : createRawKanjiEntrySection(entry);
+}
+
+function hideJitenPopupPageForKanji() {
+    document.body.classList.add('hoshi-kanji-page-active');
+}
+
+function renderKanjiPage(result) {
+    resetDictionaryMediaObserver();
+    renderGeneration++;
+    selectedDictionaries = {};
+    audioUrls = {};
+    closeOverlay();
+    hideJitenPopupPageForKanji();
+    const container = document.getElementById('entries-container');
+    if (!container) return;
+    container.innerHTML = '';
+    const page = el('article', { className: 'kanji-page' });
+    page.appendChild(el('div', { className: 'kanji-page-label', textContent: 'Kanji' }));
+    const entries = el('div', { className: 'kanji-page-entries' });
+    const rawEntries = result.entries || [];
+    const hasCombined = Boolean(result.combined?.combined);
+    const useCombined = window.kanjiCombinedMode && hasCombined;
+    if (!useCombined) {
+        page.appendChild(el('div', { className: 'kanji-page-character', textContent: result.character }));
+    }
+    if (useCombined) {
+        entries.appendChild(createKanjiEntrySection(result.combined, result.character));
+        if (rawEntries.length) {
+            const details = el('details', { className: 'kanji-raw-entries' });
+            details.appendChild(el('summary', { className: 'dict-label', textContent: 'All dictionary entries' }));
+            rawEntries.forEach(entry => details.appendChild(createKanjiEntrySection(entry, result.character)));
+            entries.appendChild(details);
+        }
+    } else {
+        rawEntries.forEach(entry => entries.appendChild(createKanjiEntrySection(entry, result.character)));
+    }
+    page.appendChild(entries);
+    container.appendChild(page);
+    applyHoshiPopupThemeOverrides(container);
+    requestAnimationFrame(() => {
+        document.scrollingElement.scrollTop = 0;
+        window.hoshiPostPopupScrollState?.();
+    });
+}
+
 function isPartOfSpeech(tag) {
     return POS_TAGS.has(tag) || tag.startsWith('v5');
 }
@@ -1457,6 +1826,7 @@ function createEntryHeader(entry, idx) {
     } else {
         expressionSpan.textContent = expression;
     }
+    linkifyKanjiText(expressionSpan);
     if (needsScroll) {
         const expressionScroll = el('div', { className: 'expression-scroll' });
         expressionScroll.appendChild(expressionSpan);
@@ -1679,10 +2049,12 @@ function snapshot() {
         scrollTop: document.scrollingElement.scrollTop,
         lookupEntries: window.lookupEntries,
         entryCount: window.entryCount,
+        kanjiPageActive: document.body.classList.contains('hoshi-kanji-page-active'),
     };
 }
 
 function restore(snapshot) {
+    document.body.classList.toggle('hoshi-kanji-page-active', Boolean(snapshot.kanjiPageActive));
     flushPendingHistoryRestore();
     const container = document.getElementById('entries-container');
     const nodes = [...snapshot.nodes];
@@ -1739,7 +2111,7 @@ function popupEventTarget(event) {
 }
 
 function isPopupInteractiveTapTarget(target) {
-    if (target?.closest('summary, a, button, .button-slot, .deinflection-tag, .frequency-group, .pitch-group, .overlay, .overlay-close, .overlay-content')) {
+    if (target?.closest('summary, a, button, .button-slot, .hoshi-kanji-link, .deinflection-tag, .frequency-group, .pitch-group, .overlay, .overlay-close, .overlay-content')) {
         return true;
     }
     const tagRow = target?.closest('.tag-row');
@@ -1840,6 +2212,7 @@ function installPopupDocumentTapHandlers() {
 installPopupDocumentTapHandlers();
 
 window.renderPopup = function() {
+    document.body.classList.remove('hoshi-kanji-page-active');
     const container = document.getElementById('entries-container');
     if (!window.entryCount) {
         return;

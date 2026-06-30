@@ -11,6 +11,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -139,6 +141,7 @@ fun DictionaryView(
     var destination by remember { mutableStateOf<DictionaryDestination?>(null) }
     var showUpdateConfirmation by remember { mutableStateOf(false) }
     var showDownloadConfirmation by remember { mutableStateOf(false) }
+    var kanjiDisplayDictionary by remember { mutableStateOf<DictionaryInfo?>(null) }
     var intervalMenuExpanded by remember { mutableStateOf(false) }
     val recommendedDictionaries = remember(profileState.effectiveContentLanguageProfile.dictionaryLanguageId) {
         recommendedDictionariesForLanguage(profileState.effectiveContentLanguageProfile.dictionaryLanguageId)
@@ -325,6 +328,7 @@ fun DictionaryView(
             DictionarySettingsView(
                 settings = uiState.settings,
                 termDictionaries = uiState.dictionaries[DictionaryType.Term].orEmpty(),
+                kanjiDictionaries = uiState.dictionaries[DictionaryType.Kanji].orEmpty(),
                 showScanNonJapaneseText = scanNonJapaneseTextSettingVisible(
                     profileState.effectiveContentLanguageProfile,
                 ),
@@ -671,6 +675,11 @@ fun DictionaryView(
                                     }
                                 }
                             },
+                            onConfigure = if (selectedType == DictionaryType.Kanji) {
+                                { kanjiDisplayDictionary = dictionary }
+                            } else {
+                                null
+                            },
                         )
                     }
                 }
@@ -774,6 +783,14 @@ fun DictionaryView(
             },
         )
     }
+    kanjiDisplayDictionary?.let { dictionary ->
+        KanjiDictionaryDisplayDialog(
+            dictionary = dictionary,
+            settings = uiState.settings,
+            onDismiss = { kanjiDisplayDictionary = null },
+            onSettingsChange = dictionaryViewModel::updateSettings,
+        )
+    }
 }
 
 private enum class DictionaryDestination {
@@ -786,6 +803,7 @@ private val DictionaryType.displayNameRes: Int
         DictionaryType.Term -> R.string.dictionary_type_term
         DictionaryType.Frequency -> R.string.dictionary_type_frequency
         DictionaryType.Pitch -> R.string.dictionary_type_pitch
+        DictionaryType.Kanji -> R.string.dictionary_type_kanji
     }
 
 private enum class DictionarySwipeRevealValue {
@@ -807,6 +825,7 @@ private fun DictionaryRow(
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
+    onConfigure: (() -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
@@ -944,6 +963,18 @@ private fun DictionaryRow(
                     onCheckedChange = onEnabledChange,
                     enabled = enabled,
                 )
+                if (onConfigure != null) {
+                    IconButton(
+                        onClick = onConfigure,
+                        enabled = enabled,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.DataObject,
+                            contentDescription = stringResource(R.string.kanji_dictionary_configure),
+                            tint = colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
@@ -1000,6 +1031,260 @@ private fun hoshiSwitchColors() = SwitchDefaults.colors(
 )
 
 @Composable
+private fun KanjiDictionaryDisplayDialog(
+    dictionary: DictionaryInfo,
+    settings: DictionarySettings,
+    onDismiss: () -> Unit,
+    onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
+) {
+    val dictionaryName = dictionary.index.title
+    val displaySettings = settings.kanjiCombinedSettings.displayFor(dictionaryName)
+    val optionalStats = remember(dictionaryName) { optionalKanjiStatsFor(dictionaryName) }
+    var shownStats by remember(dictionaryName) {
+        mutableStateOf(displaySettings.shownStats.intersect(optionalStats.map { it.rawName }.toSet()))
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanji_dictionary_configure_title, dictionaryName)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.kanji_dictionary_configure_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (optionalStats.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.kanji_no_optional_stats),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    optionalStats.forEach { stat ->
+                        ToggleRow(
+                            title = stat.label,
+                            checked = stat.rawName in shownStats,
+                            supportingText = stat.rawName,
+                        ) { checked ->
+                            shownStats = shownStats.toMutableSet().apply {
+                                if (checked) add(stat.rawName) else remove(stat.rawName)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSettingsChange { current ->
+                        val updatedDisplay = current.kanjiCombinedSettings.dictionaryDisplay.toMutableMap()
+                        updatedDisplay[dictionaryName] = KanjiDictionaryDisplaySettings(
+                            shownStats = shownStats,
+                        ).normalized()
+                        current.copy(
+                            kanjiCombinedSettings = current.kanjiCombinedSettings.copy(
+                                dictionaryDisplay = updatedDisplay,
+                            ),
+                        )
+                    }
+                    onDismiss()
+                },
+            ) {
+                Text(stringResource(R.string.action_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun KanjiFieldPriorityDialog(
+    field: KanjiCombinedField,
+    dictionaries: List<DictionaryInfo>,
+    settings: DictionarySettings,
+    onDismiss: () -> Unit,
+    onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
+) {
+    val dictionaryNames = remember(dictionaries) { dictionaries.map { it.index.title } }
+    var priority by remember(field, dictionaryNames, settings.kanjiCombinedSettings) {
+        mutableStateOf(settings.kanjiCombinedSettings.priorityFor(field, dictionaryNames))
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanji_priority_title, stringResource(field.labelRes))) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(R.string.kanji_priority_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                priority.forEachIndexed { index, name ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = name,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        TextButton(
+                            enabled = index > 0,
+                            onClick = { priority = priority.moveItem(index, index - 1) },
+                        ) {
+                            Text("↑")
+                        }
+                        TextButton(
+                            enabled = index < priority.lastIndex,
+                            onClick = { priority = priority.moveItem(index, index + 1) },
+                        ) {
+                            Text("↓")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSettingsChange { current ->
+                        val updatedPriorities = current.kanjiCombinedSettings.fieldPriorities.toMutableMap()
+                        updatedPriorities[field.rawValue] = priority
+                        current.copy(
+                            kanjiCombinedSettings = current.kanjiCombinedSettings.copy(
+                                fieldPriorities = updatedPriorities,
+                            ),
+                        )
+                    }
+                    onDismiss()
+                },
+            ) {
+                Text(stringResource(R.string.action_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+private val KanjiCombinedField.labelRes: Int
+    get() = when (this) {
+        KanjiCombinedField.Onyomi -> R.string.kanji_field_onyomi
+        KanjiCombinedField.Kunyomi -> R.string.kanji_field_kunyomi
+        KanjiCombinedField.Definitions -> R.string.kanji_field_definitions
+        KanjiCombinedField.Frequency -> R.string.dictionary_type_frequency
+        KanjiCombinedField.Strokes -> R.string.kanji_field_strokes
+        KanjiCombinedField.Radicals -> R.string.kanji_field_radicals
+        KanjiCombinedField.Components -> R.string.kanji_field_components
+        KanjiCombinedField.Tags -> R.string.anki_tags
+    }
+
+private data class OptionalKanjiStat(
+    val rawName: String,
+    val label: String = rawName.kanjiStatLabel(),
+)
+
+private fun optionalKanjiStatsFor(dictionaryName: String): List<OptionalKanjiStat> =
+    when {
+        dictionaryName.contains("KANJIDIC", ignoreCase = true) -> listOf(
+            "deroo",
+            "four_corner",
+            "gakken",
+            "grade",
+            "halpern_kkd",
+            "halpern_kkld",
+            "halpern_kkld_2ed",
+            "halpern_njecd",
+            "heisig",
+            "heisig6",
+            "henshall",
+            "jf_cards",
+            "jis208",
+            "jlpt",
+            "kanji_in_context",
+            "kodansha_compact",
+            "maniette",
+            "moro",
+            "nelson_c",
+            "nelson_n",
+            "oneill_kk",
+            "oneill_names",
+            "sh_desc",
+            "sh_kk",
+            "sh_kk2",
+            "skip",
+            "tutt_cards",
+            "ucs",
+        )
+        dictionaryName.contains("JPDB", ignoreCase = true) -> listOf(
+            "\u6f22\u5b57\u691c\u5b9a",
+            "\u65e7\u5b57\u4f53",
+            "\u65b0\u5b57\u4f53",
+        )
+        dictionaryName.contains("KanjiMap", ignoreCase = true) -> emptyList()
+        else -> listOf(
+            "grade",
+            "jlpt",
+            "freq",
+            "strokes",
+            "ucs",
+        )
+    }.map(::OptionalKanjiStat)
+
+private fun String.kanjiStatLabel(): String = when (this) {
+    "deroo" -> "De Roo"
+    "four_corner" -> "Four-corner"
+    "gakken" -> "Gakken"
+    "grade" -> "Grade"
+    "halpern_kkd" -> "Halpern KKD"
+    "halpern_kkld" -> "Halpern KKLD"
+    "halpern_kkld_2ed" -> "Halpern KKLD 2nd"
+    "halpern_njecd" -> "Halpern NJECD"
+    "heisig" -> "Heisig"
+    "heisig6" -> "Heisig 6"
+    "henshall" -> "Henshall"
+    "jf_cards" -> "JF Cards"
+    "jis208" -> "JIS X 0208"
+    "jlpt" -> "JLPT"
+    "kanji_in_context" -> "Kanji in Context"
+    "kodansha_compact" -> "Kodansha Compact"
+    "maniette" -> "Maniette"
+    "moro" -> "Morohashi"
+    "nelson_c" -> "Nelson classic"
+    "nelson_n" -> "Nelson new"
+    "oneill_kk" -> "O'Neill KK"
+    "oneill_names" -> "O'Neill names"
+    "sh_desc" -> "Descriptor"
+    "sh_kk" -> "SH KK"
+    "sh_kk2" -> "SH KK2"
+    "skip" -> "SKIP"
+    "tutt_cards" -> "Tuttle cards"
+    "ucs" -> "Unicode"
+    "\u6f22\u5b57\u691c\u5b9a" -> "\u6f22\u5b57\u691c\u5b9a"
+    "\u65e7\u5b57\u4f53" -> "\u65e7\u5b57\u4f53"
+    "\u65b0\u5b57\u4f53" -> "\u65b0\u5b57\u4f53"
+    else -> replace('_', ' ').replaceFirstChar { it.titlecase() }
+}
+
+private fun List<String>.moveItem(from: Int, to: Int): List<String> =
+    toMutableList().apply {
+        add(to, removeAt(from))
+    }
+
+@Composable
 private fun HoshiIconBackButton(onClick: () -> Unit) {
     IconButton(onClick = onClick) {
         Icon(
@@ -1022,12 +1307,15 @@ private fun GroupDivider() {
 private fun DictionarySettingsView(
     settings: DictionarySettings,
     termDictionaries: List<DictionaryInfo>,
+    kanjiDictionaries: List<DictionaryInfo>,
     showScanNonJapaneseText: Boolean,
     onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showCollapsedDictionaries by remember { mutableStateOf(false) }
+    var editingKanjiField by remember { mutableStateOf<KanjiCombinedField?>(null) }
+    val settingsListState = rememberLazyListState()
     if (showCollapsedDictionaries) {
         CollapsedDictionariesView(
             dictionaries = termDictionaries,
@@ -1043,6 +1331,16 @@ private fun DictionarySettingsView(
             },
             onClose = { showCollapsedDictionaries = false },
             modifier = modifier,
+        )
+        return
+    }
+    editingKanjiField?.let { field ->
+        KanjiFieldPriorityDialog(
+            field = field,
+            dictionaries = kanjiDictionaries,
+            settings = settings,
+            onDismiss = { editingKanjiField = null },
+            onSettingsChange = onSettingsChange,
         )
         return
     }
@@ -1065,6 +1363,7 @@ private fun DictionarySettingsView(
         },
     ) { innerPadding ->
         LazyColumn(
+            state = settingsListState,
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorScheme.background)
@@ -1202,6 +1501,43 @@ private fun DictionarySettingsView(
                                 )
                             }
                         }
+                    }
+                }
+                SectionLabel(stringResource(R.string.dictionary_type_kanji))
+                SettingsGroup {
+                    ToggleRow(
+                        title = stringResource(R.string.kanji_combined_mode),
+                        checked = settings.kanjiCombinedMode,
+                        supportingText = stringResource(R.string.kanji_combined_mode_description),
+                    ) {
+                        onSettingsChange { current -> current.copy(kanjiCombinedMode = it) }
+                    }
+                    KanjiCombinedField.entries.forEach { field ->
+                        GroupDivider()
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text(stringResource(field.labelRes)) },
+                            supportingContent = {
+                                Text(
+                                    settings.kanjiCombinedSettings
+                                        .priorityFor(field, kanjiDictionaries.map { it.index.title })
+                                        .joinToString(" > ")
+                                        .ifBlank { stringResource(R.string.kanji_priority_no_dictionaries) },
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    imageVector = Icons.Rounded.ChevronRight,
+                                    contentDescription = null,
+                                    tint = colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            modifier = Modifier.clickable(enabled = kanjiDictionaries.isNotEmpty()) {
+                                editingKanjiField = field
+                            },
+                        )
                     }
                 }
                 SectionLabel(stringResource(R.string.dictionary_settings_import))

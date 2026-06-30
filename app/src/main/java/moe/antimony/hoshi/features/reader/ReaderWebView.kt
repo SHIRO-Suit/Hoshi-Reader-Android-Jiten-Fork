@@ -809,6 +809,19 @@ fun ReaderWebView(
                 }
                 replyReaderPopupMessage(message.popupId, message.messageId ?: return, results.size.toString())
             }
+            is ReaderLookupPopupBridgeMessage.LookupKanji -> {
+                val result = dictionaryRepository.lookupKanji(message.character)
+                replyReaderPopupMessage(
+                    popupId = message.popupId,
+                    messageId = message.messageId ?: return,
+                    bodyJson = result?.let {
+                        LookupPopupHtml.kanjiResultJsonString(
+                            it,
+                            popupById(message.popupId)?.state?.dictionarySettings ?: dictionarySettings,
+                        )
+                    } ?: "null",
+                )
+            }
             is ReaderLookupPopupBridgeMessage.GetEntry -> {
                 val entry = popupById(message.popupId)?.state?.results?.getOrNull(message.index)
                 val body = entry?.let(LookupPopupHtml::entryJsonString) ?: "null"
@@ -877,6 +890,15 @@ fun ReaderWebView(
                         )
                         )
                 }
+            }
+            is ReaderLookupPopupBridgeMessage.NavigationPush -> {
+                val current = readerPopupHistories[message.popupId] ?: ReaderPopupHistoryCounts()
+                readerPopupHistories = readerPopupHistories + (
+                    message.popupId to current.copy(
+                        backCount = current.backCount + 1,
+                        forwardCount = 0,
+                    )
+                    )
             }
             is ReaderLookupPopupBridgeMessage.ContentReady -> Unit
             is ReaderLookupPopupBridgeMessage.SasayakiReplayCue -> {

@@ -7,6 +7,7 @@ class ImportResult(
     val metaCount: Long,
     val freqCount: Long,
     val pitchCount: Long,
+    val kanjiCount: Long,
     val mediaCount: Long,
 )
 
@@ -71,6 +72,25 @@ class LookupResult(
     val traceCandidates: Array<TraceCandidate>,
 )
 
+class KanjiStat(
+    val name: String,
+    val value: String,
+)
+
+class KanjiEntry(
+    val dictName: String,
+    val onyomi: String,
+    val kunyomi: String,
+    val tags: String,
+    val definitions: Array<String>,
+    val stats: Array<KanjiStat>,
+)
+
+class KanjiResult(
+    val character: String,
+    val entries: Array<KanjiEntry>,
+)
+
 object HoshiDicts {
     init {
         System.loadLibrary("hoshidicts_jni")
@@ -84,9 +104,11 @@ object HoshiDicts {
         termPaths: Array<String>,
         freqPaths: Array<String>,
         pitchPaths: Array<String>,
+        kanjiPaths: Array<String>,
     )
 
     external fun lookup(session: Long, text: String, maxResults: Int, scanLength: Int): Array<LookupResult>
+    external fun lookupKanji(session: Long, character: String): KanjiResult
     external fun getStyles(session: Long): Array<DictionaryStyle>
     external fun getMediaFile(session: Long, dictName: String, mediaPath: String): ByteArray?
 }

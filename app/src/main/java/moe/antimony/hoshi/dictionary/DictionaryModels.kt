@@ -9,6 +9,7 @@ enum class DictionaryType(val directoryName: String) {
     Term("Term"),
     Frequency("Frequency"),
     Pitch("Pitch"),
+    Kanji("Kanji"),
 }
 
 data class DictionaryInfo(
@@ -161,9 +162,10 @@ fun recommendedDictionariesForLanguage(languageId: String): List<RecommendedDict
 
 @Serializable
 data class DictionaryConfig(
-    val termDictionaries: List<DictionaryEntry>,
-    val frequencyDictionaries: List<DictionaryEntry>,
-    val pitchDictionaries: List<DictionaryEntry>,
+    val termDictionaries: List<DictionaryEntry> = emptyList(),
+    val frequencyDictionaries: List<DictionaryEntry> = emptyList(),
+    val pitchDictionaries: List<DictionaryEntry> = emptyList(),
+    val kanjiDictionaries: List<DictionaryEntry> = emptyList(),
 ) {
     @Serializable
     data class DictionaryEntry(

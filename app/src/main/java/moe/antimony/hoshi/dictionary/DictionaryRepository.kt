@@ -2,6 +2,7 @@ package moe.antimony.hoshi.dictionary
 
 import android.content.ContentResolver
 import android.net.Uri
+import de.manhhao.hoshi.KanjiResult
 import de.manhhao.hoshi.LookupResult
 import java.io.File
 import java.io.InputStream
@@ -236,6 +237,13 @@ internal class DictionaryRepository @Inject constructor(
         return lookupQueryService.lookup(text, maxResults, scanLength)
     }
 
+    fun lookupKanji(character: String): KanjiResult? {
+        ensureLookupQueryReady()
+        return character
+            .takeIf { it.codePointCount(0, it.length) == 1 && it.firstOrNull()?.let(::isKanjiCharacter) == true }
+            ?.let(lookupQueryService::lookupKanji)
+    }
+
     fun dictionaryStyles(): Map<String, String> {
         ensureLookupQueryReady()
         return lookupQueryService.getStyles().associate { it.dictName to it.styles }
@@ -252,6 +260,7 @@ internal class DictionaryRepository @Inject constructor(
             termDictionaries = storage.enabledDictionaryPaths(DictionaryType.Term),
             frequencyDictionaries = storage.enabledDictionaryPaths(DictionaryType.Frequency),
             pitchDictionaries = storage.enabledDictionaryPaths(DictionaryType.Pitch),
+            kanjiDictionaries = storage.enabledDictionaryPaths(DictionaryType.Kanji),
             dictionaryLanguageId = contentLanguageProfile.dictionaryLanguageId
                 .takeIf { ContentLanguageProfile.fromDictionaryLanguageId(it) != null }
                 ?: ContentLanguageProfile.Default.dictionaryLanguageId,
@@ -263,4 +272,10 @@ internal class DictionaryRepository @Inject constructor(
 
     private fun typeDirectories(): Map<DictionaryType, File> =
         DictionaryType.entries.associateWith { type -> storage.typeDirectory(type) }
+
+    private fun isKanjiCharacter(character: Char): Boolean =
+        character in '\u3400'..'\u4DBF' ||
+            character in '\u4E00'..'\u9FFF' ||
+            character in '\uF900'..'\uFAFF' ||
+            character == '\u3005'
 }
