@@ -1,6 +1,7 @@
 package moe.antimony.hoshi.dictionary
 
 import de.manhhao.hoshi.DictionaryStyle
+import de.manhhao.hoshi.KanjiResult
 import de.manhhao.hoshi.LookupResult
 import java.io.File
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -22,6 +23,7 @@ internal class DictionaryLookupQueryService @Inject constructor(
         termDictionaries: List<File>,
         frequencyDictionaries: List<File>,
         pitchDictionaries: List<File>,
+        kanjiDictionaries: List<File> = emptyList(),
         dictionaryLanguageId: String = ContentLanguageProfile.Default.dictionaryLanguageId,
     ) {
         synchronized(rebuildLock) {
@@ -33,6 +35,7 @@ internal class DictionaryLookupQueryService @Inject constructor(
                     termPaths = termDictionaries.toAbsolutePathArray(),
                     freqPaths = frequencyDictionaries.toAbsolutePathArray(),
                     pitchPaths = pitchDictionaries.toAbsolutePathArray(),
+                    kanjiPaths = kanjiDictionaries.toAbsolutePathArray(),
                 )
                 val previousSession = queryLock.write {
                     val previous = currentSession
@@ -54,6 +57,13 @@ internal class DictionaryLookupQueryService @Inject constructor(
             currentSession?.let { session ->
                 nativeBridge.lookup(session, text, maxResults, scanLength)
             } ?: emptyList()
+        }
+
+    fun lookupKanji(character: String): KanjiResult? =
+        queryLock.read {
+            currentSession?.let { session ->
+                nativeBridge.lookupKanji(session, character)?.takeIf { it.entries.isNotEmpty() }
+            }
         }
 
     fun getStyles(): List<DictionaryStyle> =

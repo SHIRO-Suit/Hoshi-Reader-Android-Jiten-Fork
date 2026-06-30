@@ -254,6 +254,12 @@ internal sealed class ReaderLookupPopupBridgeMessage {
         val query: String,
     ) : ReaderLookupPopupBridgeMessage()
 
+    data class LookupKanji(
+        override val popupId: String,
+        override val messageId: String?,
+        val character: String,
+    ) : ReaderLookupPopupBridgeMessage()
+
     data class GetEntry(
         override val popupId: String,
         override val messageId: String?,
@@ -300,6 +306,11 @@ internal sealed class ReaderLookupPopupBridgeMessage {
     ) : ReaderLookupPopupBridgeMessage()
 
     data class NavigateForward(
+        override val popupId: String,
+        override val messageId: String?,
+    ) : ReaderLookupPopupBridgeMessage()
+
+    data class NavigationPush(
         override val popupId: String,
         override val messageId: String?,
     ) : ReaderLookupPopupBridgeMessage()
@@ -362,6 +373,11 @@ internal sealed class ReaderLookupPopupBridgeMessage {
                     messageId = messageId ?: return null,
                     query = payload.string("body") ?: return null,
                 )
+                "lookupKanji" -> LookupKanji(
+                    popupId = popupId,
+                    messageId = messageId ?: return null,
+                    character = payload.string("body") ?: return null,
+                )
                 "getEntry" -> GetEntry(
                     popupId = popupId,
                     messageId = messageId ?: return null,
@@ -401,6 +417,7 @@ internal sealed class ReaderLookupPopupBridgeMessage {
                 }
                 "navigateBack" -> NavigateBack(popupId, messageId)
                 "navigateForward" -> NavigateForward(popupId, messageId)
+                "navigationPush" -> NavigationPush(popupId, messageId)
                 "sasayakiReplayCue" -> SasayakiReplayCue(popupId, messageId)
                 "sasayakiTogglePlayback" -> SasayakiTogglePlayback(popupId, messageId)
                 "sasayakiPlayForward" -> SasayakiPlayForward(popupId, messageId)

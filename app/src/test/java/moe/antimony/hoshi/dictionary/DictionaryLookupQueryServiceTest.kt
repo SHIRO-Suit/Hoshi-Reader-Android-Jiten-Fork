@@ -28,9 +28,10 @@ class DictionaryLookupQueryServiceTest {
         )
 
         assertEquals(listOf("en"), bridge.createdLanguageIds)
-        assertArrayEquals(arrayOf("/dicts/Term/JMdict"), bridge.termPaths)
-        assertArrayEquals(arrayOf("/dicts/Frequency/Freq"), bridge.freqPaths)
-        assertArrayEquals(arrayOf("/dicts/Pitch/Pitch"), bridge.pitchPaths)
+        assertArrayEquals(arrayOf(File("/dicts/Term/JMdict").absolutePath), bridge.termPaths)
+        assertArrayEquals(arrayOf(File("/dicts/Frequency/Freq").absolutePath), bridge.freqPaths)
+        assertArrayEquals(arrayOf(File("/dicts/Pitch/Pitch").absolutePath), bridge.pitchPaths)
+        assertArrayEquals(emptyArray<String>(), bridge.kanjiPaths)
     }
 
     @Test
@@ -53,8 +54,8 @@ class DictionaryLookupQueryServiceTest {
             dictionaryLanguageId = "en",
         )
 
-        assertEquals("session-1:/dicts/Term/Old", oldResult)
-        assertEquals("session-2:/dicts/Term/New", service.lookup("食べる").single().term.glossaries.single().glossary)
+        assertEquals("session-1:${File("/dicts/Term/Old").absolutePath}", oldResult)
+        assertEquals("session-2:${File("/dicts/Term/New").absolutePath}", service.lookup("食べる").single().term.glossaries.single().glossary)
         assertEquals(listOf("ja", "en"), bridge.createdLanguageIds)
         assertEquals(listOf(1L), bridge.destroyedSessions)
     }
@@ -82,7 +83,7 @@ class DictionaryLookupQueryServiceTest {
         }
 
         assertTrue(failure.isFailure)
-        assertEquals("session-1:/dicts/Term/Stable", service.lookup("食べる").single().term.glossaries.single().glossary)
+        assertEquals("session-1:${File("/dicts/Term/Stable").absolutePath}", service.lookup("食べる").single().term.glossaries.single().glossary)
         assertEquals(listOf(2L), bridge.destroyedSessions)
     }
 
@@ -126,7 +127,7 @@ class DictionaryLookupQueryServiceTest {
         lookupThread.join(5_000)
         rebuildThread.join(5_000)
         assertEquals(listOf(1L), bridge.destroyedSessions)
-        assertEquals("session-2:/dicts/Term/New", service.lookup("食べる").single().term.glossaries.single().glossary)
+        assertEquals("session-2:${File("/dicts/Term/New").absolutePath}", service.lookup("食べる").single().term.glossaries.single().glossary)
     }
 
     private class RecordingDictionaryNativeBridge : DictionaryNativeBridge {
@@ -139,6 +140,7 @@ class DictionaryLookupQueryServiceTest {
         lateinit var termPaths: Array<String>
         lateinit var freqPaths: Array<String>
         lateinit var pitchPaths: Array<String>
+        lateinit var kanjiPaths: Array<String>
         val destroyedSessions = mutableListOf<Long>()
         var failNextRebuild = false
         private var nextSession = 1L
@@ -171,6 +173,7 @@ class DictionaryLookupQueryServiceTest {
             termPaths: Array<String>,
             freqPaths: Array<String>,
             pitchPaths: Array<String>,
+            kanjiPaths: Array<String>,
         ) {
             if (failNextRebuild) {
                 failNextRebuild = false
@@ -179,6 +182,7 @@ class DictionaryLookupQueryServiceTest {
             this.termPaths = termPaths
             this.freqPaths = freqPaths
             this.pitchPaths = pitchPaths
+            this.kanjiPaths = kanjiPaths
             sessionTermPaths[session] = termPaths
         }
 

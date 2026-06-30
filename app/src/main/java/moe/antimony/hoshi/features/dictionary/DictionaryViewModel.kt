@@ -2,6 +2,7 @@ package moe.antimony.hoshi.features.dictionary
 
 import android.content.ContentResolver
 import android.net.Uri
+import de.manhhao.hoshi.KanjiResult
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,6 +47,7 @@ internal interface DictionaryViewModelRepository {
     suspend fun deleteDictionary(type: DictionaryType, fileName: String, title: String): Boolean
     suspend fun moveDictionary(type: DictionaryType, fromIndex: Int, toIndex: Int): Boolean
     suspend fun rebuildLookupQuery()
+    suspend fun lookupKanji(character: String): KanjiResult?
     val settings: Flow<DictionarySettings>
     val mutationState: StateFlow<DictionaryMutationState>
     suspend fun updateSettings(transform: (DictionarySettings) -> DictionarySettings)
@@ -162,6 +164,9 @@ internal class AndroidDictionaryViewModelRepository @Inject constructor(
         dictionaryRepository.rebuildLookupQuery()
     }
 
+    override suspend fun lookupKanji(character: String): KanjiResult? =
+        dictionaryRepository.lookupKanji(character)
+
     override suspend fun updateSettings(transform: (DictionarySettings) -> DictionarySettings) {
         settingsRepository.update(transform)
     }
@@ -259,6 +264,12 @@ internal class DictionaryViewModel : ViewModel {
     fun selectType(type: DictionaryType) {
         _uiState.update { it.copy(selectedType = type) }
     }
+
+    suspend fun kanjiPreviewJson(character: String, settings: DictionarySettings): String? =
+        withContext(ioDispatcher) {
+            repository.lookupKanji(character)
+                ?.let { LookupPopupHtml.kanjiResultJsonString(it, settings) }
+        }
 
     fun importDictionaries(items: List<DictionaryImportItem>) {
         importDictionaries(

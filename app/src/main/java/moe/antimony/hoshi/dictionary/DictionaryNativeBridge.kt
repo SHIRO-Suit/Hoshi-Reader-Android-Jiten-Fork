@@ -14,6 +14,7 @@ internal data class NativeDictionaryImportResult(
     val freqCount: Long,
     val pitchCount: Long,
     val mediaCount: Long,
+    val kanjiCount: Long = 0,
 )
 
 internal interface DictionaryNativeBridge {
@@ -28,9 +29,12 @@ internal interface DictionaryNativeBridge {
         termPaths: Array<String>,
         freqPaths: Array<String>,
         pitchPaths: Array<String>,
+        kanjiPaths: Array<String>,
     ) = Unit
 
     fun lookup(session: Long, text: String, maxResults: Int, scanLength: Int): List<LookupResult> = emptyList()
+
+    fun lookupKanji(session: Long, character: String): de.manhhao.hoshi.KanjiResult? = null
 
     fun getStyles(session: Long): List<DictionaryStyle> = emptyList()
 
@@ -49,6 +53,7 @@ internal class HoshiDictionaryNativeBridge @Inject constructor() : DictionaryNat
                 freqCount = result.freqCount,
                 pitchCount = result.pitchCount,
                 mediaCount = result.mediaCount,
+                kanjiCount = result.kanjiCount,
             )
         }
 
@@ -64,12 +69,16 @@ internal class HoshiDictionaryNativeBridge @Inject constructor() : DictionaryNat
         termPaths: Array<String>,
         freqPaths: Array<String>,
         pitchPaths: Array<String>,
+        kanjiPaths: Array<String>,
     ) {
-        HoshiDicts.rebuildQuery(session, termPaths, freqPaths, pitchPaths)
+        HoshiDicts.rebuildQuery(session, termPaths, freqPaths, pitchPaths, kanjiPaths)
     }
 
     override fun lookup(session: Long, text: String, maxResults: Int, scanLength: Int): List<LookupResult> =
         HoshiDicts.lookup(session, text, maxResults, scanLength).toList()
+
+    override fun lookupKanji(session: Long, character: String): de.manhhao.hoshi.KanjiResult =
+        HoshiDicts.lookupKanji(session, character)
 
     override fun getStyles(session: Long): List<DictionaryStyle> =
         HoshiDicts.getStyles(session).toList()

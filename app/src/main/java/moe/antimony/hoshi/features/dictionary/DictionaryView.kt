@@ -1,7 +1,13 @@
 package moe.antimony.hoshi.features.dictionary
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.view.MotionEvent
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
 import androidx.compose.animation.core.Animatable
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,6 +17,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.AnchoredDraggableDefaults
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
@@ -36,6 +43,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -65,6 +73,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.DataObject
@@ -80,6 +89,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,11 +107,13 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.text.DateFormat
 import java.util.Date
 import moe.antimony.hoshi.LocalHoshiUiDependencies
@@ -118,6 +130,7 @@ import moe.antimony.hoshi.importing.importDisplayName
 import moe.antimony.hoshi.ui.HoshiBlockingProgressOverlay
 import moe.antimony.hoshi.ui.asString
 import moe.antimony.hoshi.ui.hoshiTextFieldCursorBrush
+import moe.antimony.hoshi.webview.applyHoshiWebViewSecurityDefaults
 import kotlin.math.roundToInt
 
 private val DictionarySwitchColor = Color(0xFF34C759)
@@ -139,6 +152,7 @@ fun DictionaryView(
     var destination by remember { mutableStateOf<DictionaryDestination?>(null) }
     var showUpdateConfirmation by remember { mutableStateOf(false) }
     var showDownloadConfirmation by remember { mutableStateOf(false) }
+    var kanjiDisplayDictionary by remember { mutableStateOf<DictionaryInfo?>(null) }
     var intervalMenuExpanded by remember { mutableStateOf(false) }
     val recommendedDictionaries = remember(profileState.effectiveContentLanguageProfile.dictionaryLanguageId) {
         recommendedDictionariesForLanguage(profileState.effectiveContentLanguageProfile.dictionaryLanguageId)
@@ -325,9 +339,11 @@ fun DictionaryView(
             DictionarySettingsView(
                 settings = uiState.settings,
                 termDictionaries = uiState.dictionaries[DictionaryType.Term].orEmpty(),
+                kanjiDictionaries = uiState.dictionaries[DictionaryType.Kanji].orEmpty(),
                 showScanNonJapaneseText = scanNonJapaneseTextSettingVisible(
                     profileState.effectiveContentLanguageProfile,
                 ),
+                lookupKanjiPreviewJson = dictionaryViewModel::kanjiPreviewJson,
                 onSettingsChange = dictionaryViewModel::updateSettings,
                 onClose = { destination = null },
                 modifier = modifier,
@@ -671,6 +687,11 @@ fun DictionaryView(
                                     }
                                 }
                             },
+                            onConfigure = if (selectedType == DictionaryType.Kanji) {
+                                { kanjiDisplayDictionary = dictionary }
+                            } else {
+                                null
+                            },
                         )
                     }
                 }
@@ -774,6 +795,14 @@ fun DictionaryView(
             },
         )
     }
+    kanjiDisplayDictionary?.let { dictionary ->
+        KanjiDictionaryDisplayDialog(
+            dictionary = dictionary,
+            settings = uiState.settings,
+            onDismiss = { kanjiDisplayDictionary = null },
+            onSettingsChange = dictionaryViewModel::updateSettings,
+        )
+    }
 }
 
 private enum class DictionaryDestination {
@@ -786,6 +815,7 @@ private val DictionaryType.displayNameRes: Int
         DictionaryType.Term -> R.string.dictionary_type_term
         DictionaryType.Frequency -> R.string.dictionary_type_frequency
         DictionaryType.Pitch -> R.string.dictionary_type_pitch
+        DictionaryType.Kanji -> R.string.dictionary_type_kanji
     }
 
 private enum class DictionarySwipeRevealValue {
@@ -807,6 +837,7 @@ private fun DictionaryRow(
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
+    onConfigure: (() -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val density = LocalDensity.current
@@ -944,6 +975,18 @@ private fun DictionaryRow(
                     onCheckedChange = onEnabledChange,
                     enabled = enabled,
                 )
+                if (onConfigure != null) {
+                    IconButton(
+                        onClick = onConfigure,
+                        enabled = enabled,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.DataObject,
+                            contentDescription = stringResource(R.string.kanji_dictionary_configure),
+                            tint = colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
@@ -1000,6 +1043,559 @@ private fun hoshiSwitchColors() = SwitchDefaults.colors(
 )
 
 @Composable
+private fun KanjiDictionaryDisplayDialog(
+    dictionary: DictionaryInfo,
+    settings: DictionarySettings,
+    onDismiss: () -> Unit,
+    onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
+) {
+    val dictionaryName = dictionary.index.title
+    val displaySettings = settings.kanjiCombinedSettings.displayFor(dictionaryName)
+    val optionalStats = remember(dictionaryName) { optionalKanjiStatsFor(dictionaryName) }
+    var shownStats by remember(dictionaryName) {
+        mutableStateOf(displaySettings.shownStats.intersect(optionalStats.map { it.rawName }.toSet()))
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanji_dictionary_configure_title, dictionaryName)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.kanji_dictionary_configure_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (optionalStats.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.kanji_no_optional_stats),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    optionalStats.forEach { stat ->
+                        ToggleRow(
+                            title = stat.label,
+                            checked = stat.rawName in shownStats,
+                            supportingText = stat.rawName,
+                        ) { checked ->
+                            shownStats = shownStats.toMutableSet().apply {
+                                if (checked) add(stat.rawName) else remove(stat.rawName)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSettingsChange { current ->
+                        val updatedDisplay = current.kanjiCombinedSettings.dictionaryDisplay.toMutableMap()
+                        updatedDisplay[dictionaryName] = KanjiDictionaryDisplaySettings(
+                            shownStats = shownStats,
+                        ).normalized()
+                        current.copy(
+                            kanjiCombinedSettings = current.kanjiCombinedSettings.copy(
+                                dictionaryDisplay = updatedDisplay,
+                            ),
+                        )
+                    }
+                    onDismiss()
+                },
+            ) {
+                Text(stringResource(R.string.action_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun KanjiFieldPriorityDialog(
+    field: KanjiCombinedField,
+    dictionaries: List<DictionaryInfo>,
+    settings: DictionarySettings,
+    onDismiss: () -> Unit,
+    onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
+) {
+    val dictionaryNames = remember(dictionaries) { dictionaries.map { it.index.title } }
+    var priority by remember(field, dictionaryNames, settings.kanjiCombinedSettings) {
+        mutableStateOf(settings.kanjiCombinedSettings.priorityFor(field, dictionaryNames))
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.kanji_priority_title, stringResource(field.labelRes))) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = stringResource(R.string.kanji_priority_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                priority.forEachIndexed { index, name ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = name,
+                            modifier = Modifier.weight(1f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        TextButton(
+                            enabled = index > 0,
+                            onClick = { priority = priority.moveItem(index, index - 1) },
+                        ) {
+                            Text("↑")
+                        }
+                        TextButton(
+                            enabled = index < priority.lastIndex,
+                            onClick = { priority = priority.moveItem(index, index + 1) },
+                        ) {
+                            Text("↓")
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onSettingsChange { current ->
+                        val updatedPriorities = current.kanjiCombinedSettings.fieldPriorities.toMutableMap()
+                        updatedPriorities[field.rawValue] = priority
+                        current.copy(
+                            kanjiCombinedSettings = current.kanjiCombinedSettings.copy(
+                                fieldPriorities = updatedPriorities,
+                            ),
+                        )
+                    }
+                    onDismiss()
+                },
+            ) {
+                Text(stringResource(R.string.action_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+private val KanjiCombinedField.labelRes: Int
+    get() = when (this) {
+        KanjiCombinedField.Onyomi -> R.string.kanji_field_onyomi
+        KanjiCombinedField.Kunyomi -> R.string.kanji_field_kunyomi
+        KanjiCombinedField.Definitions -> R.string.kanji_field_definitions
+        KanjiCombinedField.Frequency -> R.string.dictionary_type_frequency
+        KanjiCombinedField.Strokes -> R.string.kanji_field_strokes
+        KanjiCombinedField.Radicals -> R.string.kanji_field_radicals
+        KanjiCombinedField.Components -> R.string.kanji_field_components
+        KanjiCombinedField.Tags -> R.string.anki_tags
+    }
+
+private data class OptionalKanjiStat(
+    val rawName: String,
+    val label: String = rawName.kanjiStatLabel(),
+)
+
+private fun optionalKanjiStatsFor(dictionaryName: String): List<OptionalKanjiStat> =
+    when {
+        dictionaryName.contains("KANJIDIC", ignoreCase = true) -> listOf(
+            "deroo",
+            "four_corner",
+            "gakken",
+            "grade",
+            "halpern_kkd",
+            "halpern_kkld",
+            "halpern_kkld_2ed",
+            "halpern_njecd",
+            "heisig",
+            "heisig6",
+            "henshall",
+            "jf_cards",
+            "jis208",
+            "jlpt",
+            "kanji_in_context",
+            "kodansha_compact",
+            "maniette",
+            "moro",
+            "nelson_c",
+            "nelson_n",
+            "oneill_kk",
+            "oneill_names",
+            "sh_desc",
+            "sh_kk",
+            "sh_kk2",
+            "skip",
+            "tutt_cards",
+            "ucs",
+        )
+        dictionaryName.contains("JPDB", ignoreCase = true) -> listOf(
+            "\u6f22\u5b57\u691c\u5b9a",
+            "\u65e7\u5b57\u4f53",
+            "\u65b0\u5b57\u4f53",
+        )
+        dictionaryName.contains("KanjiMap", ignoreCase = true) -> emptyList()
+        else -> listOf(
+            "grade",
+            "jlpt",
+            "freq",
+            "strokes",
+            "ucs",
+        )
+    }.map(::OptionalKanjiStat)
+
+private fun String.kanjiStatLabel(): String = when (this) {
+    "deroo" -> "De Roo"
+    "four_corner" -> "Four-corner"
+    "gakken" -> "Gakken"
+    "grade" -> "Grade"
+    "halpern_kkd" -> "Halpern KKD"
+    "halpern_kkld" -> "Halpern KKLD"
+    "halpern_kkld_2ed" -> "Halpern KKLD 2nd"
+    "halpern_njecd" -> "Halpern NJECD"
+    "heisig" -> "Heisig"
+    "heisig6" -> "Heisig 6"
+    "henshall" -> "Henshall"
+    "jf_cards" -> "JF Cards"
+    "jis208" -> "JIS X 0208"
+    "jlpt" -> "JLPT"
+    "kanji_in_context" -> "Kanji in Context"
+    "kodansha_compact" -> "Kodansha Compact"
+    "maniette" -> "Maniette"
+    "moro" -> "Morohashi"
+    "nelson_c" -> "Nelson classic"
+    "nelson_n" -> "Nelson new"
+    "oneill_kk" -> "O'Neill KK"
+    "oneill_names" -> "O'Neill names"
+    "sh_desc" -> "Descriptor"
+    "sh_kk" -> "SH KK"
+    "sh_kk2" -> "SH KK2"
+    "skip" -> "SKIP"
+    "tutt_cards" -> "Tuttle cards"
+    "ucs" -> "Unicode"
+    "\u6f22\u5b57\u691c\u5b9a" -> "\u6f22\u5b57\u691c\u5b9a"
+    "\u65e7\u5b57\u4f53" -> "\u65e7\u5b57\u4f53"
+    "\u65b0\u5b57\u4f53" -> "\u65b0\u5b57\u4f53"
+    else -> replace('_', ' ').replaceFirstChar { it.titlecase() }
+}
+
+private fun List<String>.moveItem(from: Int, to: Int): List<String> =
+    toMutableList().apply {
+        add(to, removeAt(from))
+    }
+
+private val KanjiPreviewPresets = listOf(
+    "口" to "Simple",
+    "見" to "Common",
+    "派" to "Detailed",
+    "鬱" to "Dense",
+)
+
+@Composable
+private fun KanjiSettingsPreview(
+    settings: DictionarySettings,
+    kanjiDictionaries: List<DictionaryInfo>,
+    lookupKanjiPreviewJson: suspend (String, DictionarySettings) -> String?,
+) {
+    var selectedKanji by remember { mutableStateOf(KanjiPreviewPresets.first().first) }
+    var previewJson by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    val normalizedSettings = settings.normalized()
+
+    LaunchedEffect(selectedKanji, normalizedSettings, kanjiDictionaries) {
+        if (kanjiDictionaries.none { it.isEnabled }) {
+            previewJson = null
+            loading = false
+            return@LaunchedEffect
+        }
+        loading = true
+        previewJson = lookupKanjiPreviewJson(selectedKanji, normalizedSettings)
+        loading = false
+    }
+
+    SectionLabel("Kanji preview")
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Preview the real kanji popup with the current combined-mode priorities and hidden-stat settings.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                KanjiPreviewPresets.forEach { (kanji, label) ->
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { selectedKanji = kanji },
+                        enabled = selectedKanji != kanji,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                        ) {
+                            Text(
+                                text = kanji,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+            when {
+                loading -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(96.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+                previewJson == null -> {
+                    Text(
+                        text = if (kanjiDictionaries.none { it.isEnabled }) {
+                            "Enable at least one kanji dictionary to preview."
+                        } else {
+                            "No kanji result for $selectedKanji with the enabled dictionaries."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                else -> {
+                    KanjiPopupPreviewWebView(
+                        kanjiJson = requireNotNull(previewJson),
+                        settings = normalizedSettings,
+                        lookupKanjiPreviewJson = lookupKanjiPreviewJson,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private class KanjiPreviewJavascriptBridge(
+    private val settingsProvider: () -> DictionarySettings,
+    private val lookupKanjiPreviewJsonProvider: () -> suspend (String, DictionarySettings) -> String?,
+    private val onNavigationStateChange: (Boolean, Boolean) -> Unit,
+) {
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    @JavascriptInterface
+    fun lookupKanji(character: String): String =
+        runBlocking {
+            lookupKanjiPreviewJsonProvider()(character, settingsProvider())
+        }.orEmpty()
+
+    @JavascriptInterface
+    fun updateNavigationState(backCount: Int, forwardCount: Int) {
+        mainHandler.post {
+            onNavigationStateChange(backCount > 0, forwardCount > 0)
+        }
+    }
+}
+
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
+@Composable
+private fun KanjiPopupPreviewWebView(
+    kanjiJson: String,
+    settings: DictionarySettings,
+    lookupKanjiPreviewJson: suspend (String, DictionarySettings) -> String?,
+) {
+    val context = LocalContext.current
+    val assets = remember(context) { LookupPopupAssets.load(context) }
+    val currentSettings by rememberUpdatedState(settings)
+    val currentLookupKanjiPreviewJson by rememberUpdatedState(lookupKanjiPreviewJson)
+    var canNavigateBack by remember { mutableStateOf(false) }
+    var canNavigateForward by remember { mutableStateOf(false) }
+    val bridge = remember {
+        KanjiPreviewJavascriptBridge(
+            settingsProvider = { currentSettings },
+            lookupKanjiPreviewJsonProvider = { currentLookupKanjiPreviewJson },
+            onNavigationStateChange = { back, forward ->
+                canNavigateBack = back
+                canNavigateForward = forward
+            },
+        )
+    }
+    val document = remember(assets, settings) {
+        LookupPopupHtml.renderIframeDocument(
+            assets = assets,
+            settings = settings,
+            swipeToDismiss = false,
+            popupScale = 0.94,
+        )
+    }
+    val html = remember(document, kanjiJson) {
+        document.replace(
+            "</body>",
+            """
+                <script>
+                    window.addEventListener('load', function() {
+                        requestAnimationFrame(function() {
+                            function notifyNavigationState() {
+                                if (!window.hoshiPopupNavigationState) {
+                                    window.HoshiKanjiPreviewBridge.updateNavigationState(0, 0);
+                                    return;
+                                }
+                                var state = window.hoshiPopupNavigationState();
+                                window.HoshiKanjiPreviewBridge.updateNavigationState(state.backCount || 0, state.forwardCount || 0);
+                            }
+                            window.hoshiKanjiPreviewNotifyNavigationState = notifyNavigationState;
+                            var originalPostMessage = window.HoshiAndroidPopup.postMessage;
+                            window.HoshiAndroidPopup.postMessage = function(name, body) {
+                                var result = originalPostMessage.apply(this, arguments);
+                                if (name === 'navigationPush') {
+                                    setTimeout(notifyNavigationState, 0);
+                                }
+                                return result;
+                            };
+                            window.HoshiAndroidPopup.requestMessage = function(name, body) {
+                                if (name !== 'lookupKanji') {
+                                    return Promise.resolve(null);
+                                }
+                                try {
+                                    var json = window.HoshiKanjiPreviewBridge.lookupKanji(String(body || ''));
+                                    return Promise.resolve(json ? JSON.parse(json) : null);
+                                } catch (e) {
+                                    console.warn('Kanji preview lookup failed', e);
+                                    return Promise.resolve(null);
+                                }
+                            };
+                            renderKanjiPage($kanjiJson);
+                            notifyNavigationState();
+                        });
+                    });
+                </script>
+            </body>
+            """.trimIndent(),
+        )
+    }
+    var previewWebView by remember { mutableStateOf<WebView?>(null) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                modifier = Modifier.size(32.dp),
+                enabled = canNavigateBack,
+                onClick = {
+                    previewWebView?.evaluateJavascript(
+                        "window.navigateBack && window.navigateBack(); window.hoshiKanjiPreviewNotifyNavigationState && window.hoshiKanjiPreviewNotifyNavigationState();",
+                        null,
+                    )
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                    contentDescription = stringResource(R.string.action_back),
+                )
+            }
+            IconButton(
+                modifier = Modifier.size(32.dp),
+                enabled = canNavigateForward,
+                onClick = {
+                    previewWebView?.evaluateJavascript(
+                        "window.navigateForward && window.navigateForward(); window.hoshiKanjiPreviewNotifyNavigationState && window.hoshiKanjiPreviewNotifyNavigationState();",
+                        null,
+                    )
+                },
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = "Forward",
+                )
+            }
+        }
+        AndroidView(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(360.dp),
+            factory = { viewContext ->
+                WebView(viewContext).apply {
+                    previewWebView = this
+                    applyHoshiWebViewSecurityDefaults()
+                    addJavascriptInterface(bridge, "HoshiKanjiPreviewBridge")
+                    isNestedScrollingEnabled = true
+                    isVerticalScrollBarEnabled = true
+                    isHorizontalScrollBarEnabled = false
+                    setOnTouchListener { view, event ->
+                        when (event.actionMasked) {
+                            MotionEvent.ACTION_DOWN,
+                            MotionEvent.ACTION_MOVE ->
+                                view.parent?.requestDisallowInterceptTouchEvent(true)
+                            MotionEvent.ACTION_UP,
+                            MotionEvent.ACTION_CANCEL ->
+                                view.parent?.requestDisallowInterceptTouchEvent(false)
+                        }
+                        false
+                    }
+                    setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    tag = html
+                    loadDataWithBaseURL(
+                        "https://appassets.androidplatform.net/popup/kanji-preview.html",
+                        html,
+                        "text/html",
+                        "UTF-8",
+                        null,
+                    )
+                }
+            },
+            update = { webView ->
+                previewWebView = webView
+                if (webView.tag != html) {
+                    webView.tag = html
+                    webView.loadDataWithBaseURL(
+                        "https://appassets.androidplatform.net/popup/kanji-preview.html",
+                        html,
+                        "text/html",
+                        "UTF-8",
+                        null,
+                    )
+                }
+            },
+        )
+    }
+}
+
+@Composable
 private fun HoshiIconBackButton(onClick: () -> Unit) {
     IconButton(onClick = onClick) {
         Icon(
@@ -1022,12 +1618,16 @@ private fun GroupDivider() {
 private fun DictionarySettingsView(
     settings: DictionarySettings,
     termDictionaries: List<DictionaryInfo>,
+    kanjiDictionaries: List<DictionaryInfo>,
     showScanNonJapaneseText: Boolean,
+    lookupKanjiPreviewJson: suspend (String, DictionarySettings) -> String?,
     onSettingsChange: ((DictionarySettings) -> DictionarySettings) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showCollapsedDictionaries by remember { mutableStateOf(false) }
+    var editingKanjiField by remember { mutableStateOf<KanjiCombinedField?>(null) }
+    val settingsListState = rememberLazyListState()
     if (showCollapsedDictionaries) {
         CollapsedDictionariesView(
             dictionaries = termDictionaries,
@@ -1043,6 +1643,16 @@ private fun DictionarySettingsView(
             },
             onClose = { showCollapsedDictionaries = false },
             modifier = modifier,
+        )
+        return
+    }
+    editingKanjiField?.let { field ->
+        KanjiFieldPriorityDialog(
+            field = field,
+            dictionaries = kanjiDictionaries,
+            settings = settings,
+            onDismiss = { editingKanjiField = null },
+            onSettingsChange = onSettingsChange,
         )
         return
     }
@@ -1065,6 +1675,7 @@ private fun DictionarySettingsView(
         },
     ) { innerPadding ->
         LazyColumn(
+            state = settingsListState,
             modifier = Modifier
                 .fillMaxSize()
                 .background(colorScheme.background)
@@ -1204,6 +1815,48 @@ private fun DictionarySettingsView(
                         }
                     }
                 }
+                SectionLabel(stringResource(R.string.dictionary_type_kanji))
+                SettingsGroup {
+                    ToggleRow(
+                        title = stringResource(R.string.kanji_combined_mode),
+                        checked = settings.kanjiCombinedMode,
+                        supportingText = stringResource(R.string.kanji_combined_mode_description),
+                    ) {
+                        onSettingsChange { current -> current.copy(kanjiCombinedMode = it) }
+                    }
+                    KanjiCombinedField.entries.forEach { field ->
+                        GroupDivider()
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                            headlineContent = { Text(stringResource(field.labelRes)) },
+                            supportingContent = {
+                                Text(
+                                    settings.kanjiCombinedSettings
+                                        .priorityFor(field, kanjiDictionaries.map { it.index.title })
+                                        .joinToString(" > ")
+                                        .ifBlank { stringResource(R.string.kanji_priority_no_dictionaries) },
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    imageVector = Icons.Rounded.ChevronRight,
+                                    contentDescription = null,
+                                    tint = colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            modifier = Modifier.clickable(enabled = kanjiDictionaries.isNotEmpty()) {
+                                editingKanjiField = field
+                            },
+                        )
+                    }
+                }
+                KanjiSettingsPreview(
+                    settings = settings,
+                    kanjiDictionaries = kanjiDictionaries,
+                    lookupKanjiPreviewJson = lookupKanjiPreviewJson,
+                )
                 SectionLabel(stringResource(R.string.dictionary_settings_import))
                 SettingsGroup {
                     ToggleRow(

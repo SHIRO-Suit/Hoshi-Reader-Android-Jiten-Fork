@@ -363,6 +363,396 @@ a {
     padding: 0 8px;
 }
 
+.hoshi-kanji-link {
+    display: inline;
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+    padding: 0 1px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: inherit;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+.hoshi-kanji-link:active {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+body.hoshi-kanji-page-active .hoshi-jiten-popup-page,
+body.hoshi-kanji-page-active .hoshi-jiten-popup-switcher {
+    display: none;
+}
+
+.kanji-page {
+    padding: 4px 6px 16px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.kanji-page-label {
+    color: color-mix(in srgb, currentColor 62%, transparent);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.kanji-page-character {
+    margin: 4px 0 10px;
+    font-size: 4.25rem;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+}
+
+.kanji-entry-section {
+    padding: 9px 0;
+    border-top: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.kanji-entry-section.combined {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.kanji-summary-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+    min-width: 0;
+    margin-top: 4px;
+}
+
+.kanji-summary-character {
+    min-width: 1.05em;
+    text-align: center;
+}
+
+.kanji-summary-glyph {
+    font-size: clamp(5rem, 27vw, 7.75rem);
+    font-weight: 500;
+    line-height: .92;
+}
+
+.kanji-summary-info {
+    min-width: 0;
+    padding-top: 6px;
+    font-size: 1.05rem;
+}
+
+.kanji-summary-meta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    column-gap: 5px;
+    max-width: 100%;
+    margin-top: 15px;
+    padding: 3px 10px;
+    border: 1px solid color-mix(in srgb, currentColor 13%, transparent);
+    border-radius: 7px;
+    background: color-mix(in srgb, currentColor 7%, transparent);
+    color: color-mix(in srgb, currentColor 68%, transparent);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+}
+
+.kanji-summary-meta.stacked {
+    display: inline-grid;
+    gap: 3px;
+    padding-block: 4px;
+}
+
+.kanji-summary-meta-separator::before {
+    content: "";
+}
+
+.kanji-summary-meta-separator::after {
+    content: "";
+}
+
+.kanji-summary-meta:not(.stacked) .kanji-summary-meta-separator {
+    width: 1px;
+    height: .9em;
+    background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.kanji-summary-meta.stacked .kanji-summary-meta-separator {
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.kanji-summary-meta.stacked .kanji-summary-meta-separator::before,
+.kanji-summary-meta.stacked .kanji-summary-meta-separator::after {
+    content: "";
+}
+
+.kanji-info-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    min-width: 0;
+    margin: 2px 0;
+}
+
+.kanji-info-label {
+    flex: 0 0 auto;
+    font-weight: 600;
+}
+
+.kanji-info-value {
+    flex: 1 1 6em;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.kanji-info-line.reading-line {
+    gap: 3px 4px;
+}
+
+.kanji-summary-minor-tags {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 5px;
+    color: color-mix(in srgb, currentColor 70%, transparent);
+    font-size: .74rem;
+}
+
+.kanji-summary-minor-tags > span {
+    max-width: 100%;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, currentColor 6%, transparent);
+    overflow-wrap: anywhere;
+}
+
+.kanji-summary-meanings {
+    margin: 8px 0 4px;
+    font-size: 1.25rem;
+    line-height: 1.25;
+}
+
+.kanji-entry-dictionary {
+    margin: 0 0 6px;
+    color: color-mix(in srgb, currentColor 70%, transparent);
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.kanji-readings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 0 6px;
+}
+
+.kanji-reading-column {
+    min-width: 0;
+    padding: 6px;
+    border-radius: 6px;
+    background: color-mix(in srgb, currentColor 7%, transparent);
+}
+
+.kanji-reading-label {
+    margin-bottom: 2px;
+    color: color-mix(in srgb, currentColor 58%, transparent);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.kanji-reading-value {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    overflow-wrap: anywhere;
+}
+
+.kanji-field-section {
+    margin: 8px 0;
+}
+
+.kanji-field-title {
+    margin: 0 0 3px;
+    color: color-mix(in srgb, currentColor 58%, transparent);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.kanji-field-title-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 3px;
+    width: 100%;
+}
+
+.kanji-field-title-row .kanji-field-title {
+    margin: 0;
+}
+
+.kanji-field-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    justify-content: flex-start;
+}
+
+.kanji-field-value {
+    max-width: 100%;
+    padding: 3px 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, currentColor 8%, transparent);
+    overflow-wrap: anywhere;
+}
+
+.kanji-reading-chip {
+    padding: 1px 4px;
+    border-radius: 6px;
+    background: color-mix(in srgb, #6750a4 12%, currentColor 5%, transparent);
+    font-size: .88em;
+    line-height: 1.25;
+}
+
+.kanji-summary-tags .kanji-field-value {
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.kanji-combinations .kanji-field-values {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    justify-content: flex-start;
+}
+
+.kanji-combinations .kanji-field-value {
+    border-radius: 6px;
+}
+
+.kanji-combination-chip {
+    display: inline-flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: max-content;
+    min-width: 0;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 1.08em;
+}
+
+.kanji-combination-chip ruby {
+    ruby-position: over;
+}
+
+.kanji-combination-chip rt {
+    font-size: .66em;
+    font-weight: 400;
+    opacity: .72;
+}
+
+.kanji-field-value[hidden],
+.kanji-stat[hidden] {
+    display: none;
+}
+
+.kanji-raw-entries {
+    margin-top: 8px;
+}
+
+.kanji-details-link {
+    appearance: none;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #064f9e;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.kanji-field-title-row .kanji-details-link {
+    margin-left: auto;
+    text-align: right;
+}
+
+.kanji-tags {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0 0 4px;
+}
+
+.kanji-tags .glossary-tag {
+    font-size: 10px;
+    padding: 2px 4px;
+    background-color: rgba(128, 128, 128, 0.2);
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.kanji-definitions {
+    margin: 5px 0;
+    padding-left: 1.6em;
+}
+
+.kanji-definitions > li {
+    margin: 2px 0;
+}
+
+.kanji-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    margin: 0;
+    font-size: 13px;
+}
+
+.kanji-stat {
+    display: inline-grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 4px;
+    align-items: baseline;
+    max-width: 100%;
+    width: max-content;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.kanji-stat > dt {
+    color: color-mix(in srgb, currentColor 62%, transparent);
+    font-weight: 600;
+}
+
+.kanji-stat > dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
 .dict-label {
     font-size: 10px;
     opacity: 0.7;

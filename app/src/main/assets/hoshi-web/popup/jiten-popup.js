@@ -64,6 +64,7 @@
         const expression = element('strong', 'hoshi-jiten-popup-expression');
         expression.lang = 'ja';
         expression.append(...readingNodes(card));
+        window.hoshiLinkifyKanjiText?.(expression);
         heading.append(expression);
         header.append(heading);
         container.append(header);

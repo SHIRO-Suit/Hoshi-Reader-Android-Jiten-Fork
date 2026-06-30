@@ -197,6 +197,11 @@ internal class DictionaryStorageDataSource(
             configFile = configFile,
             unconfiguredDictionariesEnabled = unconfiguredDictionariesEnabled,
         ),
+        kanjiDictionaries = configEntries(
+            type = DictionaryType.Kanji,
+            configFile = configFile,
+            unconfiguredDictionariesEnabled = unconfiguredDictionariesEnabled,
+        ),
     )
 
     private fun configEntries(
@@ -247,6 +252,7 @@ internal class DictionaryStorageDataSource(
         fun defaultJson(): Json = Json {
             prettyPrint = true
             ignoreUnknownKeys = true
+            encodeDefaults = true
         }
     }
 }
@@ -255,6 +261,7 @@ private val EmptyDictionaryConfig = DictionaryConfig(
     termDictionaries = emptyList(),
     frequencyDictionaries = emptyList(),
     pitchDictionaries = emptyList(),
+    kanjiDictionaries = emptyList(),
 )
 
 private fun DictionaryConfig.entriesForType(type: DictionaryType): List<DictionaryConfig.DictionaryEntry> =
@@ -262,6 +269,7 @@ private fun DictionaryConfig.entriesForType(type: DictionaryType): List<Dictiona
         DictionaryType.Term -> termDictionaries
         DictionaryType.Frequency -> frequencyDictionaries
         DictionaryType.Pitch -> pitchDictionaries
+        DictionaryType.Kanji -> kanjiDictionaries
     }
 
 private fun DictionaryConfig.copyForType(
@@ -271,6 +279,7 @@ private fun DictionaryConfig.copyForType(
     DictionaryType.Term -> copy(termDictionaries = transform(termDictionaries))
     DictionaryType.Frequency -> copy(frequencyDictionaries = transform(frequencyDictionaries))
     DictionaryType.Pitch -> copy(pitchDictionaries = transform(pitchDictionaries))
+    DictionaryType.Kanji -> copy(kanjiDictionaries = transform(kanjiDictionaries))
 }
 
 private fun DictionaryConfig.withUpdatedDictionaryReplacement(

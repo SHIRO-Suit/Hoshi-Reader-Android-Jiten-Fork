@@ -90,6 +90,65 @@ enum class JitenReviewButtonMode(val rawValue: String) {
     }
 }
 
+enum class KanjiCombinedField(val rawValue: String) {
+    Onyomi("onyomi"),
+    Kunyomi("kunyomi"),
+    Definitions("definitions"),
+    Frequency("frequency"),
+    Strokes("strokes"),
+    Radicals("radicals"),
+    Components("components"),
+    Tags("tags"),
+    ;
+
+    companion object {
+        fun fromRawValue(value: String): KanjiCombinedField? =
+            entries.firstOrNull { it.rawValue == value }
+    }
+}
+
+@Serializable
+data class KanjiDictionaryDisplaySettings(
+    val shownStats: Set<String> = emptySet(),
+) {
+    fun normalized(): KanjiDictionaryDisplaySettings = copy(
+        shownStats = shownStats.mapTo(linkedSetOf()) { it.trim() }.filterTo(linkedSetOf()) { it.isNotEmpty() },
+    )
+}
+
+@Serializable
+data class KanjiCombinedSettings(
+    val fieldPriorities: Map<String, List<String>> = emptyMap(),
+    val dictionaryDisplay: Map<String, KanjiDictionaryDisplaySettings> = emptyMap(),
+) {
+    fun normalized(): KanjiCombinedSettings = copy(
+        fieldPriorities = fieldPriorities.mapNotNull { (field, dictionaries) ->
+            val normalizedField = KanjiCombinedField.fromRawValue(field)?.rawValue ?: return@mapNotNull null
+            val normalizedDictionaries = dictionaries.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+            normalizedField to normalizedDictionaries
+        }.toMap(),
+        dictionaryDisplay = dictionaryDisplay.mapNotNull { (dictionary, settings) ->
+            val normalizedDictionary = dictionary.trim()
+            if (normalizedDictionary.isEmpty()) {
+                null
+            } else {
+                normalizedDictionary to settings.normalized()
+            }
+        }.toMap(),
+    )
+
+    fun priorityFor(field: KanjiCombinedField, fallbackDictionaries: List<String>): List<String> {
+        val configured = fieldPriorities[field.rawValue].orEmpty()
+        return (configured + fallbackDictionaries).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    }
+
+    fun displayFor(dictionary: String): KanjiDictionaryDisplaySettings =
+        dictionaryDisplay[dictionary].orEmptyNormalized()
+
+    private fun KanjiDictionaryDisplaySettings?.orEmptyNormalized(): KanjiDictionaryDisplaySettings =
+        this?.normalized() ?: KanjiDictionaryDisplaySettings()
+}
+
 data class DictionarySettings(
     val autoUpdateDictionaries: Boolean = true,
     val dictionaryUpdateInterval: DictionaryUpdateInterval = DictionaryUpdateInterval.Weekly,
@@ -117,6 +176,8 @@ data class DictionarySettings(
     val jitenShowMiningActions: Boolean = true,
     val jitenShowReviewActions: Boolean = false,
     val jitenReviewButtonMode: JitenReviewButtonMode = JitenReviewButtonMode.PassFail,
+    val kanjiCombinedMode: Boolean = true,
+    val kanjiCombinedSettings: KanjiCombinedSettings = KanjiCombinedSettings(),
 ) {
     fun normalized(): DictionarySettings {
         val normalizedJitenEndpoint = jitenApiEndpoint.trim().trimEnd('/')
@@ -129,6 +190,7 @@ data class DictionarySettings(
                 else -> normalizedJitenEndpoint
             },
             jitenVisibleStates = jitenVisibleStates.intersect(JITEN_CONFIGURABLE_STATES),
+            kanjiCombinedSettings = kanjiCombinedSettings.normalized(),
         )
     }
 
@@ -199,6 +261,10 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
         jitenReviewButtonMode = JitenReviewButtonMode.fromRawValue(
             preferences.getStringOrNull(KEY_JITEN_REVIEW_BUTTON_MODE),
         ),
+        kanjiCombinedMode = preferences.getBoolean(KEY_KANJI_COMBINED_MODE, true),
+        kanjiCombinedSettings = preferences.getString(KEY_KANJI_COMBINED_SETTINGS, null)
+            ?.decodeKanjiCombinedSettings()
+            ?: KanjiCombinedSettings(),
     ).normalized()
 
     fun save(settings: DictionarySettings) {
@@ -236,6 +302,8 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
             .putBoolean(KEY_JITEN_SHOW_MINING_ACTIONS, normalized.jitenShowMiningActions)
             .putBoolean(KEY_JITEN_SHOW_REVIEW_ACTIONS, normalized.jitenShowReviewActions)
             .putString(KEY_JITEN_REVIEW_BUTTON_MODE, normalized.jitenReviewButtonMode.rawValue)
+            .putBoolean(KEY_KANJI_COMBINED_MODE, normalized.kanjiCombinedMode)
+            .putString(KEY_KANJI_COMBINED_SETTINGS, normalized.kanjiCombinedSettings.encode())
             .apply()
     }
 
@@ -267,6 +335,8 @@ class DictionarySettingsStore(context: Context) : DictionarySettingsLegacySource
         const val KEY_JITEN_SHOW_MINING_ACTIONS = "jitenShowMiningActions"
         const val KEY_JITEN_SHOW_REVIEW_ACTIONS = "jitenShowReviewActions"
         const val KEY_JITEN_REVIEW_BUTTON_MODE = "jitenReviewButtonMode"
+        const val KEY_KANJI_COMBINED_MODE = "kanjiCombinedMode"
+        const val KEY_KANJI_COMBINED_SETTINGS = "kanjiCombinedSettings"
     }
 }
 
@@ -412,6 +482,9 @@ class DictionarySettingsRepository(
             jitenShowMiningActions = getOrDefault(KEY_JITEN_SHOW_MINING_ACTIONS, true),
             jitenShowReviewActions = getOrDefault(KEY_JITEN_SHOW_REVIEW_ACTIONS, false),
             jitenReviewButtonMode = JitenReviewButtonMode.fromRawValue(getOrNull(KEY_JITEN_REVIEW_BUTTON_MODE)),
+            kanjiCombinedMode = this[KEY_KANJI_COMBINED_MODE] ?: true,
+            kanjiCombinedSettings = this[KEY_KANJI_COMBINED_SETTINGS]?.decodeKanjiCombinedSettings()
+                ?: KanjiCombinedSettings(),
         ).normalized()
     }
 
@@ -448,6 +521,8 @@ class DictionarySettingsRepository(
         this[KEY_JITEN_SHOW_MINING_ACTIONS] = normalized.jitenShowMiningActions
         this[KEY_JITEN_SHOW_REVIEW_ACTIONS] = normalized.jitenShowReviewActions
         this[KEY_JITEN_REVIEW_BUTTON_MODE] = normalized.jitenReviewButtonMode.rawValue
+        this[KEY_KANJI_COMBINED_MODE] = normalized.kanjiCombinedMode
+        this[KEY_KANJI_COMBINED_SETTINGS] = normalized.kanjiCombinedSettings.encode()
     }
 
     private fun MutablePreferences.writeGlobalDictionarySettings(settings: DictionarySettings) {
@@ -470,6 +545,8 @@ class DictionarySettingsRepository(
         this[KEY_JITEN_SHOW_MINING_ACTIONS] = normalized.jitenShowMiningActions
         this[KEY_JITEN_SHOW_REVIEW_ACTIONS] = normalized.jitenShowReviewActions
         this[KEY_JITEN_REVIEW_BUTTON_MODE] = normalized.jitenReviewButtonMode.rawValue
+        this[KEY_KANJI_COMBINED_MODE] = normalized.kanjiCombinedMode
+        this[KEY_KANJI_COMBINED_SETTINGS] = normalized.kanjiCombinedSettings.encode()
     }
 
     private suspend fun profileDictionarySettingsOrMigrate(globalSettings: DictionarySettings): ProfileDictionarySettings =
@@ -548,6 +625,8 @@ class DictionarySettingsRepository(
         private val KEY_JITEN_SHOW_MINING_ACTIONS = booleanPreferencesKey("jitenShowMiningActions")
         private val KEY_JITEN_SHOW_REVIEW_ACTIONS = booleanPreferencesKey("jitenShowReviewActions")
         private val KEY_JITEN_REVIEW_BUTTON_MODE = stringPreferencesKey("jitenReviewButtonMode")
+        private val KEY_KANJI_COMBINED_MODE = booleanPreferencesKey("kanjiCombinedMode")
+        private val KEY_KANJI_COMBINED_SETTINGS = stringPreferencesKey("kanjiCombinedSettings")
         private val json = Json {
             prettyPrint = true
             encodeDefaults = true
@@ -625,3 +704,16 @@ private fun DictionarySettings.withProfileDictionarySettings(profileSettings: Pr
         compactPitchAccents = profileSettings.compactPitchAccents,
         customCSS = profileSettings.customCSS,
     ).normalized()
+
+private fun String.decodeKanjiCombinedSettings(): KanjiCombinedSettings =
+    runCatching {
+        KanjiCombinedSettingsJson.decodeFromString<KanjiCombinedSettings>(this).normalized()
+    }.getOrDefault(KanjiCombinedSettings())
+
+private fun KanjiCombinedSettings.encode(): String =
+    KanjiCombinedSettingsJson.encodeToString(KanjiCombinedSettings.serializer(), normalized())
+
+private val KanjiCombinedSettingsJson = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
+}

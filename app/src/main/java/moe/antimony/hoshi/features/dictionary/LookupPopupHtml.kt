@@ -1,6 +1,9 @@
 package moe.antimony.hoshi.features.dictionary
 
 import android.content.Context
+import de.manhhao.hoshi.KanjiEntry
+import de.manhhao.hoshi.KanjiResult
+import de.manhhao.hoshi.KanjiStat
 import de.manhhao.hoshi.LookupResult
 import de.manhhao.hoshi.TraceCandidate
 import de.manhhao.hoshi.TraceSource
@@ -184,6 +187,7 @@ internal object LookupPopupHtml {
                             mineEntry: { postMessage: function(content) { return window.HoshiAndroidPopup.requestMessage('mineEntry', content); } },
                             duplicateCheck: { postMessage: function(expression) { return window.HoshiAndroidPopup.requestMessage('duplicateCheck', expression); } },
                             getEntry: { postMessage: function(index) { return window.HoshiAndroidPopup.requestMessage('getEntry', index); } },
+                            lookupKanji: { postMessage: function(character) { return window.HoshiAndroidPopup.requestMessage('lookupKanji', character); } },
                             lookupRedirect: { postMessage: function(query) { return window.HoshiAndroidPopup.requestMessage('lookupRedirect', query); } }
                         }
                     };
@@ -201,6 +205,7 @@ internal object LookupPopupHtml {
                     window.hoshiJitenShowMiningActions = ${normalizedSettings.jitenShowMiningActions};
                     window.hoshiJitenShowReviewActions = ${normalizedSettings.jitenShowReviewActions};
                     window.hoshiJitenReviewButtonMode = ${JsonPrimitive(normalizedSettings.jitenReviewButtonMode.rawValue)};
+                    window.kanjiCombinedMode = ${normalizedSettings.kanjiCombinedMode};
                     window.audioSources = ${audioSourcesJson(audioSettings)};
                     window.audioRequestEndpoint = "https://appassets.androidplatform.net/audio";
                     window.dictionaryMediaRequestEndpoint = "https://appassets.androidplatform.net/image";
@@ -355,6 +360,11 @@ internal object LookupPopupHtml {
     }
 
     internal fun entryJsonString(result: LookupResult): String = result.toEntryJson().toString()
+
+    internal fun kanjiResultJsonString(
+        result: KanjiResult,
+        settings: DictionarySettings = DictionarySettings(),
+    ): String = result.toKanjiJson(settings).toString()
 
     private fun dictionaryStylesJson(styles: Map<String, String>): JsonObject =
         buildJsonObject {
@@ -560,6 +570,532 @@ internal object LookupPopupHtml {
                 .forEach { add(JsonPrimitive(it)) }
         }
     }
+
+    private fun KanjiResult.toKanjiJson(settings: DictionarySettings): JsonObject = buildJsonObject {
+        put("character", character)
+        put("combined", toCombinedKanjiEntryJson(settings))
+        putJsonArray("entries") {
+            entries.forEach { entry -> add(entry.toKanjiEntryJson(settings)) }
+        }
+    }
+
+    private fun KanjiEntry.toKanjiEntryJson(settings: DictionarySettings = DictionarySettings()): JsonObject = buildJsonObject {
+        val normalized = normalizeKanjiEntry()
+        put("dictionary", dictName)
+        put("onyomi", normalized.onyomi.joinToString(" ").ifBlank { onyomi })
+        put("kunyomi", normalized.kunyomi.joinToString(" ").ifBlank { kunyomi })
+        put("tags", normalized.tags.joinToString(" ").ifBlank { tags })
+        putJsonArray("definitions") {
+            normalized.definitions.forEach { add(JsonPrimitive(it)) }
+        }
+        putJsonArray("stats") {
+            stats.forEach { stat ->
+                add(
+                    buildJsonObject {
+                        put("name", stat.name)
+                        put("value", stat.value)
+                        put("showByDefault", isDefaultKanjiStat(settings, stat.name))
+                    },
+                )
+            }
+        }
+        putJsonArray("radicals") {
+            normalized.radicals.distinct().forEach { add(JsonPrimitive(it)) }
+        }
+        putJsonArray("radicalMeanings") {
+            normalized.radicalMeanings.distinct().forEach { add(JsonPrimitive(it)) }
+        }
+        putJsonArray("radicalReadings") {
+            normalized.radicalReadings.distinct().forEach { add(JsonPrimitive(it)) }
+        }
+        putJsonArray("radicalExamples") {
+            normalized.radicalExamples.distinct().forEach { add(JsonPrimitive(it)) }
+        }
+        putJsonArray("components") {
+            normalized.components.distinct().forEach { add(JsonPrimitive(it)) }
+        }
+        putJsonArray("readingHints") {
+            normalized.readingHints.distinct().forEach { add(JsonPrimitive(it)) }
+        }
+        putJsonArray("combinations") {
+            normalized.combinations.distinct().take(60).forEach { add(JsonPrimitive(it)) }
+        }
+    }
+
+    private data class NormalizedKanjiFields(
+        val onyomi: List<String> = emptyList(),
+        val kunyomi: List<String> = emptyList(),
+        val tags: List<String> = emptyList(),
+        val definitions: List<String> = emptyList(),
+        val stats: List<KanjiStat> = emptyList(),
+        val radicals: List<String> = emptyList(),
+        val radicalMeanings: List<String> = emptyList(),
+        val radicalReadings: List<String> = emptyList(),
+        val radicalExamples: List<String> = emptyList(),
+        val components: List<String> = emptyList(),
+        val readingHints: List<String> = emptyList(),
+        val combinations: List<String> = emptyList(),
+    ) {
+        operator fun plus(other: NormalizedKanjiFields): NormalizedKanjiFields = NormalizedKanjiFields(
+            onyomi = (onyomi + other.onyomi).distinct(),
+            kunyomi = (kunyomi + other.kunyomi).distinct(),
+            tags = (tags + other.tags).distinct(),
+            definitions = (definitions + other.definitions).distinct(),
+            stats = (stats + other.stats).distinctBy { it.name to it.value },
+            radicals = radicals + other.radicals,
+            radicalMeanings = radicalMeanings + other.radicalMeanings,
+            radicalReadings = radicalReadings + other.radicalReadings,
+            radicalExamples = radicalExamples + other.radicalExamples,
+            components = components + other.components,
+            readingHints = readingHints + other.readingHints,
+            combinations = combinations + other.combinations,
+        )
+    }
+
+    private enum class KanjiField {
+        Onyomi,
+        Kunyomi,
+        Tags,
+        Definitions,
+        Radicals,
+        RadicalMeanings,
+        RadicalReadings,
+        RadicalExamples,
+        Components,
+        ReadingHints,
+        Combinations,
+    }
+
+    private data class KanjiMapping(
+        val name: String,
+        val titleContains: String,
+        val rules: List<KanjiMappingRule>,
+    ) {
+        fun matches(entry: KanjiEntry): Boolean =
+            titleContains.isNotBlank() && entry.dictName.contains(titleContains, ignoreCase = true)
+    }
+
+    private sealed interface KanjiMappingRule {
+        fun apply(entry: KanjiEntry): NormalizedKanjiFields
+    }
+
+    private data class DirectTextRule(
+        val source: String,
+        val target: KanjiField,
+    ) : KanjiMappingRule {
+        override fun apply(entry: KanjiEntry): NormalizedKanjiFields {
+            val values = when (source) {
+                "onyomi" -> entry.onyomi.splitKanjiValues()
+                "kunyomi" -> entry.kunyomi.splitKanjiValues()
+                "tags" -> entry.tags.splitKanjiValues()
+                "definitions" -> entry.definitions.toList().filter { it.isNotBlank() }
+                else -> emptyList()
+            }
+            return values.toKanjiFields(target)
+        }
+    }
+
+    private data class StatRule(
+        val names: Set<String>,
+    ) : KanjiMappingRule {
+        override fun apply(entry: KanjiEntry): NormalizedKanjiFields =
+            NormalizedKanjiFields(stats = entry.stats.filter { it.name in names })
+    }
+
+    private data class DefinitionPrefixRule(
+        val prefix: String,
+        val target: KanjiField,
+        val splitSeparator: Char? = null,
+    ) : KanjiMappingRule {
+        override fun apply(entry: KanjiEntry): NormalizedKanjiFields =
+            entry.definitions
+                .filter { it.trim().startsWith(prefix) }
+                .flatMap { it.trim().substringAfter(prefix).splitKanjiValues(splitSeparator) }
+                .toKanjiFields(target)
+    }
+
+    private data class DefinitionSectionRule(
+        val headerContains: String,
+        val target: KanjiField,
+        val splitValues: Boolean = false,
+    ) : KanjiMappingRule {
+        override fun apply(entry: KanjiEntry): NormalizedKanjiFields =
+            entry.definitions.toList()
+                .sectionValuesAfterHeader(headerContains)
+                .let { values -> if (splitValues) values.flatMap { it.splitKanjiValues() } else values }
+                .toKanjiFields(target)
+    }
+
+    private data class DefinitionWithoutSectionRule(
+        val headerContains: String,
+        val target: KanjiField,
+    ) : KanjiMappingRule {
+        override fun apply(entry: KanjiEntry): NormalizedKanjiFields =
+            entry.definitions.toList()
+                .withoutDefinitionSection(headerContains)
+                .toKanjiFields(target)
+    }
+
+    private fun KanjiEntry.normalizeKanjiEntry(): NormalizedKanjiFields {
+        val mapping = KanjiMappings.firstOrNull { it.matches(this) } ?: GenericKanjiMapping
+        return mapping.rules.fold(NormalizedKanjiFields()) { acc, rule -> acc + rule.apply(this) }
+    }
+
+    private fun List<String>.sectionValuesAfterHeader(headerContains: String): List<String> {
+        val values = mutableListOf<String>()
+        var collecting = false
+        forEach { raw ->
+            val line = raw.trim()
+            when {
+                line.contains(headerContains) -> collecting = true
+                line.startsWith(KanjiMapHeaderPrefix) -> collecting = false
+                collecting -> values += line
+            }
+        }
+        return values.filter(String::isNotBlank)
+    }
+
+    private fun List<String>.withoutDefinitionSection(headerContains: String): List<String> {
+        val headerIndex = indexOfFirst { it.trim().contains(headerContains) }
+        if (headerIndex < 0) return filter { it.isNotBlank() }
+        val start = if (headerIndex > 0 && this[headerIndex - 1].isBlank()) headerIndex - 1 else headerIndex
+        val end = indexOfFirstFrom(headerIndex + 1) {
+            val line = it.trim()
+            line.isBlank() || line.startsWith(KanjiMapHeaderPrefix)
+        }.let { if (it < 0) size else it }
+        return (take(start) + drop(end)).filter { it.isNotBlank() }
+    }
+
+    private inline fun List<String>.indexOfFirstFrom(startIndex: Int, predicate: (String) -> Boolean): Int {
+        for (index in startIndex until size) {
+            if (predicate(this[index])) return index
+        }
+        return -1
+    }
+
+    private fun List<String>.toKanjiFields(target: KanjiField): NormalizedKanjiFields =
+        when (target) {
+            KanjiField.Onyomi -> NormalizedKanjiFields(onyomi = this)
+            KanjiField.Kunyomi -> NormalizedKanjiFields(kunyomi = this)
+            KanjiField.Tags -> NormalizedKanjiFields(tags = this)
+            KanjiField.Definitions -> NormalizedKanjiFields(definitions = this)
+            KanjiField.Radicals -> NormalizedKanjiFields(radicals = this)
+            KanjiField.RadicalMeanings -> NormalizedKanjiFields(radicalMeanings = this)
+            KanjiField.RadicalReadings -> NormalizedKanjiFields(radicalReadings = this)
+            KanjiField.RadicalExamples -> NormalizedKanjiFields(radicalExamples = this)
+            KanjiField.Components -> NormalizedKanjiFields(components = this)
+            KanjiField.ReadingHints -> NormalizedKanjiFields(readingHints = this)
+            KanjiField.Combinations -> NormalizedKanjiFields(combinations = this)
+        }
+
+    private fun String.splitKanjiValues(separator: Char? = null): List<String> =
+        replace('\u3000', ' ')
+            .let { if (separator == null) it else it.replace(separator, ' ') }
+            .split(Regex("\\s+"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && it != "n/a" }
+
+    private fun KanjiResult.toCombinedKanjiEntryJson(settings: DictionarySettings): JsonObject {
+        val fieldsByDictionary = entries.associate { it.dictName to it.normalizeKanjiEntry() }
+        val fallbackDictionaries = entries.map { it.dictName }
+        val normalized = NormalizedKanjiFields(
+            onyomi = fieldsByDictionary.firstAvailable(settings, KanjiCombinedField.Onyomi, fallbackDictionaries) {
+                it.onyomi
+            },
+            kunyomi = fieldsByDictionary.firstAvailable(settings, KanjiCombinedField.Kunyomi, fallbackDictionaries) {
+                it.kunyomi
+            },
+            tags = fieldsByDictionary.firstAvailable(settings, KanjiCombinedField.Tags, fallbackDictionaries) {
+                it.tags
+            },
+            definitions = fieldsByDictionary.firstAvailable(
+                settings,
+                KanjiCombinedField.Definitions,
+                fallbackDictionaries,
+            ) { it.definitions },
+            stats = entries.toList().selectedCombinedKanjiStats(settings, fallbackDictionaries),
+            radicals = fieldsByDictionary.firstAvailable(settings, KanjiCombinedField.Radicals, fallbackDictionaries) {
+                it.radicals
+            },
+            radicalMeanings = fieldsByDictionary.firstAvailable(
+                settings,
+                KanjiCombinedField.Radicals,
+                fallbackDictionaries,
+            ) { it.radicalMeanings },
+            radicalReadings = fieldsByDictionary.firstAvailable(
+                settings,
+                KanjiCombinedField.Radicals,
+                fallbackDictionaries,
+            ) { it.radicalReadings },
+            radicalExamples = fieldsByDictionary.firstAvailable(
+                settings,
+                KanjiCombinedField.Radicals,
+                fallbackDictionaries,
+            ) { it.radicalExamples },
+            components = fieldsByDictionary.firstAvailable(
+                settings,
+                KanjiCombinedField.Components,
+                fallbackDictionaries,
+            ) { it.components },
+            readingHints = fieldsByDictionary.firstAvailable(
+                settings,
+                KanjiCombinedField.Components,
+                fallbackDictionaries,
+            ) { it.readingHints },
+            combinations = fieldsByDictionary.firstAvailable(
+                settings,
+                KanjiCombinedField.Components,
+                fallbackDictionaries,
+            ) { it.combinations },
+        )
+
+        return buildJsonObject {
+            put("dictionary", "Combined")
+            put("combined", true)
+            put("onyomi", normalized.onyomi.joinToString(" "))
+            put("kunyomi", normalized.kunyomi.joinToString(" "))
+            put("tags", normalized.tags.joinToString(" "))
+            putJsonArray("definitions") {
+                normalized.definitions.distinct().forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("stats") {
+                normalized.stats
+                    .distinctBy { it.name to it.value }
+                    .forEach { stat ->
+                        add(
+                            buildJsonObject {
+                                put("name", stat.name.kanjiStatDisplayName())
+                                put("value", stat.value)
+                                put(
+                                    "showByDefault",
+                                    stat.name in PreferredKanjiStatNames ||
+                                        settings.kanjiCombinedSettings.dictionaryDisplay.values.any {
+                                            stat.name in it.shownStats
+                                        },
+                                )
+                            },
+                        )
+                    }
+            }
+            putJsonArray("radicals") {
+                normalized.radicals.distinct().forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("radicalMeanings") {
+                normalized.radicalMeanings.distinct().forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("radicalReadings") {
+                normalized.radicalReadings.distinct().forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("radicalExamples") {
+                normalized.radicalExamples.distinct().forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("components") {
+                normalized.components.distinct().forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("readingHints") {
+                normalized.readingHints.distinct().forEach { add(JsonPrimitive(it)) }
+            }
+            putJsonArray("combinations") {
+                normalized.combinations.distinct().take(60).forEach { add(JsonPrimitive(it)) }
+            }
+        }
+    }
+
+    private fun Map<String, NormalizedKanjiFields>.firstAvailable(
+        settings: DictionarySettings,
+        field: KanjiCombinedField,
+        fallbackDictionaries: List<String>,
+        values: (NormalizedKanjiFields) -> List<String>,
+    ): List<String> =
+        settings.kanjiCombinedSettings.priorityFor(field, fallbackDictionaries)
+            .asSequence()
+            .mapNotNull { this[it] }
+            .map(values)
+            .firstOrNull { it.isNotEmpty() }
+            .orEmpty()
+
+    private fun List<KanjiEntry>.selectedCombinedKanjiStats(
+        settings: DictionarySettings,
+        fallbackDictionaries: List<String>,
+    ): List<KanjiStat> {
+        val stats = mutableListOf<KanjiStat>()
+        firstAvailableStat(settings, KanjiCombinedField.Frequency, fallbackDictionaries, "freq", "Frequency")
+            ?.let(stats::add)
+        firstAvailableStat(settings, KanjiCombinedField.Strokes, fallbackDictionaries, "strokes", "Strokes", "\u753b\u6570")
+            ?.let(stats::add)
+        stats += flatMap { entry -> entry.stats.toList() }
+        return stats.distinctBy { it.name to it.value }
+    }
+
+    private fun List<KanjiEntry>.firstAvailableStat(
+        settings: DictionarySettings,
+        field: KanjiCombinedField,
+        fallbackDictionaries: List<String>,
+        vararg names: String,
+    ): KanjiStat? {
+        val byDictionary = associateBy { it.dictName }
+        return settings.kanjiCombinedSettings.priorityFor(field, fallbackDictionaries)
+            .asSequence()
+            .mapNotNull { byDictionary[it] }
+            .flatMap { entry -> entry.stats.asSequence() }
+            .firstOrNull { stat -> names.any { stat.name.equals(it, ignoreCase = true) } }
+    }
+
+    private fun KanjiEntry.isDefaultKanjiStat(settings: DictionarySettings, name: String): Boolean =
+        name in PreferredKanjiStatNames || name in settings.kanjiCombinedSettings.displayFor(dictName).shownStats
+
+    private fun KanjiEntry.isKanjidicEntry(): Boolean =
+        dictName.contains("KANJIDIC", ignoreCase = true)
+
+    private fun KanjiEntry.isKanjiMapEntry(): Boolean =
+        dictName.contains("KanjiMap", ignoreCase = true) ||
+            definitions.any { it.startsWith("部首：") || it.startsWith("＝＝＝＝") }
+
+    private data class KanjiMapData(
+        val radicals: List<String> = emptyList(),
+        val radicalMeanings: List<String> = emptyList(),
+        val radicalReadings: List<String> = emptyList(),
+        val radicalExamples: List<String> = emptyList(),
+        val components: List<String> = emptyList(),
+        val readingHints: List<String> = emptyList(),
+        val combinations: List<String> = emptyList(),
+    ) {
+        operator fun plus(other: KanjiMapData): KanjiMapData = KanjiMapData(
+            radicals = radicals + other.radicals,
+            radicalMeanings = radicalMeanings + other.radicalMeanings,
+            radicalReadings = radicalReadings + other.radicalReadings,
+            radicalExamples = radicalExamples + other.radicalExamples,
+            components = components + other.components,
+            readingHints = readingHints + other.readingHints,
+            combinations = combinations + other.combinations,
+        )
+    }
+
+    private fun KanjiEntry.toKanjiMapData(): KanjiMapData {
+        val sections = mutableMapOf<String, MutableList<String>>()
+        var currentSection: String? = null
+        val radicals = mutableListOf<String>()
+        val radicalMeanings = mutableListOf<String>()
+        val radicalReadings = mutableListOf<String>()
+        val radicalExamples = mutableListOf<String>()
+
+        definitions.forEach { raw ->
+            val line = raw.trim()
+            when {
+                line.startsWith("部首：") -> radicals += line.substringAfter('：').splitKanjiMapValues()
+                line.startsWith("意味：") -> radicalMeanings += line.substringAfter('：').splitKanjiMapValues(separator = ',')
+                line.startsWith("読み：") -> radicalReadings += line.substringAfter('：').splitKanjiMapValues()
+                line.startsWith("例え：") -> radicalExamples += line.substringAfter('：').splitKanjiMapValues()
+                line.contains("分解") -> currentSection = "components"
+                line.contains("読みヒント") -> currentSection = "readingHints"
+                line.contains("組み合わせ") -> currentSection = "combinations"
+                currentSection != null -> sections.getOrPut(currentSection) { mutableListOf() } += line
+            }
+        }
+
+        return KanjiMapData(
+            radicals = radicals,
+            radicalMeanings = radicalMeanings,
+            radicalReadings = radicalReadings,
+            radicalExamples = radicalExamples,
+            components = sections["components"].orEmpty().flatMap { it.splitKanjiMapValues() },
+            readingHints = sections["readingHints"].orEmpty(),
+            combinations = sections["combinations"].orEmpty(),
+        )
+    }
+
+    private fun String.splitKanjiMapValues(separator: Char? = null): List<String> =
+        replace('　', ' ')
+            .let { if (separator == null) it else it.replace(separator, ' ') }
+            .split(Regex("\\s+"))
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && it != "n/a" }
+
+    private fun String.kanjiStatDisplayName(): String = when (this) {
+        "strokes", "\u753b\u6570" -> "Strokes"
+        "freq" -> "Frequency"
+        "grade" -> "Grade"
+        "jlpt" -> "JLPT"
+        "heisig", "heisig6" -> "Heisig"
+        "skip" -> "SKIP"
+        "sh_desc" -> "Descriptor"
+        "four_corner" -> "Four-corner"
+        "ucs" -> "Unicode"
+        else -> replace('_', ' ').replaceFirstChar { it.titlecase(Locale.US) }
+    }
+
+    private val PreferredKanjiStatNames = setOf(
+        "strokes",
+        "freq",
+        "\u753b\u6570",
+    )
+
+    private val JpdbKanjiStatNames = setOf(
+        "\u6f22\u5b57\u691c\u5b9a",
+        "\u65e7\u5b57\u4f53",
+        "\u65b0\u5b57\u4f53",
+    )
+
+    private val GenericKanjiMapping = KanjiMapping(
+        name = "Generic kanji",
+        titleContains = "",
+        rules = listOf(
+            DirectTextRule("onyomi", KanjiField.Onyomi),
+            DirectTextRule("kunyomi", KanjiField.Kunyomi),
+            DirectTextRule("tags", KanjiField.Tags),
+            DirectTextRule("definitions", KanjiField.Definitions),
+            StatRule(PreferredKanjiStatNames),
+        ),
+    )
+
+    private val KanjiMappings = listOf(
+        KanjiMapping(
+            name = "KANJIDIC",
+            titleContains = "KANJIDIC",
+            rules = listOf(
+                DirectTextRule("onyomi", KanjiField.Onyomi),
+                DirectTextRule("kunyomi", KanjiField.Kunyomi),
+                DirectTextRule("tags", KanjiField.Tags),
+                DirectTextRule("definitions", KanjiField.Definitions),
+                StatRule(PreferredKanjiStatNames),
+            ),
+        ),
+        KanjiMapping(
+            name = "TheKanjiMap",
+            titleContains = "KanjiMap",
+            rules = listOf(
+                DefinitionPrefixRule(KanjiMapRadicalPrefix, KanjiField.Radicals),
+                DefinitionPrefixRule(KanjiMapMeaningPrefix, KanjiField.RadicalMeanings, splitSeparator = ','),
+                DefinitionPrefixRule(KanjiMapReadingPrefix, KanjiField.RadicalReadings),
+                DefinitionPrefixRule(KanjiMapExamplePrefix, KanjiField.RadicalExamples),
+                DefinitionSectionRule(KanjiMapDecompositionHeader, KanjiField.Components, splitValues = true),
+                DefinitionSectionRule(KanjiMapReadingHintHeader, KanjiField.ReadingHints),
+                DefinitionSectionRule(KanjiMapCombinationHeader, KanjiField.Combinations),
+            ),
+        ),
+        KanjiMapping(
+            name = "JPDB Kanji",
+            titleContains = "JPDB Kanji",
+            rules = listOf(
+                DirectTextRule("onyomi", KanjiField.Onyomi),
+                DirectTextRule("kunyomi", KanjiField.Kunyomi),
+                DirectTextRule("tags", KanjiField.Tags),
+                DefinitionWithoutSectionRule(JpdbDecompositionHeader, KanjiField.Definitions),
+                DefinitionSectionRule(JpdbDecompositionHeader, KanjiField.Components, splitValues = true),
+                StatRule(PreferredKanjiStatNames + JpdbKanjiStatNames),
+            ),
+        ),
+    )
+
+    private const val KanjiMapRadicalPrefix = "\u90e8\u9996\uff1a"
+    private const val KanjiMapMeaningPrefix = "\u610f\u5473\uff1a"
+    private const val KanjiMapReadingPrefix = "\u8aad\u307f\uff1a"
+    private const val KanjiMapExamplePrefix = "\u4f8b\u3048\uff1a"
+    private const val KanjiMapHeaderPrefix = "\uff1d\uff1d\uff1d\uff1d"
+    private const val KanjiMapDecompositionHeader = "\u5206\u89e3"
+    private const val KanjiMapReadingHintHeader = "\u8aad\u307f\u30d2\u30f3\u30c8"
+    private const val KanjiMapCombinationHeader = "\u7d44\u307f\u5408\u308f\u305b"
+    private const val JpdbDecompositionHeader = "\u6f22\u5b57\u5206\u89e3"
 
     private fun Array<TraceCandidate>.sortedForDisplay(): List<TraceCandidate> =
         withIndex()
