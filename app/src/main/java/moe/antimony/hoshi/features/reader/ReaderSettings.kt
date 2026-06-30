@@ -71,6 +71,7 @@ data class ReaderSettings(
     val visualNovelClickAdvance: Boolean = false,
     val visualNovelMergeCrossScreenSasayakiCues: Boolean = false,
     val enableStatistics: Boolean = false,
+    val showStatisticsTab: Boolean = true,
     val statisticsAutostartMode: StatisticsAutostartMode = StatisticsAutostartMode.Off,
     val statisticsSyncEnabled: Boolean = false,
     val statisticsSyncMode: StatisticsSyncMode = StatisticsSyncMode.Merge,
@@ -148,14 +149,17 @@ data class ReaderSettings(
             return "${horizontalPadding}vw"
         }
 
+    val verticalPaddingBlockCss: String
+        get() = "var(--hoshi-vertical-padding-block, ${(verticalPadding / 2.0).cssNumber()}vh)"
+
     val pagePaddingCss: String
-        get() = "var(--hoshi-vertical-padding-block, ${(verticalPadding / 2.0).cssNumber()}vh) ${(horizontalPadding / 2.0).cssNumber()}vw"
+        get() = "$verticalPaddingBlockCss ${(horizontalPadding / 2.0).cssNumber()}vw"
 
     val bottomPaddingCss: String
         get() = if (verticalWriting && bottomOverlapPx > 0) {
-            "calc(var(--hoshi-vertical-padding-block, ${(verticalPadding / 2.0).cssNumber()}vh) + ${bottomOverlapPx}px)"
+            "calc($verticalPaddingBlockCss + ${bottomOverlapPx}px)"
         } else {
-            "var(--hoshi-vertical-padding-block, ${(verticalPadding / 2.0).cssNumber()}vh)"
+            verticalPaddingBlockCss
         }
 
     val imageMaxWidthFallbackCss: String
@@ -323,6 +327,7 @@ class ReaderSettingsStore(context: Context) : ReaderSettingsLegacySource {
             false,
         ),
         enableStatistics = preferences.getBoolean("enableStatistics", false),
+        showStatisticsTab = preferences.getBoolean("showStatisticsTab", true),
         statisticsAutostartMode = StatisticsAutostartMode.fromRawValue(
             preferences.getString("statisticsAutostartMode", null),
         ),
@@ -390,6 +395,7 @@ class ReaderSettingsStore(context: Context) : ReaderSettingsLegacySource {
             .putBoolean("visualNovelClickAdvance", settings.visualNovelClickAdvance)
             .putBoolean("visualNovelMergeCrossScreenSasayakiCues", settings.visualNovelMergeCrossScreenSasayakiCues)
             .putBoolean("enableStatistics", settings.enableStatistics)
+            .putBoolean("showStatisticsTab", settings.showStatisticsTab)
             .putString("statisticsAutostartMode", settings.statisticsAutostartMode.rawValue)
             .putBoolean("statisticsEnableSync", settings.statisticsSyncEnabled)
             .putString("statisticsSyncMode", settings.statisticsSyncMode.rawValue)
@@ -532,6 +538,7 @@ class ReaderSettingsRepository(
             visualNovelClickAdvance = this[KEY_VISUAL_NOVEL_CLICK_ADVANCE] ?: false,
             visualNovelMergeCrossScreenSasayakiCues = this[KEY_VISUAL_NOVEL_MERGE_CROSS_SCREEN_SASAYAKI_CUES] ?: false,
             enableStatistics = this[KEY_ENABLE_STATISTICS] ?: false,
+            showStatisticsTab = this[KEY_SHOW_STATISTICS_TAB] ?: true,
             statisticsAutostartMode = StatisticsAutostartMode.fromRawValue(this[KEY_STATISTICS_AUTOSTART_MODE]),
             statisticsSyncEnabled = this[KEY_STATISTICS_SYNC_ENABLED] ?: false,
             statisticsSyncMode = StatisticsSyncMode.fromRawValue(this[KEY_STATISTICS_SYNC_MODE]),
@@ -596,6 +603,7 @@ class ReaderSettingsRepository(
         this[KEY_VISUAL_NOVEL_CLICK_ADVANCE] = settings.visualNovelClickAdvance
         this[KEY_VISUAL_NOVEL_MERGE_CROSS_SCREEN_SASAYAKI_CUES] = settings.visualNovelMergeCrossScreenSasayakiCues
         this[KEY_ENABLE_STATISTICS] = settings.enableStatistics
+        this[KEY_SHOW_STATISTICS_TAB] = settings.showStatisticsTab
         this[KEY_STATISTICS_AUTOSTART_MODE] = settings.statisticsAutostartMode.rawValue
         this[KEY_STATISTICS_SYNC_ENABLED] = settings.statisticsSyncEnabled
         this[KEY_STATISTICS_SYNC_MODE] = settings.statisticsSyncMode.rawValue
@@ -639,6 +647,7 @@ class ReaderSettingsRepository(
 
     private fun MutablePreferences.writeGlobalReaderSettings(settings: ReaderSettings) {
         this[KEY_ENABLE_STATISTICS] = settings.enableStatistics
+        this[KEY_SHOW_STATISTICS_TAB] = settings.showStatisticsTab
         this[KEY_STATISTICS_AUTOSTART_MODE] = settings.statisticsAutostartMode.rawValue
         this[KEY_STATISTICS_SYNC_ENABLED] = settings.statisticsSyncEnabled
         this[KEY_STATISTICS_SYNC_MODE] = settings.statisticsSyncMode.rawValue
@@ -707,6 +716,7 @@ class ReaderSettingsRepository(
         private val KEY_VISUAL_NOVEL_MERGE_CROSS_SCREEN_SASAYAKI_CUES =
             booleanPreferencesKey("visualNovelMergeCrossScreenSasayakiCues")
         private val KEY_ENABLE_STATISTICS = booleanPreferencesKey("enableStatistics")
+        private val KEY_SHOW_STATISTICS_TAB = booleanPreferencesKey("showStatisticsTab")
         private val KEY_STATISTICS_AUTOSTART_MODE = stringPreferencesKey("statisticsAutostartMode")
         private val KEY_STATISTICS_SYNC_ENABLED = booleanPreferencesKey("statisticsEnableSync")
         private val KEY_STATISTICS_SYNC_MODE = stringPreferencesKey("statisticsSyncMode")

@@ -9,6 +9,7 @@ const readerMediaSemanticsUrl = new URL('../../main/assets/hoshi-web/reader/read
 const readerVnContentStreamUrl = new URL('../../main/assets/hoshi-web/reader/reader-vn-content-stream.js', import.meta.url);
 const readerVnRangeMapUrl = new URL('../../main/assets/hoshi-web/reader/reader-vn-range-map.js', import.meta.url);
 const readerHighlightsUrl = new URL('../../main/assets/hoshi-web/reader/highlights.js', import.meta.url);
+const sharedSelectionUrl = new URL('../../main/assets/hoshi-web/shared/selection.js', import.meta.url);
 
 function readerTextSemanticsSource() {
     return fs.readFileSync(readerTextSemanticsUrl, 'utf8');
@@ -28,6 +29,10 @@ function readerMediaSemanticsSource() {
 
 function readerHighlightsSource() {
     return fs.readFileSync(readerHighlightsUrl, 'utf8');
+}
+
+function sharedSelectionSource() {
+    return fs.readFileSync(sharedSelectionUrl, 'utf8');
 }
 
 function readerSource() {
@@ -520,8 +525,14 @@ class TestRange {
         if (!capacity || !node) return null;
         const content = closestElement(node, '.hoshi-vn-content');
         if (!content) return null;
-        const start = textOffsetWithin(content, node) + this.startOffset;
-        const end = textOffsetWithin(content, this.endNode === node ? node : this.startNode) + this.endOffset;
+        const offsetRoot = layout.resetTextOffsetAtContentChildren
+            ? directChildContaining(content, node) ?? content
+            : content;
+        const endOffsetRoot = layout.resetTextOffsetAtContentChildren
+            ? directChildContaining(content, this.endNode === node ? node : this.startNode) ?? offsetRoot
+            : content;
+        const start = textOffsetWithin(offsetRoot, node) + this.startOffset;
+        const end = textOffsetWithin(endOffsetRoot, this.endNode === node ? node : this.startNode) + this.endOffset;
         const safeEnd = Math.max(start, end);
         if (layout.writingMode && layout.writingMode.startsWith('vertical')) {
             return { x: 0, y: start * 24, left: 0, right: 24, top: start * 24, bottom: safeEnd * 24, width: 24, height: (safeEnd - start) * 24 };
@@ -551,6 +562,14 @@ function closestElement(node, selector) {
         current = current.parentElement;
     }
     return null;
+}
+
+function directChildContaining(root, target) {
+    let current = target;
+    while (current?.parentNode && current.parentNode !== root) {
+        current = current.parentNode;
+    }
+    return current?.parentNode === root ? current : null;
 }
 
 function textOffsetWithin(root, target) {
@@ -646,6 +665,7 @@ function buildDocument(body, options = {}) {
             charactersPerScreen: options.charactersPerScreen,
             writingMode: options.vnWritingMode ?? 'horizontal-tb',
             screenInlineOverflowCharacters: options.screenInlineOverflowCharacters ?? 0,
+            resetTextOffsetAtContentChildren: options.resetTextOffsetAtContentChildren ?? false,
         },
         fonts: { ready: Promise.resolve() },
         readyState: 'loading',
@@ -752,12 +772,17 @@ function loadReader(body, options = {}) {
             },
         },
     };
-    vm.runInNewContext(configuredReaderSource(options), {
+    const source = `${options.selectionScript ?? ''}\n${configuredReaderSource(options)}`;
+    vm.runInNewContext(source, {
+        CSS: {},
         document,
         window,
         HoshiReaderImage: imageBridge,
         Node: { ELEMENT_NODE: 1, TEXT_NODE: 3, DOCUMENT_FRAGMENT_NODE: 11 },
         NodeFilter: { SHOW_TEXT: 4, FILTER_ACCEPT: 1, FILTER_REJECT: 2 },
+        getSelection() {
+            return null;
+        },
         setTimeout(callback, delay) {
             timers.push({ callback, delay });
             return timers.length;
@@ -1020,6 +1045,21 @@ test('viewport fitting skips precise range layout when scroll bounds already fit
     assert.equal(preciseRangeChecks, 0);
 });
 
+test('visual novel measurement screen uses visible viewport height instead of page overlap height', () => {
+    const { reader } = loadReader(bodyWith(p('seed')), {
+        mode: 'block',
+        revealSpeed: 0,
+    });
+    reader.ensureStage();
+
+    const measurement = reader.createScreenMeasurement();
+
+    assert.equal(measurement.root.classList.contains('hoshi-vn-screen'), true);
+    assert.equal(measurement.root.style.width, 'var(--page-width, 100vw)');
+    assert.equal(measurement.root.style.height, 'var(--hoshi-reader-visible-height, var(--page-height, 100vh))');
+    assert.equal(measurement.content.classList.contains('hoshi-vn-content'), true);
+});
+
 test('viewport fitting rejects vertical screens that overflow the content clipping box', () => {
     const { reader, document } = loadReader(bodyWith(p('seed')), {
         mode: 'block',
@@ -1227,6 +1267,25 @@ test('block mode keeps trailing Japanese punctuation in the same vertical screen
     });
 
     assert.equal(currentScreen(reader).textContent, '「小柳さんは、お父さんとお母さん、どっちが来てるの？」');
+    assert.equal(reader.paginate('forward'), 'limit');
+});
+
+test('block mode keeps trailing closing punctuation in the browser-laid-out vertical text flow', async () => {
+    const body = bodyWith(p(`${'一'.repeat(26)}」`));
+    const { reader } = await initializeReader(body, {
+        mode: 'block',
+        revealSpeed: 0,
+        bodyWritingMode: 'vertical-rl',
+        vnWritingMode: 'vertical-rl',
+        charactersPerScreen: 26,
+        resetTextOffsetAtContentChildren: true,
+    });
+
+    assert.equal(currentScreen(reader).textContent, `${'一'.repeat(26)}」`);
+    const directFlowSegments = Array.from(currentScreen(reader).firstChild.childNodes)
+        .map((node) => node.textContent)
+        .filter(Boolean);
+    assert.notEqual(directFlowSegments.at(-1), '」');
     assert.equal(reader.paginate('forward'), 'limit');
 });
 
@@ -1993,10 +2052,11 @@ test('visual novel Sasayaki e-ink mode renders overlay geometry instead of inlin
 
 test('visual novel Sasayaki e-ink overlay uses VN screen writing direction', async () => {
     const cue = { id: 'cue', start: 0, length: 4 };
-    const { reader, document, sasayakiHighlights } = await initializeReader(bodyWith(p('蒸し暑い')), {
+    const { reader, document, sasayakiHighlights, window } = await initializeReader(bodyWith(p('蒸し暑い')), {
         bodyWritingMode: 'horizontal-tb',
         vnWritingMode: 'vertical-rl',
         revealSpeed: 0,
+        selectionScript: sharedSelectionSource(),
     });
     document.documentElement.style.setProperty('--hoshi-reader-vertical-writing', '1');
     reader.isEInkMode = () => true;
@@ -2005,6 +2065,7 @@ test('visual novel Sasayaki e-ink overlay uses VN screen writing direction', asy
     reader.highlightSasayakiCue(cue, false);
 
     assert.equal(reader.isVertical(), true);
+    assert.equal(window.hoshiRubyGeometry.isVertical(), true);
     assert.equal(sasayakiHighlights.at(-1).verticalWriting, true);
 });
 

@@ -31,7 +31,7 @@ function readerSource(url, options = {}) {
         .replace('__HOSHI_READER_DOM_TEXT_SCRIPT__', options.domTextScript ?? readerDomTextSource())
         .replace('__HOSHI_READER_MEDIA_SEMANTICS_SCRIPT__', options.mediaSemanticsScript ?? readerMediaSemanticsSource())
         .replaceAll('__HOSHI_RESTORE_TOKEN_LITERAL__', JSON.stringify('restore-token'))
-        .replaceAll('__HOSHI_BOTTOM_OVERLAP_PX__', '0')
+        .replaceAll('__HOSHI_BOTTOM_OVERLAP_PX__', String(options.bottomOverlapPx ?? 0))
         .replaceAll('__HOSHI_VERTICAL_PADDING_BLOCK_RATIO__', '0')
         .replaceAll('__HOSHI_VERTICAL_PADDING_GAP_RATIO__', '0')
         .replaceAll('__HOSHI_IMAGE_WIDTH_VIEWPORT_RATIO__', '1')
@@ -649,6 +649,23 @@ test('paged and continuous readers use shared media setup', () => {
     });
 });
 
+test('paged and continuous readers expose visible viewport height separately from page height', () => {
+    const paginatedBody = new TestElement('body');
+    const paginated = loadReader(paginatedBody, readerPaginatedUrl, { bottomOverlapPx: 37 });
+    paginated.reader.initialize();
+
+    assert.equal(paginated.document.documentElement.style.getPropertyValue('--page-height'), '837px');
+    assert.equal(paginated.document.documentElement.style.getPropertyValue('--hoshi-reader-visible-height'), '800px');
+
+    const continuousBody = new TestElement('body');
+    const continuous = loadReader(continuousBody, readerContinuousUrl, { bottomOverlapPx: 37 });
+    continuous.reader.initialize();
+
+    assert.equal(continuous.document.documentElement.style.getPropertyValue('--hoshi-continuous-height'), '800px');
+    assert.equal(continuous.document.documentElement.style.getPropertyValue('--hoshi-reader-visible-height'), '800px');
+    assert.equal(continuous.document.documentElement.style.getPropertyValue('--page-height'), '');
+});
+
 test('paginated restoreProgress at chapter start avoids eager pagination metrics', async () => {
     const body = new TestElement('body');
     const { reader } = loadReader(body);
@@ -1124,6 +1141,20 @@ test('continuous Sasayaki media stop plan uses scroll targets for the current im
     );
     assert.equal(reader.showSasayakiMediaStop(stops[0]), reader.calculateProgress());
     assert.equal(document.documentElement.scrollTop, 0);
+});
+
+test('continuous Sasayaki media stop plan skips a visible image when the target cue is already visible', () => {
+    const body = new TestElement('body');
+    body.appendChild(imgAt(0, 800, 320, 480));
+    body.appendChild(new TestText('二三'));
+    const { reader, document } = loadReader(body, readerContinuousUrl, { writingMode: 'vertical-rl' });
+    document.documentElement.scrollLeft = 0.35;
+
+    reader.applySasayakiCues([{ id: 'cue', start: 0, length: 2 }]);
+    reader.cueWrappers.get('cue')[0].rect = testRect(120, 150, 160, 190);
+    const stops = reader.sasayakiMediaStopsBeforeCue({ id: 'cue', start: 0, length: 2 });
+
+    assert.deepEqual(Array.from(stops), []);
 });
 
 test('continuous vertical Sasayaki chapter-end media stop plan follows forward scroll direction', () => {

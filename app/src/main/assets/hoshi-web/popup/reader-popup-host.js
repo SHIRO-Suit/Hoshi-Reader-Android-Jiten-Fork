@@ -133,9 +133,9 @@
             type: 'renderPopup',
             popupId: payload.id,
             entriesCount: payload.entriesCount || 0,
-            initialEntryJson: payload.initialEntryJson || null,
-            isFullWidth: !!payload.isFullWidth
+            initialEntryJson: payload.initialEntryJson || null
         };
+        if (payload.isFullWidth) message.isFullWidth = true;
         if (payload.jitenCard) message.jitenCard = payload.jitenCard;
         return message;
     }
