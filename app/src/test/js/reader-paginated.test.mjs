@@ -1032,6 +1032,38 @@ test('Sasayaki cue includes punctuation between text nodes inside the same cue',
     }
 });
 
+test('Sasayaki rebuilds cue wrappers after Jiten mutates cue text', () => {
+    for (const sourceUrl of [readerPaginatedUrl, readerContinuousUrl]) {
+        const body = new TestElement('body');
+        body.appendChild(new TestText('\u4e00\u4e8c\u4e09\u56db'));
+        const { reader } = loadReader(body, sourceUrl);
+        reader.isEInkMode = () => false;
+
+        reader.applySasayakiCues([
+            { id: 'first', start: 0, length: 2 },
+            { id: 'second', start: 2, length: 2 },
+        ]);
+        reader.highlightSasayakiCue('first', false);
+
+        const secondWrapper = reader.cueWrappers.get('second')[0];
+        const jitenWord = new TestElement('span');
+        jitenWord.className = 'hoshi-jiten-word';
+        while (secondWrapper.firstChild) {
+            jitenWord.appendChild(secondWrapper.firstChild);
+        }
+        secondWrapper.appendChild(jitenWord);
+
+        reader.rebuildSasayakiCuesAfterDomMutation();
+        reader.highlightSasayakiCue('second', false);
+
+        const secondTargets = reader.cueWrappers.get('second') ?? [];
+        assert.equal(secondTargets.length, 1);
+        assert.equal(secondTargets[0].classList.contains('hoshi-sasayaki-active'), true);
+        assert.equal(secondTargets[0].textContent, '\u4e09\u56db');
+        assert.equal(body.textContent, '\u4e00\u4e8c\u4e09\u56db');
+    }
+});
+
 test('e-ink Sasayaki chapter load keeps geometry available for id-only highlights', () => {
     for (const sourceUrl of [readerPaginatedUrl, readerContinuousUrl]) {
         const body = new TestElement('body');

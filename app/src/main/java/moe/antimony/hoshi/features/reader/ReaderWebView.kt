@@ -388,12 +388,29 @@ fun ReaderWebView(
             resumeAfterAutoPageHold = { sasayakiPlayer?.resumeAfterAutoPageHold() },
         )
     }
+    fun requestJitenViewportRefresh(reason: String) {
+        val target = webView ?: return
+        val escapedReason = readerJavaScriptStringLiteral(reason)
+        listOf(500L, 1300L).forEach { delayMillis ->
+            target.postDelayed(
+                {
+                    if (webView !== target || stateHolder.isWebViewRestoring) return@postDelayed
+                    target.evaluateJavascript(
+                        "window.hoshiJiten?.viewportChanged?.($escapedReason);",
+                        null,
+                    )
+                },
+                delayMillis,
+            )
+        }
+    }
     fun jumpToPositionWithHistory(position: ReaderChapterPosition, fragment: String? = null) {
         cancelSasayakiAutoPage()
         val statistics = statisticsForSave()
         val savedPosition = stateHolder.jumpToWithHistory(position, fragment)
         resetStatisticsBaseline()
         saveReaderPosition(savedPosition, statistics)
+        requestJitenViewportRefresh("goto jump")
     }
     fun navigateJumpBack() {
         cancelSasayakiAutoPage()
@@ -401,6 +418,7 @@ fun ReaderWebView(
         val savedPosition = stateHolder.navigateBackInJumpHistory() ?: return
         resetStatisticsBaseline()
         saveReaderPosition(savedPosition, statistics)
+        requestJitenViewportRefresh("jump back")
     }
     fun navigateJumpForward() {
         cancelSasayakiAutoPage()
@@ -408,6 +426,7 @@ fun ReaderWebView(
         val savedPosition = stateHolder.navigateForwardInJumpHistory() ?: return
         resetStatisticsBaseline()
         saveReaderPosition(savedPosition, statistics)
+        requestJitenViewportRefresh("jump forward")
     }
     fun currentLoadChapter(): moe.antimony.hoshi.epub.EpubChapter =
         book.chapters[stateHolder.readerPosition.loadPosition.index.coerceIn(0, book.chapters.lastIndex)]

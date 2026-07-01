@@ -4,6 +4,7 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -17,11 +18,18 @@ internal class ReaderJitenBridge(
     private val parse: suspend (List<String>) -> String,
     private val onError: (ReaderJitenError) -> Unit,
 ) {
+    private val activeJobsLock = Any()
+    private val activeJobs = mutableSetOf<Job>()
+    private var activeParseGroup: String? = null
+
     @JavascriptInterface
     fun postMessage(message: String) {
         val request = ReaderJitenBridgePayload.fromJson(message) ?: return
         if (request.texts.isEmpty()) return
-        scope.launch {
+        val parseGroup = request.parseGroup()
+        val job = scope.launch {
+            val start = android.os.SystemClock.elapsedRealtime()
+            emitDebug("API start ${request.texts.size} texts / ${request.texts.sumOf(String::length)} chars")
             val result = try {
                 parse(request.texts)
             } catch (error: CancellationException) {
@@ -36,6 +44,7 @@ internal class ReaderJitenBridge(
                 onError(ReaderJitenError.RequestFailed())
                 return@launch
             }
+            emitDebug("API done ${request.texts.size} texts / ${android.os.SystemClock.elapsedRealtime() - start}ms / ${result.length}B")
             webView.post {
                 webView.evaluateJavascript(
                     "window.hoshiJiten?.apply(${readerJavaScriptStringLiteral(request.token)}, $result);",
@@ -43,8 +52,35 @@ internal class ReaderJitenBridge(
                 )
             }
         }
+        synchronized(activeJobsLock) {
+            if (activeParseGroup != parseGroup) {
+                activeJobs.forEach { it.cancel() }
+                activeJobs.clear()
+                activeParseGroup = parseGroup
+                emitDebug("API group ${parseGroup.takeLast(48)}")
+            }
+            activeJobs.add(job)
+        }
+        job.invokeOnCompletion {
+            synchronized(activeJobsLock) {
+                activeJobs.remove(job)
+            }
+        }
     }
 
+    @JavascriptInterface
+    fun debugMessage(message: String) {
+        emitDebug(message)
+    }
+
+    private fun emitDebug(message: String) {
+        webView.post {
+            webView.evaluateJavascript(
+                "window.hoshiJiten?.debugLog?.(${readerJavaScriptStringLiteral(message.take(160))});",
+                null,
+            )
+        }
+    }
 }
 
 internal sealed interface ReaderJitenError {
@@ -56,7 +92,12 @@ internal sealed interface ReaderJitenError {
 internal data class ReaderJitenParseRequest(
     val token: String,
     val texts: List<String>,
-)
+) {
+    fun parseGroup(): String =
+        token
+            .replace(Regex(""":visible$"""), "")
+            .replace(Regex(""":background:\d+$"""), "")
+}
 
 internal object ReaderJitenBridgePayload {
     private val json = Json { ignoreUnknownKeys = true }

@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="fr" data-hoshi-jiten-marker="underline">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jiten / Sasayaki DOM harness</title>
+  <style>
+    :root {
+      --bg: #111318;
+      --panel: #1b1e27;
+      --line: #343947;
+      --text: #e8eaf0;
+      --muted: #9da6b8;
+      --accent: #8ab4ff;
+      --sasayaki-bg: rgba(255, 215, 0, .35);
+      --sasayaki-text: #fff;
+      --jiten-color: #a566ef;
+      --jiten-fill: rgba(165, 102, 239, .25);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 12px;
+      background: rgba(17, 19, 24, .96);
+      border-bottom: 1px solid var(--line);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(380px, 1fr) minmax(420px, .9fr);
+      gap: 12px;
+      padding: 12px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 8px 0;
+    }
+    button, select, input, textarea {
+      color: var(--text);
+      background: #252a36;
+      border: 1px solid #3d4353;
+      border-radius: 8px;
+      padding: 7px 9px;
+    }
+    button {
+      cursor: pointer;
+    }
+    button:hover {
+      border-color: var(--accent);
+    }
+    button.primary {
+      background: #1f4d86;
+      border-color: #3978c1;
+    }
+    label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      resize: vertical;
+      font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+      line-height: 1.7;
+    }
+    #reader {
+      min-height: 360px;
+      max-height: 70vh;
+      overflow: auto;
+      padding: 28px;
+      background: #f9f6ef;
+      color: #191919;
+      border-radius: 10px;
+      font-family: "Yu Mincho", "Yu Gothic", "Meiryo", serif;
+      font-size: 24px;
+      line-height: 2.1;
+      white-space: pre-wrap;
+    }
+    .hoshi-sasayaki-cue {
+      border-radius: 3px;
+    }
+    .hoshi-sasayaki-cue.hoshi-sasayaki-active {
+      color: var(--sasayaki-text) !important;
+      background: var(--sasayaki-bg) !important;
+      outline: 1px solid rgba(255, 190, 0, .85);
+    }
+    .hoshi-jiten-word {
+      --hoshi-jiten-color: #a566ef;
+      --hoshi-jiten-fill: rgba(165, 102, 239, .25);
+    }
+    html[data-hoshi-jiten-marker="underline"] .hoshi-jiten-word[data-hoshi-jiten-visible="true"] {
+      text-decoration-line: underline;
+      text-decoration-color: var(--hoshi-jiten-color);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+      text-underline-position: under left;
+    }
+    html[data-hoshi-jiten-marker="highlight"] .hoshi-jiten-word[data-hoshi-jiten-visible="true"] {
+      background: var(--hoshi-jiten-fill);
+      border-radius: 2px;
+    }
+    html[data-hoshi-jiten-marker="textColor"] .hoshi-jiten-word[data-hoshi-jiten-visible="true"] {
+      color: var(--hoshi-jiten-color);
+    }
+    pre {
+      margin: 0;
+      overflow: auto;
+      max-height: 360px;
+      padding: 10px;
+      background: #0d0f14;
+      border-radius: 10px;
+      border: 1px solid #2b303c;
+      color: #d7dce8;
+      font: 12px/1.45 Consolas, ui-monospace, monospace;
+      white-space: pre-wrap;
+    }
+    .warn { color: #ffbc7a; }
+    .ok { color: #90e59a; }
+    .bad { color: #ff8080; }
+    .small { font-size: 12px; color: var(--muted); }
+    @media (max-width: 980px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <button class="primary" id="resetBtn">Reset DOM</button>
+      <button id="applySasayakiBtn">Parse Sasayaki</button>
+      <button id="mockJitenBtn">Parse Jiten mock</button>
+      <button id="raceBtn">Simuler race Jiten → Sasayaki → Jiten apply</button>
+      <button id="nextCueBtn">Next phrase</button>
+      <button id="autoBtn">Auto next x8</button>
+      <button id="dumpBtn">Dump DOM</button>
+    </div>
+    <div class="row">
+      <label>Jiten marker
+        <select id="markerSelect">
+          <option value="underline">underline</option>
+          <option value="highlight">highlight</option>
+          <option value="textColor">textColor</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="normalizeAfterJiten" checked> Jiten normalize parents</label>
+      <label><input type="checkbox" id="refreshAfterJiten" checked> refresh Sasayaki après Jiten</label>
+      <label><input type="checkbox" id="flattenCheck"> tester collect Sasayaki en ignorant les spans Jiten</label>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="panel">
+      <h2>Reader simulé</h2>
+      <div id="reader"></div>
+      <h3>Texte source</h3>
+      <textarea id="sourceText"></textarea>
+      <div class="row">
+        <input id="endpoint" value="https://api.jiten.moe/api" placeholder="endpoint Jiten" style="min-width: 260px">
+        <input id="apiKey" type="password" placeholder="clé API Jiten">
+        <button id="realJitenBtn">Parse Jiten réel si CORS OK</button>
+      </div>
+      <p class="small">Le parse réel peut échouer en navigateur à cause de CORS. Le mock suffit pour debugger le DOM.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Debug</h2>
+      <div id="summary" class="small"></div>
+      <h3>Journal</h3>
+      <pre id="log"></pre>
+      <h3>DOM / wrappers</h3>
+      <pre id="domDump"></pre>
+    </section>
+  </main>
+
+  <script>
+    const sample = `昨日、写真を撮らずに駅まで歩いた。雨が降っていたけれど、途中で友達に会った。
+それから喫茶店で本を読んで、少しだけ勉強した。帰るころには空が明るくなっていた。
+明日は図書館へ行って、新しい小説を探すつもりだ。`;
+
+    const reader = document.getElementById('reader');
+    const logEl = document.getElementById('log');
+    const domDump = document.getElementById('domDump');
+    const summary = document.getElementById('summary');
+    const sourceText = document.getElementById('sourceText');
+    sourceText.value = sample;
+
+    const state = {
+      cues: [],
+      cueWrappers: new Map(),
+      cueSourceRanges: new Map(),
+      activeCueId: null,
+      currentCueIndex: -1,
+      pendingJiten: null,
+    };
+
+    function log(message, cls) {
+      const prefix = new Date().toLocaleTimeString();
+      logEl.textContent += `${prefix} ${message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      if (cls) console.log(`[${cls}] ${message}`);
+      updateSummary();
+    }
+
+    function matchable(char) {
+      return /[0-9A-Za-zぁ-ゖゝ-ゞァ-ヺー０-９Ａ-Ｚａ-ｚｦ-ﾝ\p{Radical}\p{Unified_Ideograph}]/iu.test(char || '');
+    }
+
+    function countChars(text) {
+      return Array.from(String(text || '')).filter(matchable).length;
+    }
+
+    function createWalker(root = reader) {
+      return document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          const el = node.parentElement;
+          if (!el) return NodeFilter.FILTER_REJECT;
+          if (el.closest('rt, rp, script, style')) return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+    }
+
+    function resetDom() {
+      state.cues = [];
+      state.cueWrappers.clear();
+      state.cueSourceRanges.clear();
+      state.activeCueId = null;
+      state.currentCueIndex = -1;
+      state.pendingJiten = null;
+      logEl.textContent = '';
+      reader.textContent = sourceText.value;
+      makeCues();
+      log(`reset: ${state.cues.length} cues générées`);
+      dump();
+    }
+
+    function makeCues() {
+      const text = reader.textContent;
+      const parts = text.match(/[^。！？.!?\n]+[。！？.!?]?/g) || [text];
+      let cursor = 0;
+      let id = 0;
+      state.cues = parts.map(part => {
+        const leading = part.match(/^\s*/)?.[0] || '';
+        cursor += countChars(leading);
+        const trimmed = part.trim();
+        const start = cursor;
+        const length = countChars(trimmed);
+        cursor += countChars(part.slice(leading.length));
+        return { id: `cue-${++id}`, label: trimmed, start, length };
+      }).filter(cue => cue.length > 0);
+    }
+
+    function flushSegment(map, segment, node) {
+      if (!segment) return null;
+      const ranges = map.get(segment.id) || [];
+      ranges.push({ node, start: segment.start, end: segment.end });
+      map.set(segment.id, ranges);
+      return null;
+    }
+
+    function collectSasayakiCueRanges(cues) {
+      const cueRanges = new Map();
+      if (!cues.length) return [];
+      let index = 0;
+      let current = cues[0];
+      let start = current.start;
+      let end = start + current.length;
+      let cursor = 0;
+      let segment = null;
+      const walker = createWalker();
+      let node;
+      while (current && (node = walker.nextNode())) {
+        const text = node.textContent;
+        let i = 0;
+        while (i < text.length && current) {
+          const char = String.fromCodePoint(text.codePointAt(i));
+          const next = i + char.length;
+          if (matchable(char)) {
+            if (cursor >= start && cursor < end) {
+              if (!segment) segment = { id: current.id, start: i, end: next };
+              else segment.end = next;
+            } else {
+              segment = flushSegment(cueRanges, segment, node);
+            }
+            cursor += 1;
+            if (cursor === end) {
+              segment = flushSegment(cueRanges, segment, node);
+              index += 1;
+              current = cues[index];
+              if (current) {
+                start = current.start;
+                end = start + current.length;
+              }
+            }
+          } else if (segment) {
+            segment.end = next;
+          } else if (cursor > start && cursor < end) {
+            segment = { id: current.id, start: i, end: next };
+          }
+          i = next;
+        }
+        segment = flushSegment(cueRanges, segment, node);
+      }
+      return cues.map(cue => ({ id: cue.id, ranges: cueRanges.get(cue.id) || [] }));
+    }
+
+    function unwrap(wrappers) {
+      const parents = [];
+      wrappers.forEach(wrapper => {
+        const parent = wrapper.parentNode;
+        if (!parent) return;
+        while (wrapper.firstChild) parent.insertBefore(wrapper.firstChild, wrapper);
+        parent.removeChild(wrapper);
+        if (!parents.includes(parent)) parents.push(parent);
+      });
+      parents.forEach(parent => parent.normalize());
+    }
+
+    function applySasayakiCues() {
+      if (document.getElementById('flattenCheck').checked) {
+        resetJitenMarkers();
+        log('flatten: Jiten markers removed before Sasayaki collect');
+      }
+      state.cueWrappers.forEach(unwrap);
+      state.cueWrappers.clear();
+      state.cueSourceRanges.clear();
+      const cueRanges = collectSasayakiCueRanges(state.cues);
+      cueRanges.forEach(item => state.cueSourceRanges.set(item.id, item));
+      const range = document.createRange();
+      for (let i = cueRanges.length - 1; i >= 0; i--) {
+        const item = cueRanges[i];
+        const wrappers = [];
+        for (let j = item.ranges.length - 1; j >= 0; j--) {
+          const segment = item.ranges[j];
+          try {
+            range.setStart(segment.node, segment.start);
+            range.setEnd(segment.node, segment.end);
+            const wrapper = document.createElement('span');
+            wrapper.className = 'hoshi-sasayaki-cue';
+            wrapper.dataset.cueId = item.id;
+            wrapper.appendChild(range.extractContents());
+            range.insertNode(wrapper);
+            wrappers.push(wrapper);
+          } catch (error) {
+            log(`wrap Sasayaki ${item.id} failed: ${error.message}`, 'bad');
+          }
+        }
+        wrappers.reverse();
+        state.cueWrappers.set(item.id, wrappers);
+      }
+      log(`sasayaki parsed: wrappers=${countWrappers()} missing=${missingCues().length}`);
+      dump();
+    }
+
+    function clearActiveCue() {
+      if (!state.activeCueId) return;
+      (state.cueWrappers.get(state.activeCueId) || []).forEach(el => el.classList.remove('hoshi-sasayaki-active'));
+      state.activeCueId = null;
+    }
+
+    function nextCue() {
+      clearActiveCue();
+      state.currentCueIndex = Math.min(state.currentCueIndex + 1, state.cues.length - 1);
+      const cue = state.cues[state.currentCueIndex];
+      if (!cue) return;
+      let wrappers = state.cueWrappers.get(cue.id) || [];
+      if (!wrappers.length) {
+        log(`next ${cue.id}: introuvable dans cueWrappers; tentative re-collect single`, 'bad');
+        const ranges = collectSasayakiCueRanges([cue]);
+        log(`single collect ${cue.id}: ranges=${ranges[0]?.ranges.length || 0}`);
+      } else {
+        wrappers.forEach(el => el.classList.add('hoshi-sasayaki-active'));
+        wrappers[0].scrollIntoView({ block: 'center', inline: 'nearest' });
+        state.activeCueId = cue.id;
+        log(`next ${cue.id}: OK wrappers=${wrappers.length} text="${wrappers.map(w => w.textContent).join('|')}"`, 'ok');
+      }
+      dump();
+    }
+
+    function mockTokensForText(text) {
+      const tokens = [];
+      const re = /[一-龯ぁ-んァ-ンー]{2,}/gu;
+      let match;
+      let n = 0;
+      while ((match = re.exec(text))) {
+        tokens.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          wordId: ++n,
+          readingIndex: 0,
+          card: { cardState: n % 3 === 0 ? ['young'] : ['new'] }
+        });
+      }
+      return tokens;
+    }
+
+    function collectJitenNodes() {
+      const nodes = [];
+      const walker = createWalker();
+      let node;
+      while ((node = walker.nextNode())) {
+        const parent = node.parentElement;
+        if (!parent || parent.closest('.hoshi-jiten-word')) continue;
+        if (node.data.trim() && /[\u3040-\u30ff\u3400-\u9fff]/.test(node.data)) nodes.push(node);
+      }
+      return nodes;
+    }
+
+    function resetJitenMarkers() {
+      const parents = [];
+      reader.querySelectorAll('.hoshi-jiten-word').forEach(el => {
+        const parent = el.parentNode;
+        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+        parent.removeChild(el);
+        if (!parents.includes(parent)) parents.push(parent);
+      });
+      parents.forEach(parent => parent.normalize());
+    }
+
+    function applyJiten(nodes, tokensByNode) {
+      nodes.forEach((node, index) => {
+        if (!node.parentNode) {
+          log(`Jiten stale node[${index}] has no parent`, 'bad');
+          return;
+        }
+        const text = node.data;
+        const tokens = tokensByNode[index] || [];
+        const fragment = document.createDocumentFragment();
+        let cursor = 0;
+        tokens
+          .filter(token => token.start >= 0 && token.end > token.start && token.end <= text.length)
+          .sort((a, b) => a.start - b.start)
+          .forEach(token => {
+            if (token.start < cursor) return;
+            if (token.start > cursor) fragment.append(document.createTextNode(text.slice(cursor, token.start)));
+            const span = document.createElement('span');
+            span.className = 'hoshi-jiten-word';
+            span.dataset.hoshiJitenVisible = 'true';
+            span.dataset.hoshiJitenState = token.card?.cardState?.[0] || 'new';
+            span.textContent = text.slice(token.start, token.end);
+            fragment.append(span);
+            cursor = token.end;
+          });
+        if (cursor < text.length) fragment.append(document.createTextNode(text.slice(cursor)));
+        node.parentNode.replaceChild(fragment, node);
+      });
+      if (document.getElementById('normalizeAfterJiten').checked) reader.normalize();
+      if (document.getElementById('refreshAfterJiten').checked && state.activeCueId) {
+        const wrappers = state.cueWrappers.get(state.activeCueId) || [];
+        wrappers.forEach(el => el.classList.add('hoshi-sasayaki-active'));
+      }
+      log(`jiten applied on ${nodes.length} captured nodes; wrappers=${countWrappers()} missing=${missingCues().length}`);
+      dump();
+    }
+
+    function mockJitenParse() {
+      resetJitenMarkers();
+      const nodes = collectJitenNodes();
+      const tokens = nodes.map(node => mockTokensForText(node.data));
+      log(`jiten mock collected ${nodes.length} nodes`);
+      applyJiten(nodes, tokens);
+    }
+
+    function simulateRace() {
+      resetDom();
+      const nodes = collectJitenNodes();
+      const tokens = nodes.map(node => mockTokensForText(node.data));
+      log(`race: Jiten collected ${nodes.length} raw nodes`);
+      applySasayakiCues();
+      nextCue();
+      log('race: applying stale Jiten nodes after Sasayaki wrappers');
+      applyJiten(nodes, tokens);
+    }
+
+    async function realJitenParse() {
+      const key = document.getElementById('apiKey').value.trim();
+      const endpoint = document.getElementById('endpoint').value.trim().replace(/\/$/, '');
+      if (!key) {
+        log('clé Jiten manquante', 'bad');
+        return;
+      }
+      resetJitenMarkers();
+      const nodes = collectJitenNodes();
+      try {
+        const response = await fetch('/jiten/parse', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'x-jiten-api-key': key,
+            'x-jiten-endpoint': endpoint
+          },
+          body: JSON.stringify({ text: nodes.map(node => node.data) })
+        });
+        const json = await response.json();
+        if (!response.ok) throw new Error(JSON.stringify(json));
+        const vocabulary = new Map((json.vocabulary || []).map(item => [`${item.wordId}:${item.readingIndex}`, item]));
+        const tokens = (json.tokens || []).map(paragraph => paragraph.map(token => {
+          const card = token.card || vocabulary.get(`${token.wordId}:${token.readingIndex}`) || { knownState: [0] };
+          return {
+            start: token.start,
+            end: token.end,
+            wordId: token.wordId,
+            readingIndex: token.readingIndex,
+            card: { cardState: (card.knownState || [0]).map(state => ['new', 'young', 'mature', 'blacklisted', 'due', 'mastered', 'redundant'][state] || 'new') }
+          };
+        }));
+        log(`jiten réel OK nodes=${nodes.length}`);
+        applyJiten(nodes, tokens);
+      } catch (error) {
+        log(`jiten réel failed: ${error.message}. Vérifie que tu ouvres la page via http://127.0.0.1:8787/ et que le serveur Node tourne.`, 'bad');
+      }
+    }
+
+    function countWrappers() {
+      let total = 0;
+      state.cueWrappers.forEach(items => total += items.filter(el => el.isConnected).length);
+      return total;
+    }
+
+    function missingCues() {
+      return state.cues.filter(cue => !(state.cueWrappers.get(cue.id) || []).some(el => el.isConnected));
+    }
+
+    function dump() {
+      const lines = [];
+      lines.push(`reader.textContent chars=${countChars(reader.textContent)} raw=${reader.textContent.length}`);
+      lines.push(`jiten spans=${reader.querySelectorAll('.hoshi-jiten-word').length}`);
+      lines.push(`sasayaki wrappers DOM=${reader.querySelectorAll('.hoshi-sasayaki-cue').length} mapConnected=${countWrappers()}`);
+      lines.push(`missing cues=${missingCues().map(c => c.id).join(', ') || 'none'}`);
+      lines.push('');
+      lines.push(domTree(reader));
+      domDump.textContent = lines.join('\n');
+      updateSummary();
+    }
+
+    function domTree(root, depth = 0) {
+      const pad = '  '.repeat(depth);
+      const lines = [];
+      root.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent.replace(/\s+/g, ' ').trim();
+          if (text) lines.push(`${pad}"${text.slice(0, 80)}"`);
+          return;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        const cls = node.className ? `.${String(node.className).replace(/\s+/g, '.')}` : '';
+        const id = node.dataset.cueId ? ` data-cue-id=${node.dataset.cueId}` : '';
+        const stateAttr = node.dataset.hoshiJitenState ? ` state=${node.dataset.hoshiJitenState}` : '';
+        lines.push(`${pad}<${node.tagName.toLowerCase()}${cls}${id}${stateAttr}> text="${node.textContent.slice(0, 60).replace(/\s+/g, ' ')}"`);
+        lines.push(domTree(node, depth + 1));
+      });
+      return lines.filter(Boolean).join('\n');
+    }
+
+    function updateSummary() {
+      const missing = missingCues();
+      summary.innerHTML = [
+        `Cue active: <b>${state.activeCueId || 'none'}</b>`,
+        `Cues: ${state.cues.length}`,
+        `Wrappers DOM: ${reader.querySelectorAll('.hoshi-sasayaki-cue').length}`,
+        `Wrappers map connected: ${countWrappers()}`,
+        `Jiten spans: ${reader.querySelectorAll('.hoshi-jiten-word').length}`,
+        missing.length ? `<span class="bad">Missing: ${missing.map(c => c.id).join(', ')}</span>` : '<span class="ok">No missing cues</span>'
+      ].join('<br>');
+    }
+
+    document.getElementById('resetBtn').onclick = resetDom;
+    document.getElementById('applySasayakiBtn').onclick = applySasayakiCues;
+    document.getElementById('mockJitenBtn').onclick = mockJitenParse;
+    document.getElementById('raceBtn').onclick = simulateRace;
+    document.getElementById('nextCueBtn').onclick = nextCue;
+    document.getElementById('dumpBtn').onclick = dump;
+    document.getElementById('realJitenBtn').onclick = realJitenParse;
+    document.getElementById('markerSelect').onchange = event => {
+      document.documentElement.dataset.hoshiJitenMarker = event.target.value;
+    };
+    document.getElementById('autoBtn').onclick = async () => {
+      for (let i = 0; i < 8; i++) {
+        nextCue();
+        await new Promise(resolve => setTimeout(resolve, 450));
+      }
+    };
+
+    resetDom();
+  </script>
+</body>
+</html>

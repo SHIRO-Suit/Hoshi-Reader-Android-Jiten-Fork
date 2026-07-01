@@ -56,6 +56,7 @@ import moe.antimony.hoshi.content.ContentLanguageProfile
 import moe.antimony.hoshi.epub.EpubBook
 import moe.antimony.hoshi.epub.HighlightColor
 import moe.antimony.hoshi.features.dictionary.DictionarySettings
+import moe.antimony.hoshi.features.jiten.JitenDevMode
 import moe.antimony.hoshi.features.sasayaki.SasayakiSettings
 import moe.antimony.hoshi.webview.applyHoshiWebViewSecurityDefaults
 
@@ -187,6 +188,7 @@ internal fun ChapterWebView(
         dictionarySettings.jitenApiKey,
         dictionarySettings.jitenMarkerStyle,
         dictionarySettings.jitenVisibleStates,
+        JitenDevMode.enabled,
     ) {
         jitenConfigurationJson(dictionarySettings)
     }
@@ -300,6 +302,7 @@ internal fun ChapterWebView(
                     view.evaluateReaderSetupScript(
                         source = readerSetupScript,
                         restoreToken = restoreToken,
+                        initialSasayakiCuesJson = chapterSasayakiCuesJson,
                     )
                 }
                 readerWebView = this
@@ -483,6 +486,7 @@ internal fun ChapterWebView(
                     view.evaluateReaderSetupScript(
                         source = readerSetupScript,
                         restoreToken = restoreToken,
+                        initialSasayakiCuesJson = chapterSasayakiCuesJson,
                     )
                 }
                 webView.loadUrl(baseUrl)
@@ -907,8 +911,10 @@ private fun readerSetupScript(
     val jitenConfiguration = jitenConfigurationJson(dictionarySettings)
     val jitenScript = assets.jitenJs
     val jitenToken = readerJavaScriptStringLiteral(restoreToken)
+    val initialJitenParseScript = "window.hoshiJiten.requestParseWhenReaderReady($jitenToken);"
     return """
         (function() {
+          window.hoshiReaderRestoreComplete = false;
           document.documentElement.dataset.hoshiReaderEinkMode = $eInkMode;
           document.documentElement.lang = $contentLanguageTag;
           document.documentElement.dataset.hoshiContentLanguage = $contentLanguageTag;
@@ -920,6 +926,7 @@ private fun readerSetupScript(
           $selectionScript
           $jitenScript
           window.hoshiJiten.configure($jitenConfiguration);
+          window.hoshiJiten?.debugLog?.("reader setup script injected");
           window.hoshiSelection.configure({
             bridge: 'android-reader',
             language: $selectionLanguageId,
@@ -935,7 +942,7 @@ private fun readerSetupScript(
             document.head.appendChild(popupHostScript);
           }
           $paginationScript
-          window.hoshiJiten.requestParse($jitenToken);
+          $initialJitenParseScript
         })();
     """.trimIndent()
 }
@@ -943,6 +950,7 @@ private fun readerSetupScript(
 private fun jitenConfigurationJson(dictionarySettings: DictionarySettings): String =
     kotlinx.serialization.json.buildJsonObject {
         put("enabled", dictionarySettings.jitenEnabled && dictionarySettings.jitenApiKey.isNotBlank())
+        put("debug", JitenDevMode.enabled)
         put("markerStyle", dictionarySettings.jitenMarkerStyle.rawValue)
         putJsonArray("visibleStates") {
             dictionarySettings.jitenVisibleStates.sorted().forEach { add(JsonPrimitive(it)) }
@@ -1394,8 +1402,13 @@ private fun WebView.showAfterReaderRestore(restoreCompletion: ReaderRestoreCompl
 private fun WebView.evaluateReaderSetupScript(
     source: String,
     restoreToken: String,
+    initialSasayakiCuesJson: String?,
 ) {
-    readerAppliedSasayakiCues.remove(this)
+    if (initialSasayakiCuesJson == null) {
+        readerAppliedSasayakiCues.remove(this)
+    } else {
+        readerAppliedSasayakiCues[this] = ReaderAppliedSasayakiCues(restoreToken, initialSasayakiCuesJson)
+    }
     evaluateJavascript(source, null)
 }
 

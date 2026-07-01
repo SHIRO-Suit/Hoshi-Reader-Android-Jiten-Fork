@@ -23,7 +23,13 @@ internal enum class ReaderNavigationResult {
 
 internal object ReaderPaginationScripts {
     fun paginateInvocation(direction: ReaderNavigationDirection): String =
-        "window.hoshiReader.paginate('${direction.jsValue}')"
+        """
+            (function() {
+              var result = window.hoshiReader.paginate('${direction.jsValue}');
+              if (result === 'scrolled') window.hoshiJiten?.viewportChanged?.('paginate');
+              return result;
+            })()
+        """.trimIndent()
 
     fun nativeSelectionActiveInvocation(active: Boolean): String =
         "if (window.hoshiReader && typeof window.hoshiReader.setNativeSelectionActive === 'function') { window.hoshiReader.setNativeSelectionActive($active); }"
@@ -35,7 +41,11 @@ internal object ReaderPaginationScripts {
         "if (window.hoshiReader && typeof window.hoshiReader.applySasayakiCues === 'function') { window.hoshiReader.applySasayakiCues($cuesJson); }"
 
     fun highlightSasayakiCueInvocation(cue: SasayakiCueRange, reveal: Boolean): String =
-        "window.hoshiReader.highlightSasayakiCue(${cue.toJavaScriptObjectLiteral()}, $reveal)"
+        """
+            (function() {
+              return window.hoshiReader.highlightSasayakiCue(${cue.toJavaScriptObjectLiteral()}, $reveal);
+            })()
+        """.trimIndent()
 
     fun sasayakiMediaStopsBeforeCueInvocation(cue: SasayakiCueRange): String =
         "window.hoshiReader.sasayakiMediaStopsBeforeCue(${cue.toJavaScriptObjectLiteral()})"
@@ -44,7 +54,11 @@ internal object ReaderPaginationScripts {
         "window.hoshiReader.sasayakiMediaStopsToChapterEnd()"
 
     fun showSasayakiMediaStopInvocation(stopJson: String): String =
-        "window.hoshiReader.showSasayakiMediaStop($stopJson)"
+        """
+            (function() {
+              return window.hoshiReader.showSasayakiMediaStop($stopJson);
+            })()
+        """.trimIndent()
 
     fun clearSasayakiCueInvocation(): String =
         "window.hoshiReader.clearSasayakiCue()"
@@ -101,6 +115,7 @@ internal object ReaderPaginationScripts {
             ""
         } else {
             readerRestoreScripts(
+                sasayakiCuesJson = sasayakiCuesJson,
                 highlightsJson = highlightsJson,
                 initialRestoreScript = initialRestoreScript,
             )
@@ -207,9 +222,11 @@ private object SourceTreeReaderPaginationAssets {
 }
 
 private fun readerRestoreScripts(
+    sasayakiCuesJson: String?,
     highlightsJson: String?,
     initialRestoreScript: String,
 ): String = listOfNotNull(
+    sasayakiCuesJson?.let { "window.hoshiReader.applySasayakiCues($it);" },
     highlightsJson?.let { "window.hoshiHighlights.applyHighlights($it);" },
     initialRestoreScript,
 ).joinToString(separator = "\n")

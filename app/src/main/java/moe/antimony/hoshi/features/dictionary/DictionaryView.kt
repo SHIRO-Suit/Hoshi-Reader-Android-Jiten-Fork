@@ -8,6 +8,7 @@ import android.os.Looper
 import android.view.MotionEvent
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.compose.animation.core.Animatable
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -124,6 +125,7 @@ import moe.antimony.hoshi.dictionary.DictionaryType
 import moe.antimony.hoshi.dictionary.recommendedDictionariesForLanguage
 import moe.antimony.hoshi.features.settings.SettingsDetailScaffold
 import moe.antimony.hoshi.features.reader.ReaderFontManager
+import moe.antimony.hoshi.features.jiten.JitenDevMode
 import moe.antimony.hoshi.importing.ImportFileType
 import moe.antimony.hoshi.importing.MultipleFileImportContent
 import moe.antimony.hoshi.importing.importDisplayName
@@ -1625,6 +1627,7 @@ private fun DictionarySettingsView(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     var showCollapsedDictionaries by remember { mutableStateOf(false) }
     var editingKanjiField by remember { mutableStateOf<KanjiCombinedField?>(null) }
     val settingsListState = rememberLazyListState()
@@ -1726,8 +1729,11 @@ private fun DictionarySettingsView(
                         title = stringResource(R.string.jiten_use_service),
                         checked = settings.jitenEnabled,
                         supportingText = stringResource(R.string.jiten_use_service_description),
-                    ) {
-                        onSettingsChange { current -> current.copy(jitenEnabled = it) }
+                    ) { enabled ->
+                        if (enabled && JitenDevMode.recordEnableToggle()) {
+                            Toast.makeText(context, "Jiten dev mode activé", Toast.LENGTH_SHORT).show()
+                        }
+                        onSettingsChange { current -> current.copy(jitenEnabled = enabled) }
                     }
                     GroupDivider()
                     ListItem(

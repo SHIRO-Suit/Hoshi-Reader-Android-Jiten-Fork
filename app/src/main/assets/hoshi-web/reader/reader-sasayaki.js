@@ -60,8 +60,9 @@
   },
    applySasayakiCues: function(cues) {
      var activeCueId = this.activeCueId;
+     this.sasayakiCues = Array.isArray(cues) ? cues : [];
      this.resetSasayakiCues();
-     var cueRanges = this.collectSasayakiCueRanges(cues);
+     var cueRanges = this.collectSasayakiCueRanges(this.sasayakiCues);
      this.rememberSasayakiCueSources(cueRanges);
      if (this.isEInkMode()) {
        this.cueGeometryRanges = this.buildSasayakiGeometryRanges(cueRanges);
@@ -73,6 +74,26 @@
        this.refreshSasayakiCuePresentation();
      }
    },
+  rebuildSasayakiCuesAfterDomMutation: function() {
+    var cues = Array.isArray(this.sasayakiCues) ? this.sasayakiCues : [];
+    if (!cues.length) {
+      this.buildNodeOffsets();
+      return;
+    }
+    var activeCueId = this.activeCueId;
+    this.resetSasayakiCues();
+    var cueRanges = this.collectSasayakiCueRanges(cues);
+    this.rememberSasayakiCueSources(cueRanges);
+    if (this.isEInkMode()) {
+      this.cueGeometryRanges = this.buildSasayakiGeometryRanges(cueRanges);
+    }
+    this.prepareSasayakiInlineTargets(cueRanges);
+    this.buildNodeOffsets();
+    if (activeCueId && this.hasSasayakiCueTarget(activeCueId)) {
+      this.activeCueId = activeCueId;
+      this.refreshSasayakiCuePresentation();
+    }
+  },
   wrapSasayakiCue: function(cue) {
     if (this.isEInkMode()) {
       this.ensureSasayakiCueGeometry(cue);

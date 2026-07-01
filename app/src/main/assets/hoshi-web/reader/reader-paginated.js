@@ -68,6 +68,13 @@ window.hoshiReader = {
     return fallbackOffset;
   },
   notifyRestoreComplete: function() {
+    window.hoshiReaderRestoreComplete = true;
+    window.hoshiJiten?.debugLog?.('reader restore complete');
+    if (typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(typeof Event === 'function'
+        ? new Event('hoshi-reader-restore-complete')
+        : { type: 'hoshi-reader-restore-complete' });
+    }
     if (window.HoshiReaderRestore && window.HoshiReaderRestore.postMessage) {
       window.HoshiReaderRestore.postMessage(__HOSHI_RESTORE_TOKEN_LITERAL__);
     }
